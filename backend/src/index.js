@@ -13,7 +13,7 @@ const app = express();
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 // Support multiple allowed origins (space-separated in CORS_ORIGIN env var)
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(' ').map(s => s.trim());
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173 http://localhost:3000 https://finance.ftcblueprint.com').split(' ').map(s => s.trim());
 app.use(cors({
   origin: (origin, cb) => {
     // Allow requests with no origin (e.g. curl, Postman, same-origin)

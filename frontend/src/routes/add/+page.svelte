@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
 
   let form = $state({
+    destination: 'local',
     item: '', company: '', link: '', price: '', quantity: '1',
     notes: '', user: '', category: 'hardware',
   });
@@ -22,14 +23,23 @@
 
     submitting = true;
     try {
-      await api.expenses.create({
+      const payload = {
         ...form,
         price: parseFloat(form.price),
         quantity: parseInt(form.quantity) || 1,
-      });
-      submitSuccess = '✓ Expense added successfully!';
-      form = { item: '', company: '', link: '', price: '', quantity: '1', notes: '', user: '', category: 'hardware' };
-      setTimeout(() => goto('/expenses'), 1500);
+      };
+
+      if (form.destination === 'sheets') {
+        await api.orders.create(payload);
+        submitSuccess = '✓ Part Order successfully sent to Google Sheets!';
+        setTimeout(() => goto('/orders'), 1500);
+      } else {
+        await api.expenses.create(payload);
+        submitSuccess = '✓ Local Expense added successfully!';
+        setTimeout(() => goto('/expenses'), 1500);
+      }
+      
+      form = { destination: form.destination, item: '', company: '', link: '', price: '', quantity: '1', notes: '', user: '', category: 'hardware' };
     } catch (/** @type {any} */ e) {
       submitError = e.message;
     } finally {
@@ -39,12 +49,12 @@
 </script>
 
 <svelte:head>
-  <title>Add Expense — Westwood Finance</title>
+  <title>{form.destination === 'sheets' ? 'Add Part Order' : 'Add Expense'} — Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">
-  <h1>Add <span>Expense</span></h1>
-  <a href="/expenses" class="btn btn-ghost btn-sm">← Back</a>
+  <h1>Add <span>{form.destination === 'sheets' ? 'Order' : 'Expense'}</span></h1>
+  <a href={form.destination === 'sheets' ? '/orders' : '/expenses'} class="btn btn-ghost btn-sm">← Back</a>
 </div>
 
 <div class="add-layout">
@@ -57,6 +67,27 @@
     {/if}
 
     <form onsubmit={e => { e.preventDefault(); submit(); }} id="add-expense-form">
+      <div style="margin-bottom:20px">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label style="display:block;margin-bottom:8px;font-size:0.85rem;font-weight:600;color:var(--text-muted)">Destination</label>
+        <div class="segmented-control">
+          <button
+            type="button"
+            class:active={form.destination === 'local'}
+            onclick={() => form.destination = 'local'}
+          >
+            Local DB (Expense)
+          </button>
+          <button
+            type="button"
+            class:active={form.destination === 'sheets'}
+            onclick={() => form.destination = 'sheets'}
+          >
+            Google Sheets (Part Order)
+          </button>
+        </div>
+      </div>
+
       <div class="form-grid">
         <div class="form-group" style="grid-column:1/-1">
           <label for="ae-item">Item Name *</label>
@@ -118,9 +149,9 @@
 
       <div style="margin-top:20px;display:flex;gap:10px">
         <button id="submit-expense-btn" type="submit" class="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Saving…' : '+ Add Expense'}
+          {submitting ? 'Saving…' : form.destination === 'sheets' ? '+ Add Part Order' : '+ Add Expense'}
         </button>
-        <a href="/expenses" class="btn btn-ghost">Cancel</a>
+        <a href={form.destination === 'sheets' ? '/orders' : '/expenses'} class="btn btn-ghost">Cancel</a>
       </div>
     </form>
   </div>
@@ -131,7 +162,11 @@
       <li>Category is strictly enforced — pick the closest match.</li>
       <li>Links to order pages help the team track shipments.</li>
       <li>Total is computed automatically (price × qty).</li>
-      <li>Entries are saved securely to the local database.</li>
+      {#if form.destination === 'local'}
+        <li><strong>Local Expense:</strong> Saves securely to the internal database (visible offline & instantly).</li>
+      {:else}
+        <li><strong>Part Order:</strong> Pushes a live entry to the external Google Sheet (FinanceBot access).</li>
+      {/if}
     </ul>
 
     <div style="margin-top:20px">
@@ -181,4 +216,16 @@
   .cat-pill.active.cat-software { background: var(--cat-software); }
   .cat-pill.active.cat-outreach { background: var(--cat-outreach); }
   .cat-pill.active.cat-miscellaneous { background: var(--cat-miscellaneous); }
+
+  .segmented-control {
+    display: inline-flex; background: var(--surface-2);
+    border-radius: 99px; padding: 4px; border: 1px solid var(--border);
+  }
+  .segmented-control button {
+    padding: 6px 16px; border: none; background: transparent; cursor: pointer;
+    font-size: 0.85rem; font-weight: 500; color: var(--text-muted); border-radius: 99px; transition: all 0.2s;
+  }
+  .segmented-control button.active {
+    background: var(--surface); color: var(--text); padding: 6px 16px; box-shadow: var(--shadow-sm); pointer-events: none;
+  }
 </style>
