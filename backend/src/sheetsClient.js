@@ -4,18 +4,29 @@
 
 const { google } = require('googleapis');
 const path = require('path');
-const { SPREADSHEET_ID, GOOGLE_CREDENTIALS_PATH } = require('./config');
+const { SPREADSHEET_ID, GOOGLE_CREDENTIALS_PATH, GOOGLE_SERVICE_ACCOUNT_JSON } = require('./config');
 
 let _sheetsClient = null;
 
 async function getSheetsClient() {
   if (_sheetsClient) return _sheetsClient;
 
-  const credPath = path.resolve(GOOGLE_CREDENTIALS_PATH);
-  const auth = new google.auth.GoogleAuth({
-    keyFile: credPath,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+  let auth;
+  if (GOOGLE_SERVICE_ACCOUNT_JSON) {
+    // If credentials are provided as a JSON string (Cloud hosting)
+    const credentials = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON);
+    auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  } else {
+    // Fallback to local file path
+    const credPath = path.resolve(GOOGLE_CREDENTIALS_PATH);
+    auth = new google.auth.GoogleAuth({
+      keyFile: credPath,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  }
 
   _sheetsClient = google.sheets({ version: 'v4', auth });
   return _sheetsClient;

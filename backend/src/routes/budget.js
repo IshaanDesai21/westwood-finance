@@ -1,17 +1,26 @@
 // ─── Budget Routes (Category Budgets — SQLite backed) ─────────────────────────
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const { ADMIN_PASSWORD, CATEGORIES, DEFAULT_BUDGETS } = require('../config');
+const { ADMIN_PASSWORD, CATEGORIES, DEFAULT_BUDGETS, SHEET_NAMES } = require('../config');
+const { readSheet, appendRows, updateRow } = require('../sheetsClient');
 
 // ── GET /api/budget ────────────────────────────────────────────────────────────
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT category, budget FROM budget_categories').all();
+    const rows = await readSheet(SHEET_NAMES.BUDGETS);
     const budgets = {};
-    for (const row of rows) {
-      budgets[row.category] = row.budget;
-    }
+    
+    // Header check
+    const startIndex = (rows[0] && (rows[0][0] || '').toLowerCase() === 'category') ? 1 : 0;
+
+    rows.slice(startIndex).forEach(row => {
+      const cat = (row[0] || '').toLowerCase().trim();
+      const val = parseFloat(row[1]) || 0;
+      if (CATEGORIES.includes(cat)) {
+        budgets[cat] = val;
+      }
+    });
+
     // Ensure all categories are represented (fallback to defaults)
     for (const cat of CATEGORIES) {
       if (budgets[cat] === undefined) budgets[cat] = DEFAULT_BUDGETS[cat] || 0;
@@ -20,13 +29,12 @@ router.get('/', (req, res) => {
     res.json({ budgets, total });
   } catch (err) {
     console.error('[budget GET]', err.message);
-    res.status(500).json({ error: 'Failed to fetch budget data', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch budget data from Sheets', detail: err.message });
   }
 });
 
 // ── PUT /api/budget ────────────────────────────────────────────────────────────
-// Body: { password, budgets: { hardware, software, outreach, food, miscellaneous } }
-router.put('/', (req, res) => {
+router.put('/', async (req, res) => {
   try {
     const { password, budgets } = req.body;
     if (password !== ADMIN_PASSWORD) {
@@ -36,32 +44,43 @@ router.put('/', (req, res) => {
       return res.status(400).json({ error: 'budgets object is required' });
     }
 
-    const upsert = db.prepare(`
-      INSERT INTO budget_categories (category, budget)
-      VALUES (?, ?)
-      ON CONFLICT(category) DO UPDATE SET budget = excluded.budget
-    `);
-
-    const updateAll = db.transaction(() => {
+    // Fetch existing rows to find where to update
+    const currentRows = await readSheet(SHEET_NAMES.BUDGETS);
+    const headersExist = (currentRows[0] && (currentRows[0][0] || '').toLowerCase() === 'category');
+    
+    if (!headersExist) {
+      // Initialize sheet if empty
+      const initData = [['Category', 'Amount']];
       for (const cat of CATEGORIES) {
-        const val = parseFloat(budgets[cat]);
-        if (!isNaN(val) && val >= 0) {
-          upsert.run(cat, val);
+        initData.push([cat, (parseFloat(budgets[cat]) || DEFAULT_BUDGETS[cat] || 0).toString()]);
+      }
+      await appendRows(SHEET_NAMES.BUDGETS, initData);
+    } else {
+      // Update each category
+      for (const cat of CATEGORIES) {
+        const val = (parseFloat(budgets[cat]) || 0).toString();
+        const existingIdx = currentRows.findIndex(r => r[0]?.toLowerCase().trim() === cat);
+        
+        if (existingIdx !== -1) {
+          // Update existing row (index + 1)
+          await updateRow(SHEET_NAMES.BUDGETS, existingIdx + 1, [cat, val]);
+        } else {
+          // Append new category
+          await appendRows(SHEET_NAMES.BUDGETS, [[cat, val]]);
         }
       }
-    });
-    updateAll();
+    }
 
-    // Return updated budgets
-    const rows = db.prepare('SELECT category, budget FROM budget_categories').all();
+    // Refresh and return
+    const updatedRows = await readSheet(SHEET_NAMES.BUDGETS);
     const result = {};
-    for (const row of rows) result[row.category] = row.budget;
+    updatedRows.slice(1).forEach(r => { result[r[0]] = parseFloat(r[1]) || 0; });
     const total = Object.values(result).reduce((s, v) => s + v, 0);
 
-    res.json({ message: 'Budget updated', budgets: result, total });
+    res.json({ message: 'Budget updated in Sheets', budgets: result, total });
   } catch (err) {
     console.error('[budget PUT]', err.message);
-    res.status(500).json({ error: 'Failed to update budget', detail: err.message });
+    res.status(500).json({ error: 'Failed to update budget in Sheets', detail: err.message });
   }
 });
 

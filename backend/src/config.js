@@ -29,6 +29,8 @@ const SHEET_NAMES = {
   ORDERS:   process.env.ORDERS_SHEET_NAME   || 'Orders',
   EXPENSES: process.env.EXPENSES_SHEET_NAME || 'Expenses',
   FUNDING:  process.env.FUNDING_SHEET_NAME  || 'Fundraising',
+  BUDGETS:  process.env.BUDGETS_SHEET_NAME  || 'Budgets',
+  SETTINGS: process.env.SETTINGS_SHEET_NAME || 'Settings',
 };
 
 // Column indices (0-based) for the Orders sheet: A→0, B→1, …, K→10
@@ -80,6 +82,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '/dev3432';
 module.exports = {
   SPREADSHEET_ID: process.env.SPREADSHEET_ID,
   GOOGLE_CREDENTIALS_PATH: process.env.GOOGLE_CREDENTIALS_PATH || './credentials.json',
+  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON || null,
   PORT: Number(process.env.PORT) || 3001,
   CATEGORIES,
   CONTRIBUTION_TYPES,

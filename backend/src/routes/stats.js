@@ -1,12 +1,20 @@
 // ─── Stats Routes (Local DB) ───────────────────────────────────────────────────
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const { SEASON_BUDGET } = require('../config');
+const { SEASON_BUDGET, SHEET_NAMES } = require('../config');
+const { readSheet } = require('../sheetsClient');
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const expenses = db.prepare('SELECT * FROM expenses').all();
+    const rows = await readSheet(SHEET_NAMES.EXPENSES);
+    if (!rows || rows.length === 0) {
+      return res.json({ totalSpent: 0, totalItems: 0, avgCost: 0, byCategory: {}, topVendor: null, mostExpensive: null, seasonBudget: SEASON_BUDGET, budgetRemaining: SEASON_BUDGET });
+    }
+
+    const startIndex = (rows[0][0] || '').toLowerCase() === 'item' ? 1 : 0;
+    const expenses = rows.slice(startIndex).map(r => ({
+      item: r[0], company: r[1], category: r[6], total: parseFloat(r[9]) || 0
+    })).filter(e => e.item);
 
     let totalSpent = 0;
     const byCategory = {};
@@ -15,21 +23,12 @@ router.get('/', (req, res) => {
 
     expenses.forEach((exp) => {
       totalSpent += exp.total;
-
-      // Category breakdown
       byCategory[exp.category] = (byCategory[exp.category] || 0) + exp.total;
-
-      // Vendor tracking
       const co = exp.company || 'Unknown';
       vendorCounts[co] = (vendorCounts[co] || 0) + 1;
-
-      // Most expensive item tracking
-      if (!mostExpensive || exp.total > mostExpensive.total) {
-        mostExpensive = exp;
-      }
+      if (!mostExpensive || exp.total > mostExpensive.total) mostExpensive = exp;
     });
 
-    // Determine top vendor
     let topVendor = null;
     let maxOrders = 0;
     for (const [co, count] of Object.entries(vendorCounts)) {
@@ -46,13 +45,12 @@ router.get('/', (req, res) => {
       byCategory,
       topVendor,
       mostExpensive,
-      // Pass budget cap info if configured
       seasonBudget: SEASON_BUDGET,
       budgetRemaining: SEASON_BUDGET !== null ? SEASON_BUDGET - totalSpent : null,
     });
   } catch (err) {
     console.error('[stats GET]', err.message);
-    res.status(500).json({ error: 'Failed to compute stats', detail: err.message });
+    res.status(500).json({ error: 'Failed to compute stats from Sheets', detail: err.message });
   }
 });
 
