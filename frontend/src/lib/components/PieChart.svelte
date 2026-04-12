@@ -8,7 +8,9 @@
   /** @type {{ data: { [category: string]: number } }} */
   let { data = {} } = $props();
 
+  /** @type {any} */
   let canvas;
+  /** @type {any} */
   let chart;
 
   $effect(() => {
@@ -17,7 +19,7 @@
       const values = Object.values(data);
       chart.data.labels = labels;
       chart.data.datasets[0].data = values;
-      chart.data.datasets[0].backgroundColor = labels.map(l => CATEGORY_COLORS[l] || '#888');
+      chart.data.datasets[0].backgroundColor = labels.map(l => (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[l] || '#888');
       chart.update();
     }
   });
@@ -32,7 +34,7 @@
         labels,
         datasets: [{
           data: values,
-          backgroundColor: labels.map(l => CATEGORY_COLORS[l] || '#888'),
+          backgroundColor: labels.map(l => (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[l] || '#888'),
           borderColor: '#161616',
           borderWidth: 3,
         }],

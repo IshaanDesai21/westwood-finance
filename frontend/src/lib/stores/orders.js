@@ -2,9 +2,13 @@
 import { writable, derived } from 'svelte/store';
 import { api } from '../api.js';
 
+/** @type {import('svelte/store').Writable<any[]>} */
 export const orders      = writable([]);
+/** @type {import('svelte/store').Writable<boolean>} */
 export const loading     = writable(false);
+/** @type {import('svelte/store').Writable<string | null>} */
 export const error       = writable(null);
+/** @type {import('svelte/store').Writable<Date | null>} */
 export const lastSynced  = writable(null);
 
 /** Load orders from the backend (sync=true bypasses server cache) */
@@ -16,7 +20,7 @@ export async function loadOrders(sync = false) {
     orders.set(data);
     lastSynced.set(new Date());
   } catch (e) {
-    error.set(e.message);
+    error.set(/** @type {Error} */ (e).message);
   } finally {
     loading.set(false);
   }

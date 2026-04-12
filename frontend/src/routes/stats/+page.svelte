@@ -8,6 +8,7 @@
 
   const API = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+  /** @type {any} */
   let stats = $state(null);
   let loading = $state(true);
   let err = $state('');
@@ -21,7 +22,7 @@
       const res = await fetch(`${API}/stats${sync ? '?sync=true' : ''}`);
       stats = await res.json();
     } catch (e) {
-      err = e.message;
+      err = /** @type {Error} */ (e).message;
     } finally {
       loading = false;
     }

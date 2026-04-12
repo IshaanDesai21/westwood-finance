@@ -4,6 +4,10 @@
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+/**
+ * @param {string} path 
+ * @param {RequestInit} options 
+ */
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...options.headers },
@@ -25,12 +29,12 @@ async function request(path, options = {}) {
 export const api = {
   expenses: {
     list: () => request('/expenses'),
-    create: (data) => request('/expenses', { method: 'POST', body: JSON.stringify(data) }),
+    create: (/** @type {any} */ data) => request('/expenses', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   orders: {
     list: (sync = false) => request(`/orders${sync ? '?sync=true' : ''}`),
-    create: (data) => request('/orders', { method: 'POST', body: JSON.stringify(data) }),
+    create: (/** @type {any} */ data) => request('/orders', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   stats: {
@@ -39,9 +43,9 @@ export const api = {
 
   funding: {
     getAll: (sync = false) => request(`/funding${sync ? '?sync=true' : ''}`),
-    addFundraising: (data) => request('/funding/fundraising', { method: 'POST', body: JSON.stringify(data) }),
-    addSponsor:     (data) => request('/funding/sponsor',     { method: 'POST', body: JSON.stringify(data) }),
-    addGrant:       (data) => request('/funding/grant',       { method: 'POST', body: JSON.stringify(data) }),
-    addClubDues:    (data) => request('/funding/club-dues',   { method: 'POST', body: JSON.stringify(data) }),
+    addFundraising: (/** @type {any} */ data) => request('/funding/fundraising', { method: 'POST', body: JSON.stringify(data) }),
+    addSponsor:     (/** @type {any} */ data) => request('/funding/sponsor',     { method: 'POST', body: JSON.stringify(data) }),
+    addGrant:       (/** @type {any} */ data) => request('/funding/grant',       { method: 'POST', body: JSON.stringify(data) }),
+    addClubDues:    (/** @type {any} */ data) => request('/funding/club-dues',   { method: 'POST', body: JSON.stringify(data) }),
   },
 };

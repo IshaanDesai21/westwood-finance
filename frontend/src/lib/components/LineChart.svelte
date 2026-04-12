@@ -11,7 +11,9 @@
   /** @type {{ data: Array<{ month: string, amount: number }> }} */
   let { data = [] } = $props();
 
+  /** @type {any} */
   let canvas;
+  /** @type {any} */
   let chart;
 
   $effect(() => {
@@ -45,7 +47,7 @@
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => ` $${ctx.parsed.y.toFixed(2)}`,
+              label: (/** @type {any} */ ctx) => ` $${ctx.parsed.y.toFixed(2)}`,
             },
           },
         },
