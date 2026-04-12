@@ -1,39 +1,39 @@
-<script>
+<script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import {
     Chart, BarElement, LinearScale, CategoryScale,
     Tooltip, Legend, BarController,
+    type ChartItem,
   } from 'chart.js';
   import { CATEGORY_COLORS } from '../utils.js';
 
   Chart.register(BarElement, LinearScale, CategoryScale, Tooltip, Legend, BarController);
 
-  /** @type {{ data: { [category: string]: number } }} */
-  let { data = {} } = $props();
+  let { data = {} }: { data: Record<string, number> } = $props();
 
-  let canvas;
-  let chart;
+  let canvas: HTMLCanvasElement;
+  let chart: Chart | null = null;
 
   $effect(() => {
     if (chart && data) {
       const labels = Object.keys(data);
       chart.data.labels = labels;
       chart.data.datasets[0].data = labels.map(l => data[l]);
-      chart.data.datasets[0].backgroundColor = labels.map(l => CATEGORY_COLORS[l] || '#888');
+      chart.data.datasets[0].backgroundColor = labels.map(l => (CATEGORY_COLORS as Record<string, string>)[l] || '#888');
       chart.update();
     }
   });
 
   onMount(() => {
     const labels = Object.keys(data);
-    chart = new Chart(canvas, {
+    chart = new Chart(canvas as ChartItem, {
       type: 'bar',
       data: {
         labels,
         datasets: [{
           label: 'Spending ($)',
           data: labels.map(l => data[l]),
-          backgroundColor: labels.map(l => CATEGORY_COLORS[l] || '#888'),
+          backgroundColor: labels.map(l => (CATEGORY_COLORS as Record<string, string>)[l] || '#888'),
           borderRadius: 6,
           borderSkipped: false,
         }],
@@ -44,7 +44,7 @@
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => ` $${ctx.parsed.y.toFixed(2)}`,
+              label: ctx => ` $${((ctx.parsed.y ?? 0)).toFixed(2)}`,
             },
           },
         },

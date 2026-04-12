@@ -5,17 +5,27 @@ const cors = require('cors');
 const { PORT } = require('./config');
 
 const expensesRouter = require('./routes/expenses');
+const ordersRouter   = require('./routes/orders');
 const statsRouter    = require('./routes/stats');
 const fundingRouter  = require('./routes/funding');
 
 const app = express();
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
+// Support multiple allowed origins (space-separated in CORS_ORIGIN env var)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(' ').map(s => s.trim());
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow requests with no origin (e.g. curl, Postman, same-origin)
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
+}));
 app.use(express.json());
 
 // ── API Routes ─────────────────────────────────────────────────────────────────
 app.use('/api/expenses', expensesRouter);
+app.use('/api/orders',   ordersRouter);
 app.use('/api/stats',    statsRouter);
 app.use('/api/funding',  fundingRouter);
 

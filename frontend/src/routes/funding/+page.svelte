@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import {
-    fundraising, sponsors, grants, loading, error,
+    fundraising, sponsors, grants, clubDues, loading, error,
     loadFunding, totalRaised,
   } from '$lib/stores/funding.js';
   import { expenses, totalSpent, loadExpenses } from '$lib/stores/expenses.js';
@@ -13,6 +13,7 @@
   let frForm = $state({ name: '', amount: '', date: '', notes: '' });
   let spForm = $state({ name: '', amount: '', date: '', notes: '', contributionType: 'money' });
   let grForm = $state({ name: '', organization: '', amount: '', status: 'Applied', deadline: '', notes: '' });
+  let cdForm = $state({ name: '', amount: '', date: '', notes: '' });
 
   let submitting = $state(false);
   let formMsg = $state('');
@@ -27,7 +28,7 @@
       formMsg = '✓ Fundraising entry added!';
       frForm = { name: '', amount: '', date: '', notes: '' };
       loadFunding(true);
-    } catch(e) { formErr = e.message; } finally { submitting = false; }
+    } catch(e) { formErr = /** @type {any} */ (e)?.message || String(e); } finally { submitting = false; }
   }
 
   async function addSponsor() {
@@ -37,7 +38,7 @@
       formMsg = '✓ Sponsor added!';
       spForm = { name: '', amount: '', date: '', notes: '', contributionType: 'money' };
       loadFunding(true);
-    } catch(e) { formErr = e.message; } finally { submitting = false; }
+    } catch(e) { formErr = /** @type {any} */ (e)?.message || String(e); } finally { submitting = false; }
   }
 
   async function addGrant() {
@@ -47,7 +48,17 @@
       formMsg = '✓ Grant added!';
       grForm = { name: '', organization: '', amount: '', status: 'Applied', deadline: '', notes: '' };
       loadFunding(true);
-    } catch(e) { formErr = e.message; } finally { submitting = false; }
+    } catch(e) { formErr = /** @type {any} */ (e)?.message || String(e); } finally { submitting = false; }
+  }
+
+  async function addClubDues() {
+    submitting = true; formErr = ''; formMsg = '';
+    try {
+      await api.funding.addClubDues(cdForm);
+      formMsg = '✓ Club Dues entry added!';
+      cdForm = { name: '', amount: '', date: '', notes: '' };
+      loadFunding(true);
+    } catch(e) { formErr = /** @type {any} */ (e)?.message || String(e); } finally { submitting = false; }
   }
 
   let net = $derived($totalRaised - $totalSpent);
@@ -91,12 +102,14 @@
 </div>
 
 <!-- ── Tabs ───────────────────────────────────────────────────────────────── -->
-<div class="tabs">
-  {#each [['fundraising','Fundraising'],['sponsors','Sponsors'],['grants','Grants']] as [key, label]}
-    <button class="tab" class:active={activeTab === key} onclick={() => activeTab = key} id="tab-{key}">
-      {label}
-    </button>
-  {/each}
+<div class="tabs-container">
+  <div class="segmented-control">
+    {#each [['fundraising','Fundraising'],['club-dues', 'Club Dues'],['sponsors','Sponsors'],['grants','Grants']] as [key, label]}
+      <button class="segment" class:active={activeTab === key} onclick={() => activeTab = key} id="tab-{key}">
+        {label}
+      </button>
+    {/each}
+  </div>
 </div>
 
 {#if formErr}<div class="error-bar">{formErr}</div>{/if}
@@ -293,6 +306,60 @@
       {/if}
     </div>
   </div>
+
+<!-- ══ CLUB DUES TAB ════════════════════════════════════════════════════════ -->
+{:else if activeTab === 'club-dues'}
+  <div class="tab-layout fade-in">
+    <div class="card">
+      <h3 style="margin-bottom:16px">Add Club Dues Collection</h3>
+      <form onsubmit={e => { e.preventDefault(); addClubDues(); }} id="club-dues-form">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="cd-name">Member Name *</label>
+            <input id="cd-name" type="text" bind:value={cdForm.name} placeholder="Name of student" required />
+          </div>
+          <div class="form-group">
+            <label for="cd-amount">Amount ($) *</label>
+            <input id="cd-amount" type="number" bind:value={cdForm.amount} min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label for="cd-date">Date Paid</label>
+            <input id="cd-date" type="date" bind:value={cdForm.date} />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="cd-notes">Notes</label>
+            <textarea id="cd-notes" bind:value={cdForm.notes} rows="2"></textarea>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:12px" disabled={submitting}>
+          {submitting ? 'Saving…' : '+ Add Club Dues'}
+        </button>
+      </form>
+    </div>
+
+    <div>
+      <div class="section-title" style="margin-bottom:12px">Club Dues Collected</div>
+      {#if $clubDues.length === 0}
+        <div class="empty-state card"><div class="icon">👥</div>No club dues recorded yet</div>
+      {:else}
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <thead><tr><th>Member</th><th>Date Paid</th><th>Notes</th><th class="text-right">Amount</th></tr></thead>
+            <tbody>
+              {#each $clubDues as c}
+                <tr>
+                  <td style="font-weight:500">{c.name}</td>
+                  <td class="text-muted">{formatDate(c.date)}</td>
+                  <td class="text-muted">{c.notes || '—'}</td>
+                  <td class="text-right monospace" style="color:#6bcb77;font-weight:600">{formatCurrency(c.amount)}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </div>
+  </div>
 {/if}
 
 <style>
@@ -312,5 +379,23 @@
     background: rgba(107,203,119,0.12); border: 1px solid rgba(107,203,119,0.3);
     color: #6bcb77; padding: 8px 14px; border-radius: var(--radius-sm);
     font-size: 0.875rem; margin-bottom: 16px;
+  }
+
+  .tabs-container {
+    display: flex; justify-content: center; margin-bottom: 24px;
+  }
+  .segmented-control {
+    display: inline-flex; background: var(--surface-2); padding: 4px;
+    border-radius: 99px; border: 1px solid var(--border);
+  }
+  .segment {
+    background: transparent; border: none; padding: 8px 16px;
+    font-size: 0.875rem; font-weight: 600; color: var(--text-muted);
+    border-radius: 99px; cursor: pointer; transition: all 0.2s;
+  }
+  .segment:hover { color: var(--text); }
+  .segment.active {
+    background: var(--surface); color: var(--primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
 </style>

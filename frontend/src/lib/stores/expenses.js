@@ -7,14 +7,13 @@ export const loading     = writable(false);
 export const error       = writable(null);
 export const lastSynced  = writable(null);
 
-/** Load expenses from the backend (sync=true bypasses server cache) */
-export async function loadExpenses(sync = false) {
+/** Load expenses from the backend */
+export async function loadExpenses() {
   loading.set(true);
   error.set(null);
   try {
-    const data = await api.expenses.list(sync);
+    const data = await api.expenses.list();
     expenses.set(data);
-    lastSynced.set(new Date());
   } catch (e) {
     error.set(e.message);
   } finally {
@@ -25,7 +24,7 @@ export async function loadExpenses(sync = false) {
 /** Add a new expense and refresh */
 export async function addExpense(data) {
   const res = await api.expenses.create(data);
-  await loadExpenses(true);
+  await loadExpenses();
   return res;
 }
 

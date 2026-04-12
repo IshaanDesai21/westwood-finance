@@ -30,7 +30,7 @@
       submitSuccess = '✓ Expense added successfully!';
       form = { item: '', company: '', link: '', price: '', quantity: '1', notes: '', user: '', category: 'hardware' };
       setTimeout(() => goto('/expenses'), 1500);
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       submitError = e.message;
     } finally {
       submitting = false;
@@ -63,13 +63,21 @@
           <input id="ae-item" type="text" bind:value={form.item} placeholder="e.g. REV Hub" required />
         </div>
 
-        <div class="form-group">
-          <label for="ae-cat">Category *</label>
-          <select id="ae-cat" bind:value={form.category} required>
+        <div class="form-group" style="grid-column:1/-1">
+          <!-- svelte-ignore a11y_label_has_associated_control -->
+          <label>Category *</label>
+          <div class="category-pills">
             {#each CATEGORIES as cat}
-              <option value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+              <button
+                type="button"
+                class="cat-pill cat-{cat}"
+                class:active={form.category === cat}
+                onclick={() => form.category = cat}
+              >
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </button>
             {/each}
-          </select>
+          </div>
         </div>
 
         <div class="form-group">
@@ -123,7 +131,7 @@
       <li>Category is strictly enforced — pick the closest match.</li>
       <li>Links to order pages help the team track shipments.</li>
       <li>Total is computed automatically (price × qty).</li>
-      <li>Entries are written directly to Google Sheets when saved.</li>
+      <li>Entries are saved securely to the local database.</li>
     </ul>
 
     <div style="margin-top:20px">
@@ -157,4 +165,20 @@
   .tips-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
   .tips-list li { font-size: 0.85rem; color: var(--text-muted); padding-left: 16px; position: relative; }
   .tips-list li::before { content: '›'; position: absolute; left: 0; color: var(--primary); }
+
+  .category-pills {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .cat-pill {
+    padding: 8px 16px; font-size: 0.85rem; font-weight: 600;
+    border-radius: 99px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .cat-pill:hover { background: var(--surface-2); color: var(--text); }
+  .cat-pill.active { border-color: transparent; color: #fff; box-shadow: var(--shadow-sm); }
+  .cat-pill.active.cat-hardware { background: var(--cat-hardware); }
+  .cat-pill.active.cat-software { background: var(--cat-software); }
+  .cat-pill.active.cat-outreach { background: var(--cat-outreach); }
+  .cat-pill.active.cat-miscellaneous { background: var(--cat-miscellaneous); }
 </style>

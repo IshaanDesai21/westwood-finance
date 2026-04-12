@@ -21,11 +21,16 @@ async function request(path, options = {}) {
   return body;
 }
 
-// ── Expenses ──────────────────────────────────────────────────────────────────
+// ── Expenses & Orders ────────────────────────────────────────────────────────
 export const api = {
   expenses: {
-    list: (sync = false) => request(`/expenses${sync ? '?sync=true' : ''}`),
+    list: () => request('/expenses'),
     create: (data) => request('/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
+  orders: {
+    list: (sync = false) => request(`/orders${sync ? '?sync=true' : ''}`),
+    create: (data) => request('/orders', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   stats: {
@@ -37,5 +42,6 @@ export const api = {
     addFundraising: (data) => request('/funding/fundraising', { method: 'POST', body: JSON.stringify(data) }),
     addSponsor:     (data) => request('/funding/sponsor',     { method: 'POST', body: JSON.stringify(data) }),
     addGrant:       (data) => request('/funding/grant',       { method: 'POST', body: JSON.stringify(data) }),
+    addClubDues:    (data) => request('/funding/club-dues',   { method: 'POST', body: JSON.stringify(data) }),
   },
 };

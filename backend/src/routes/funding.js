@@ -18,10 +18,10 @@ function safeGet(row, idx) { return (row[idx] || '').toString().trim(); }
 function safeNum(v) { return parseFloat(v) || 0; }
 
 function parseAllFunding(rows) {
-  if (!rows || rows.length === 0) return { fundraising: [], sponsors: [], grants: [] };
+  if (!rows || rows.length === 0) return { fundraising: [], sponsors: [], grants: [], clubDues: [] };
 
   const startIndex = (rows[0][0] || '').toLowerCase() === 'type' ? 1 : 0;
-  const result = { fundraising: [], sponsors: [], grants: [] };
+  const result = { fundraising: [], sponsors: [], grants: [], clubDues: [] };
 
   rows.slice(startIndex).forEach((row, i) => {
     const type = safeGet(row, FUNDING_COLS.TYPE).toLowerCase();
@@ -44,6 +44,8 @@ function parseAllFunding(rows) {
         organization: safeGet(row, FUNDING_COLS.ORGANIZATION),
         deadline:     safeGet(row, FUNDING_COLS.DEADLINE),
       });
+    } else if (type === FUNDING_TYPES.CLUB_DUES) {
+      result.clubDues.push(base);
     }
   });
 
@@ -144,6 +146,30 @@ router.post('/grant', async (req, res) => {
   } catch (err) {
     console.error('[funding/grant POST]', err.message);
     res.status(500).json({ error: 'Failed to save grant', detail: err.message });
+  }
+});
+
+// ── POST /api/funding/club-dues ────────────────────────────────────────────────
+router.post('/club-dues', async (req, res) => {
+  try {
+    const { name, amount, date, notes } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Member name is required' });
+    if (isNaN(parseFloat(amount))) return res.status(400).json({ error: 'Invalid amount' });
+
+    const row = [
+      FUNDING_TYPES.CLUB_DUES,
+      name.trim(),
+      parseFloat(amount).toFixed(2),
+      date || new Date().toISOString().slice(0, 10),
+      (notes || '').trim(),
+      '', '', '', '',
+    ];
+    await appendRows(SHEET_NAMES.FUNDING, [row]);
+    cache.invalidate(CACHE_KEY);
+    res.status(201).json({ message: 'Club Dues entry added' });
+  } catch (err) {
+    console.error('[funding/club-dues POST]', err.message);
+    res.status(500).json({ error: 'Failed to save club dues', detail: err.message });
   }
 });
 

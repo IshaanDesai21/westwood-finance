@@ -17,16 +17,17 @@ const FUNDING_TYPES = {
   FUNDRAISING: 'fundraising',
   SPONSOR: 'sponsor',
   GRANT: 'grant',
+  CLUB_DUES: 'club_dues',
 };
 
 // Google Sheets tab names
 const SHEET_NAMES = {
-  EXPENSES: process.env.EXPENSES_SHEET_NAME || 'Expenses',
-  FUNDING:  process.env.FUNDING_SHEET_NAME  || 'Fundraising',
+  ORDERS: process.env.ORDERS_SHEET_NAME || 'Part Orders', // Formerly Expenses
+  FUNDING: process.env.FUNDING_SHEET_NAME  || 'Fundraising',
 };
 
-// Column indices (0-based) for the Expenses sheet: A→0, B→1, …, J→9
-const EXPENSE_COLS = {
+// Column indices (0-based) for the Orders sheet: A→0, B→1, …, J→9
+const ORDER_COLS = {
   ITEM:      0,
   COMPANY:   1,
   LINK:      2,
@@ -67,7 +68,7 @@ module.exports = {
   GRANT_STATUSES,
   FUNDING_TYPES,
   SHEET_NAMES,
-  EXPENSE_COLS,
+  ORDER_COLS,
   FUNDING_COLS,
   SEASON_BUDGET,
   CACHE_TTL_MS,

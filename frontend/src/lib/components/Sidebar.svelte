@@ -3,6 +3,7 @@
 
   const navItems = [
     { href: '/',          label: 'Dashboard',  icon: '◈' },
+    { href: '/orders',    label: 'Part Orders', icon: '📦' },
     { href: '/expenses',  label: 'All Expenses', icon: '☰' },
     { href: '/add',       label: 'Add Expense', icon: '+' },
     { href: '/stats',     label: 'Analytics',  icon: '◎' },

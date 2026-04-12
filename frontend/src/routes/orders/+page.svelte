@@ -2,12 +2,13 @@
   import { onMount } from 'svelte';
   import ExpenseTable from '$lib/components/ExpenseTable.svelte';
   import FilterBar from '$lib/components/FilterBar.svelte';
-  import { expenses, loading, error, loadExpenses } from '$lib/stores/expenses.js';
+  import { orders, loading, error, loadOrders } from '$lib/stores/orders.js';
   import { formatCurrency } from '$lib/utils.js';
 
   let filters = $state({ search: '', category: '', company: '', user: '', dateFrom: '', dateTo: '' });
+  let syncing = $state(false);
 
-  onMount(() => loadExpenses());
+  onMount(() => loadOrders());
 
   function applyFilters(/** @type {any} */ updated) {
     filters = { .../** @type {any} */ (updated) };
@@ -21,7 +22,7 @@
            (exp.company || '').toLowerCase().includes(s);
   }
 
-  let filtered = $derived($expenses.filter(e => {
+  let filtered = $derived($orders.filter(e => {
     if (filters.category && e.category !== filters.category) return false;
     if (filters.company && !e.company?.toLowerCase().includes(filters.company.toLowerCase())) return false;
     if (filters.user && !e.user?.toLowerCase().includes(filters.user.toLowerCase())) return false;
@@ -33,6 +34,12 @@
 
   let filteredTotal = $derived(filtered.reduce((s, e) => s + (e.total || 0), 0));
 
+  async function sync() {
+    syncing = true;
+    await loadOrders(true);
+    syncing = false;
+  }
+
   // ── Export helpers ──────────────────────────────────────────────────────────
   function exportCsv() {
     const headers = ['Item','Company','Link','Price','Quantity','Notes','Category','User','Timestamp','Total'];
@@ -41,7 +48,7 @@
       e.category, e.user, e.timestamp, e.total,
     ].map(v => `"${(v ?? '').toString().replace(/"/g, '""')}"`).join(','));
     const csv = [headers.join(','), ...rows].join('\n');
-    download(csv, 'westwood-expenses.csv', 'text/csv');
+    download(csv, 'westwood-part-orders.csv', 'text/csv');
   }
 
   function exportPdf() {
@@ -55,7 +62,7 @@
       </tr>`
     ).join('');
     const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Westwood Finance — Expenses</title>
+<html><head><meta charset="utf-8"><title>Westwood Finance — Part Orders</title>
 <style>
   body{font-family:system-ui,sans-serif;padding:24px;color:#111}
   h1{font-size:1.4rem;margin-bottom:4px}
@@ -67,7 +74,7 @@
   @media print{button{display:none}}
 </style></head><body>
 <button onclick="window.print()" style="float:right;padding:6px 14px;cursor:pointer">Print / Save PDF</button>
-<h1>Westwood Robotics — Expense Report</h1>
+<h1>Westwood Robotics — Part Orders Report</h1>
 <p>Generated ${new Date().toLocaleString()} · ${filtered.length} items · Total: $${filteredTotal.toFixed(2)}</p>
 <table>
 <thead><tr><th>Item</th><th>Company</th><th>Category</th><th>User</th><th>Date</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead>
@@ -91,15 +98,18 @@
 </script>
 
 <svelte:head>
-  <title>Expenses — Westwood Finance</title>
+  <title>Part Orders — Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">
-  <h1>All <span>Expenses</span></h1>
+  <h1>Part <span>Orders</span></h1>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn btn-ghost btn-sm" id="export-csv-btn" onclick={exportCsv}>↓ CSV</button>
     <button class="btn btn-ghost btn-sm" id="export-pdf-btn" onclick={exportPdf}>↓ PDF</button>
-    <a href="/add" class="btn btn-primary btn-sm" id="add-expense-btn">+ Add</a>
+    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
+      <span class:spinning={syncing}>↻</span> {syncing ? 'Syncing…' : 'Sync'}
+    </button>
+    <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn btn-primary btn-sm">Open Sheet</a>
   </div>
 </div>
 
@@ -118,6 +128,6 @@
 </div>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:0.85rem">
-  <span class="text-muted">{filtered.length} of {$expenses.length} expenses</span>
+  <span class="text-muted">{filtered.length} of {$orders.length} orders</span>
   <span>Filtered total: <strong>{formatCurrency(filteredTotal)}</strong></span>
 </div>
