@@ -8,15 +8,15 @@ const expensesRouter = require('./routes/expenses');
 const ordersRouter   = require('./routes/orders');
 const statsRouter    = require('./routes/stats');
 const fundingRouter  = require('./routes/funding');
+const budgetRouter   = require('./routes/budget');
+const authRouter     = require('./routes/auth');
 
 const app = express();
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
-// Support multiple allowed origins (space-separated in CORS_ORIGIN env var)
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173 http://localhost:3000 https://finance.ftcblueprint.com').split(' ').map(s => s.trim());
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow requests with no origin (e.g. curl, Postman, same-origin)
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
@@ -28,6 +28,8 @@ app.use('/api/expenses', expensesRouter);
 app.use('/api/orders',   ordersRouter);
 app.use('/api/stats',    statsRouter);
 app.use('/api/funding',  fundingRouter);
+app.use('/api/budget',   budgetRouter);
+app.use('/api/auth',     authRouter);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

@@ -193,6 +193,7 @@ textarea { resize: vertical; min-height: 80px; }
 .badge-hardware      { background: rgba(224,123,48,0.15);  color: var(--cat-hardware); }
 .badge-software      { background: rgba(78,154,241,0.15);  color: var(--cat-software); }
 .badge-outreach      { background: rgba(107,203,119,0.15); color: var(--cat-outreach); }
+.badge-food          { background: rgba(241,169,78,0.15);  color: #f1a94e; }
 .badge-miscellaneous { background: rgba(185,124,243,0.15); color: var(--cat-miscellaneous); }
 
 .badge-applied  { background: rgba(78,154,241,0.15);  color: var(--status-applied); }

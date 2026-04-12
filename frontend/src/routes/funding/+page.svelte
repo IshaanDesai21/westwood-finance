@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import {
-    fundraising, sponsors, grants, clubDues, loading, error,
+    fundraising, sponsors, grants, clubDues, other, loading, error,
     loadFunding, totalRaised,
   } from '$lib/stores/funding.js';
   import { expenses, totalSpent, loadExpenses } from '$lib/stores/expenses.js';
@@ -14,6 +14,7 @@
   let spForm = $state({ name: '', amount: '', date: '', notes: '', contributionType: 'money' });
   let grForm = $state({ name: '', organization: '', amount: '', status: 'Applied', deadline: '', notes: '' });
   let cdForm = $state({ name: '', amount: '', date: '', notes: '' });
+  let otForm = $state({ name: '', amount: '', date: '', notes: '' });
 
   let submitting = $state(false);
   let formMsg = $state('');
@@ -61,8 +62,18 @@
     } catch(e) { formErr = /** @type {any} */ (e)?.message || String(e); } finally { submitting = false; }
   }
 
+  async function addOther() {
+    submitting = true; formErr = ''; formMsg = '';
+    try {
+      await api.funding.addOther(otForm);
+      formMsg = '✓ Other income entry added!';
+      otForm = { name: '', amount: '', date: '', notes: '' };
+      loadFunding(true);
+    } catch(e) { formErr = /** @type {any} */ (e)?.message || String(e); } finally { submitting = false; }
+  }
+
   let net = $derived($totalRaised - $totalSpent);
-  let topSponsors = $derived([...$sponsors].sort((a,b) => b.amount - a.amount).slice(0, 3));
+  let otherTotal = $derived($other.reduce((s, r) => s + (r.amount || 0), 0));
 </script>
 
 <svelte:head>
@@ -70,14 +81,17 @@
 </svelte:head>
 
 <div class="page-header">
-  <h1>Funding <span>&amp; Sponsors</span></h1>
+  <h1>Funding <span>& Sponsors</span></h1>
 </div>
 
-<!-- ── Summary strip ──────────────────────────────────────────────────────── -->
+<!-- ── Summary strip ─────────────────────────────────────────────────────── -->
 <div class="stat-grid" style="margin-bottom:28px">
   <div class="card">
     <div class="card-title">Total Raised</div>
     <div style="font-size:1.6rem;font-weight:700;color:#6bcb77">{formatCurrency($totalRaised)}</div>
+    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:4px">
+      Fundraising + Sponsors + Club Dues + Other
+    </div>
   </div>
   <div class="card">
     <div class="card-title">Total Spent</div>
@@ -99,12 +113,17 @@
       {$grants.filter(g => g.status === 'Awarded').length} awarded
     </div>
   </div>
+  <div class="card">
+    <div class="card-title">Other Income</div>
+    <div style="font-size:1.6rem;font-weight:700;color:#f1a94e">{formatCurrency(otherTotal)}</div>
+    <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px">{$other.length} entries</div>
+  </div>
 </div>
 
-<!-- ── Tabs ───────────────────────────────────────────────────────────────── -->
+<!-- ── Tabs ──────────────────────────────────────────────────────────────── -->
 <div class="tabs-container">
   <div class="segmented-control">
-    {#each [['fundraising','Fundraising'],['club-dues', 'Club Dues'],['sponsors','Sponsors'],['grants','Grants']] as [key, label]}
+    {#each [['fundraising','Fundraising'],['club-dues','Club Dues'],['sponsors','Sponsors'],['grants','Grants'],['other','Other']] as [key, label]}
       <button class="segment" class:active={activeTab === key} onclick={() => activeTab = key} id="tab-{key}">
         {label}
       </button>
@@ -144,7 +163,6 @@
         </button>
       </form>
     </div>
-
     <div>
       <div class="section-title" style="margin-bottom:12px">Income History</div>
       {#if $fundraising.length === 0}
@@ -202,32 +220,8 @@
         </button>
       </form>
     </div>
-
     <div>
-      <div class="section-title" style="margin-bottom:12px">Sponsors</div>
-      {#if $sponsors.length === 0}
-        <div class="empty-state card"><div class="icon">🤝</div>No sponsors yet</div>
-      {:else}
-        <div class="sponsor-grid">
-          {#each [...$sponsors].sort((a,b) => b.amount - a.amount) as sp, i}
-            <div class="card sponsor-card" class:top-sponsor={i < 3}>
-              {#if i < 3}
-                <div class="top-badge">
-                  {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} Top Sponsor
-                </div>
-              {/if}
-              <div class="sponsor-name">{sp.name}</div>
-              <div class="sponsor-amount">{formatCurrency(sp.amount)}</div>
-              <span class="badge badge-{sp.contributionType}">
-                {sp.contributionType?.charAt(0).toUpperCase() + sp.contributionType?.slice(1)}
-              </span>
-              {#if sp.notes}
-                <div class="sponsor-notes">{sp.notes}</div>
-              {/if}
-            </div>
-          {/each}
-        </div>
-      {/if}
+      <div class="section-title" style="margin-bottom:12px">See 'Fundraising' tab for all entries</div>
     </div>
   </div>
 
@@ -272,38 +266,8 @@
         </button>
       </form>
     </div>
-
     <div>
-      <div class="section-title" style="margin-bottom:12px">Grant Applications</div>
-      {#if $grants.length === 0}
-        <div class="empty-state card"><div class="icon">📄</div>No grant applications yet</div>
-      {:else}
-        <div class="card" style="padding:0;overflow:hidden">
-          <table>
-            <thead>
-              <tr>
-                <th>Grant</th><th>Organization</th><th>Deadline</th>
-                <th class="text-right">Amount</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each $grants as g}
-                <tr>
-                  <td style="font-weight:500">{g.name}<br>
-                    {#if g.notes}<span style="font-size:0.78rem;color:var(--text-muted)">{g.notes}</span>{/if}
-                  </td>
-                  <td class="text-muted">{g.organization || '—'}</td>
-                  <td class="text-muted">{formatDate(g.deadline)}</td>
-                  <td class="text-right monospace">{formatCurrency(g.amount)}</td>
-                  <td>
-                    <span class="badge badge-{g.status?.toLowerCase()}">{g.status}</span>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      {/if}
+      <div class="section-title" style="margin-bottom:12px">See 'Fundraising' tab for all entries</div>
     </div>
   </div>
 
@@ -336,28 +300,42 @@
         </button>
       </form>
     </div>
-
     <div>
-      <div class="section-title" style="margin-bottom:12px">Club Dues Collected</div>
-      {#if $clubDues.length === 0}
-        <div class="empty-state card"><div class="icon">👥</div>No club dues recorded yet</div>
-      {:else}
-        <div class="card" style="padding:0;overflow:hidden">
-          <table>
-            <thead><tr><th>Member</th><th>Date Paid</th><th>Notes</th><th class="text-right">Amount</th></tr></thead>
-            <tbody>
-              {#each $clubDues as c}
-                <tr>
-                  <td style="font-weight:500">{c.name}</td>
-                  <td class="text-muted">{formatDate(c.date)}</td>
-                  <td class="text-muted">{c.notes || '—'}</td>
-                  <td class="text-right monospace" style="color:#6bcb77;font-weight:600">{formatCurrency(c.amount)}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+      <div class="section-title" style="margin-bottom:12px">See 'Fundraising' tab for all entries</div>
+    </div>
+  </div>
+
+<!-- ══ OTHER TAB ════════════════════════════════════════════════════════════ -->
+{:else if activeTab === 'other'}
+  <div class="tab-layout fade-in">
+    <div class="card">
+      <h3 style="margin-bottom:16px">Add Other Income</h3>
+      <form onsubmit={e => { e.preventDefault(); addOther(); }} id="other-form">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="ot-name">Source / Description *</label>
+            <input id="ot-name" type="text" bind:value={otForm.name} placeholder="e.g. Team donation, Miscellaneous income" required />
+          </div>
+          <div class="form-group">
+            <label for="ot-amount">Amount ($) *</label>
+            <input id="ot-amount" type="number" bind:value={otForm.amount} min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label for="ot-date">Date</label>
+            <input id="ot-date" type="date" bind:value={otForm.date} />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="ot-notes">Notes</label>
+            <textarea id="ot-notes" bind:value={otForm.notes} rows="2"></textarea>
+          </div>
         </div>
-      {/if}
+        <button type="submit" class="btn btn-primary" style="margin-top:12px" disabled={submitting}>
+          {submitting ? 'Saving…' : '+ Add Entry'}
+        </button>
+      </form>
+    </div>
+    <div>
+      <div class="section-title" style="margin-bottom:12px">See 'Fundraising' tab for all entries</div>
     </div>
   </div>
 {/if}
@@ -380,13 +358,10 @@
     color: #6bcb77; padding: 8px 14px; border-radius: var(--radius-sm);
     font-size: 0.875rem; margin-bottom: 16px;
   }
-
-  .tabs-container {
-    display: flex; justify-content: center; margin-bottom: 24px;
-  }
+  .tabs-container { display: flex; justify-content: center; margin-bottom: 24px; }
   .segmented-control {
     display: inline-flex; background: var(--surface-2); padding: 4px;
-    border-radius: 99px; border: 1px solid var(--border);
+    border-radius: 99px; border: 1px solid var(--border); flex-wrap: wrap; gap: 2px;
   }
   .segment {
     background: transparent; border: none; padding: 8px 16px;

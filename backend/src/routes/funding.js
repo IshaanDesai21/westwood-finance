@@ -1,5 +1,5 @@
-// ─── Funding Routes (Fundraising, Sponsors, Grants) ──────────────────────────
-// All three sections share the same Google Sheet tab but use a Type column
+// ─── Funding Routes (Fundraising, Sponsors, Grants, Club Dues, Other) ─────────
+// All sections share the same Google Sheet tab but use a Type column
 // to discriminate between row kinds.
 
 const express = require('express');
@@ -18,10 +18,10 @@ function safeGet(row, idx) { return (row[idx] || '').toString().trim(); }
 function safeNum(v) { return parseFloat(v) || 0; }
 
 function parseAllFunding(rows) {
-  if (!rows || rows.length === 0) return { fundraising: [], sponsors: [], grants: [], clubDues: [] };
+  if (!rows || rows.length === 0) return { fundraising: [], sponsors: [], grants: [], clubDues: [], other: [] };
 
   const startIndex = (rows[0][0] || '').toLowerCase() === 'type' ? 1 : 0;
-  const result = { fundraising: [], sponsors: [], grants: [], clubDues: [] };
+  const result = { fundraising: [], sponsors: [], grants: [], clubDues: [], other: [] };
 
   rows.slice(startIndex).forEach((row, i) => {
     const type = safeGet(row, FUNDING_COLS.TYPE).toLowerCase();
@@ -46,6 +46,8 @@ function parseAllFunding(rows) {
       });
     } else if (type === FUNDING_TYPES.CLUB_DUES) {
       result.clubDues.push(base);
+    } else if (type === FUNDING_TYPES.OTHER) {
+      result.other.push(base);
     }
   });
 
@@ -76,14 +78,13 @@ router.post('/fundraising', async (req, res) => {
     if (!name?.trim()) return res.status(400).json({ error: 'Source name is required' });
     if (isNaN(parseFloat(amount))) return res.status(400).json({ error: 'Invalid amount' });
 
-    const row = [
-      FUNDING_TYPES.FUNDRAISING,
-      name.trim(),
-      parseFloat(amount).toFixed(2),
-      date || new Date().toISOString().slice(0, 10),
-      (notes || '').trim(),
-      '', '', '', '',
-    ];
+    const row = [];
+    row[FUNDING_COLS.TYPE] = FUNDING_TYPES.FUNDRAISING;
+    row[FUNDING_COLS.NAME] = name.trim();
+    row[FUNDING_COLS.AMOUNT] = parseFloat(amount).toFixed(2);
+    row[FUNDING_COLS.DATE] = date || new Date().toISOString().slice(0, 10);
+    row[FUNDING_COLS.NOTES] = (notes || '').trim();
+
     await appendRows(SHEET_NAMES.FUNDING, [row]);
     cache.invalidate(CACHE_KEY);
     res.status(201).json({ message: 'Fundraising entry added' });
@@ -101,17 +102,14 @@ router.post('/sponsor', async (req, res) => {
     if (!CONTRIBUTION_TYPES.includes(contributionType))
       return res.status(400).json({ error: `contributionType must be: ${CONTRIBUTION_TYPES.join(', ')}` });
 
-    const row = [
-      FUNDING_TYPES.SPONSOR,
-      name.trim(),
-      parseFloat(amount || 0).toFixed(2),
-      date || new Date().toISOString().slice(0, 10),
-      (notes || '').trim(),
-      '',
-      '',
-      contributionType,
-      '',
-    ];
+    const row = [];
+    row[FUNDING_COLS.TYPE] = FUNDING_TYPES.SPONSOR;
+    row[FUNDING_COLS.NAME] = name.trim();
+    row[FUNDING_COLS.AMOUNT] = parseFloat(amount || 0).toFixed(2);
+    row[FUNDING_COLS.DATE] = date || new Date().toISOString().slice(0, 10);
+    row[FUNDING_COLS.NOTES] = (notes || '').trim();
+    row[FUNDING_COLS.CONTRIBUTION_TYPE] = contributionType;
+
     await appendRows(SHEET_NAMES.FUNDING, [row]);
     cache.invalidate(CACHE_KEY);
     res.status(201).json({ message: 'Sponsor added' });
@@ -129,17 +127,16 @@ router.post('/grant', async (req, res) => {
     if (!GRANT_STATUSES.includes(status))
       return res.status(400).json({ error: `Status must be: ${GRANT_STATUSES.join(', ')}` });
 
-    const row = [
-      FUNDING_TYPES.GRANT,
-      name.trim(),
-      parseFloat(amount || 0).toFixed(2),
-      new Date().toISOString().slice(0, 10),
-      (notes || '').trim(),
-      status,
-      (organization || '').trim(),
-      '',
-      (deadline || '').trim(),
-    ];
+    const row = [];
+    row[FUNDING_COLS.TYPE] = FUNDING_TYPES.GRANT;
+    row[FUNDING_COLS.NAME] = name.trim();
+    row[FUNDING_COLS.AMOUNT] = parseFloat(amount || 0).toFixed(2);
+    row[FUNDING_COLS.DATE] = new Date().toISOString().slice(0, 10);
+    row[FUNDING_COLS.NOTES] = (notes || '').trim();
+    row[FUNDING_COLS.STATUS] = status;
+    row[FUNDING_COLS.ORGANIZATION] = (organization || '').trim();
+    row[FUNDING_COLS.DEADLINE] = (deadline || '').trim();
+
     await appendRows(SHEET_NAMES.FUNDING, [row]);
     cache.invalidate(CACHE_KEY);
     res.status(201).json({ message: 'Grant added' });
@@ -156,20 +153,42 @@ router.post('/club-dues', async (req, res) => {
     if (!name?.trim()) return res.status(400).json({ error: 'Member name is required' });
     if (isNaN(parseFloat(amount))) return res.status(400).json({ error: 'Invalid amount' });
 
-    const row = [
-      FUNDING_TYPES.CLUB_DUES,
-      name.trim(),
-      parseFloat(amount).toFixed(2),
-      date || new Date().toISOString().slice(0, 10),
-      (notes || '').trim(),
-      '', '', '', '',
-    ];
+    const row = [];
+    row[FUNDING_COLS.TYPE] = FUNDING_TYPES.CLUB_DUES;
+    row[FUNDING_COLS.NAME] = name.trim();
+    row[FUNDING_COLS.AMOUNT] = parseFloat(amount).toFixed(2);
+    row[FUNDING_COLS.DATE] = date || new Date().toISOString().slice(0, 10);
+    row[FUNDING_COLS.NOTES] = (notes || '').trim();
+
     await appendRows(SHEET_NAMES.FUNDING, [row]);
     cache.invalidate(CACHE_KEY);
     res.status(201).json({ message: 'Club Dues entry added' });
   } catch (err) {
     console.error('[funding/club-dues POST]', err.message);
     res.status(500).json({ error: 'Failed to save club dues', detail: err.message });
+  }
+});
+
+// ── POST /api/funding/other ────────────────────────────────────────────────────
+router.post('/other', async (req, res) => {
+  try {
+    const { name, amount, date, notes } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Source name is required' });
+    if (isNaN(parseFloat(amount))) return res.status(400).json({ error: 'Invalid amount' });
+
+    const row = [];
+    row[FUNDING_COLS.TYPE] = FUNDING_TYPES.OTHER;
+    row[FUNDING_COLS.NAME] = name.trim();
+    row[FUNDING_COLS.AMOUNT] = parseFloat(amount).toFixed(2);
+    row[FUNDING_COLS.DATE] = date || new Date().toISOString().slice(0, 10);
+    row[FUNDING_COLS.NOTES] = (notes || '').trim();
+
+    await appendRows(SHEET_NAMES.FUNDING, [row]);
+    cache.invalidate(CACHE_KEY);
+    res.status(201).json({ message: 'Other income entry added' });
+  } catch (err) {
+    console.error('[funding/other POST]', err.message);
+    res.status(500).json({ error: 'Failed to save other income entry', detail: err.message });
   }
 });
 

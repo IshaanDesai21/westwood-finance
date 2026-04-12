@@ -31,7 +31,7 @@
 
       if (form.destination === 'sheets') {
         await api.orders.create(payload);
-        submitSuccess = '✓ Part Order successfully sent to Google Sheets!';
+        submitSuccess = '✓ Order successfully sent to Google Sheets!';
         setTimeout(() => goto('/orders'), 1500);
       } else {
         await api.expenses.create(payload);
@@ -49,7 +49,7 @@
 </script>
 
 <svelte:head>
-  <title>{form.destination === 'sheets' ? 'Add Part Order' : 'Add Expense'} — Westwood Finance</title>
+  <title>{form.destination === 'sheets' ? 'Add Order' : 'Add Expense'} — Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">
@@ -83,7 +83,7 @@
             class:active={form.destination === 'sheets'}
             onclick={() => form.destination = 'sheets'}
           >
-            Google Sheets (Part Order)
+            Google Sheets (Order)
           </button>
         </div>
       </div>
@@ -149,7 +149,7 @@
 
       <div style="margin-top:20px;display:flex;gap:10px">
         <button id="submit-expense-btn" type="submit" class="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Saving…' : form.destination === 'sheets' ? '+ Add Part Order' : '+ Add Expense'}
+          {submitting ? 'Saving…' : form.destination === 'sheets' ? '+ Add Order' : '+ Add Expense'}
         </button>
         <a href={form.destination === 'sheets' ? '/orders' : '/expenses'} class="btn btn-ghost">Cancel</a>
       </div>
@@ -165,7 +165,7 @@
       {#if form.destination === 'local'}
         <li><strong>Local Expense:</strong> Saves securely to the internal database (visible offline & instantly).</li>
       {:else}
-        <li><strong>Part Order:</strong> Pushes a live entry to the external Google Sheet (FinanceBot access).</li>
+        <li><strong>Order:</strong> Pushes a live entry to the external Google Sheet (FinanceBot access).</li>
       {/if}
     </ul>
 
@@ -215,6 +215,7 @@
   .cat-pill.active.cat-hardware { background: var(--cat-hardware); }
   .cat-pill.active.cat-software { background: var(--cat-software); }
   .cat-pill.active.cat-outreach { background: var(--cat-outreach); }
+  .cat-pill.active.cat-food { background: #f1a94e; }
   .cat-pill.active.cat-miscellaneous { background: var(--cat-miscellaneous); }
 
   .segmented-control {

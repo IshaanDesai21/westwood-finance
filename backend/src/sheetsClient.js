@@ -45,7 +45,7 @@ async function appendRows(sheetName, rows) {
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: sheetName,
-    valueInputOption: 'USER_ENTERED',   // allows formulas if needed
+    valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: rows },
   });
@@ -67,4 +67,23 @@ async function updateRow(sheetName, rowIndex, rowData) {
   });
 }
 
-module.exports = { readSheet, appendRows, updateRow };
+/**
+ * Update a single cell in a sheet.
+ * @param {string} sheetName
+ * @param {number} rowIndex   1-indexed row number
+ * @param {number} colIndex   0-indexed column number
+ * @param {string} value
+ */
+async function updateCell(sheetName, rowIndex, colIndex, value) {
+  const sheets = await getSheetsClient();
+  // Convert 0-indexed col to A1 letter notation
+  const colLetter = String.fromCharCode(65 + colIndex);
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!${colLetter}${rowIndex}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[value]] },
+  });
+}
+
+module.exports = { readSheet, appendRows, updateRow, updateCell };

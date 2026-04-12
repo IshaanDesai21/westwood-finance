@@ -100,6 +100,11 @@
     <button class="btn btn-ghost btn-sm" id="export-csv-btn" onclick={exportCsv}>↓ CSV</button>
     <button class="btn btn-ghost btn-sm" id="export-pdf-btn" onclick={exportPdf}>↓ PDF</button>
     <a href="/add" class="btn btn-primary btn-sm" id="add-expense-btn">+ Add</a>
+    <a
+      href="https://docs.google.com/spreadsheets/d/1NpbvcOCyG7NZxLWVYu3aqHqw57Zwh3DxD7_UpGxHcVE/edit"
+      target="_blank"
+      class="btn btn-ghost btn-sm"
+    >Open Sheet</a>
   </div>
 </div>
 

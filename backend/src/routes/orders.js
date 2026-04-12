@@ -1,9 +1,9 @@
-// ─── Part Orders Routes (Google Sheets) ───────────────────────────────────────
+// ─── Orders Routes (Google Sheets) ───────────────────────────────────────────
 const express = require('express');
 const router = express.Router();
-const { readSheet, appendRows } = require('../sheetsClient');
+const { readSheet, appendRows, updateRow } = require('../sheetsClient');
 const cache = require('../cache');
-const { SHEET_NAMES, ORDER_COLS, CATEGORIES } = require('../config');
+const { SHEET_NAMES, ORDER_COLS, CATEGORIES, ORDER_STATUSES } = require('../config');
 
 const CACHE_KEY = 'orders';
 
@@ -18,6 +18,7 @@ function parseOrders(rows) {
     .filter(row => !isGrandTotalRow(row))
     .map((row, idx) => ({
       id:        startIndex + idx + 1,
+      rowIndex:  startIndex + idx + 2, // 1-indexed for Sheets (header is row 1)
       item:      safeGet(row, ORDER_COLS.ITEM),
       company:   safeGet(row, ORDER_COLS.COMPANY),
       link:      safeGet(row, ORDER_COLS.LINK),
@@ -28,6 +29,8 @@ function parseOrders(rows) {
       user:      safeGet(row, ORDER_COLS.USER),
       timestamp: safeGet(row, ORDER_COLS.TIMESTAMP),
       total:     parseFloat(safeGet(row, ORDER_COLS.TOTAL)) || 0,
+      status:    safeGet(row, ORDER_COLS.STATUS) || 'Submitted and in review',
+      tracking:  safeGet(row, ORDER_COLS.STATUS + 1) || '', // col L = tracking info
     }))
     .filter(e => e.item); // skip empty rows
 }
@@ -71,7 +74,6 @@ router.get('/', async (req, res) => {
 });
 
 // ── POST /api/orders ───────────────────────────────────────────────────────────
-// Just in case they want the website to push to the Orders sheet too.
 router.post('/', async (req, res) => {
   try {
     const { item, company, link, price, quantity, notes, user, category } = req.body;
@@ -84,6 +86,7 @@ router.post('/', async (req, res) => {
     const qtyNum   = Math.max(1, parseInt(quantity, 10) || 1);
     const total    = (priceNum * qtyNum).toFixed(2);
     const timestamp = new Date().toISOString();
+    const status   = 'Submitted and in review';
 
     const newRow = [
       item.trim(),
@@ -96,6 +99,8 @@ router.post('/', async (req, res) => {
       (user || '').trim(),
       timestamp,
       total,
+      status,
+      '', // tracking column (col L)
     ];
 
     await appendRows(SHEET_NAMES.ORDERS, [newRow]);
@@ -105,12 +110,43 @@ router.post('/', async (req, res) => {
       message: 'Order added successfully to Sheet',
       order: {
         item: item.trim(), company, link, price: priceNum, quantity: qtyNum,
-        notes, category, user, timestamp, total: parseFloat(total),
+        notes, category, user, timestamp, total: parseFloat(total), status,
       },
     });
   } catch (err) {
     console.error('[orders POST]', err.message);
     res.status(500).json({ error: 'Failed to save order to Sheet', detail: err.message });
+  }
+});
+
+// ── PATCH /api/orders/:rowIndex/status ────────────────────────────────────────
+// rowIndex is the 1-based Sheets row index (returned in order objects as rowIndex)
+router.patch('/:rowIndex/status', async (req, res) => {
+  try {
+    const rowIndex = parseInt(req.params.rowIndex, 10);
+    const { status, tracking } = req.body;
+
+    if (!ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `Status must be one of: ${ORDER_STATUSES.join(', ')}` });
+    }
+
+    // Fetch current row to preserve all existing data
+    const rows = await readSheet(SHEET_NAMES.ORDERS);
+    const row = rows[rowIndex - 1]; // convert to 0-indexed
+    if (!row) return res.status(404).json({ error: 'Order row not found' });
+
+    // Update status (col K = index 10) and tracking (col L = index 11)
+    const updatedRow = [...row];
+    updatedRow[ORDER_COLS.STATUS] = status;
+    updatedRow[11] = (tracking || '').toString().trim(); // col L = tracking
+
+    await updateRow(SHEET_NAMES.ORDERS, rowIndex, updatedRow);
+    cache.invalidate(CACHE_KEY);
+
+    res.json({ message: 'Order status updated', status, tracking: tracking || '' });
+  } catch (err) {
+    console.error('[orders PATCH status]', err.message);
+    res.status(500).json({ error: 'Failed to update order status', detail: err.message });
   }
 });
 

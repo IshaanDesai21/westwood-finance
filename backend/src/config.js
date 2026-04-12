@@ -3,8 +3,8 @@
 
 require('dotenv').config();
 
-// Valid expense categories — must match your sheet & frontend dropdowns
-const CATEGORIES = ['hardware', 'software', 'outreach', 'miscellaneous'];
+// Valid expense/order categories — must match your sheet & frontend dropdowns
+const CATEGORIES = ['hardware', 'software', 'outreach', 'food', 'miscellaneous'];
 
 // Contribution types for sponsors
 const CONTRIBUTION_TYPES = ['money', 'parts', 'services'];
@@ -12,21 +12,26 @@ const CONTRIBUTION_TYPES = ['money', 'parts', 'services'];
 // Grant statuses
 const GRANT_STATUSES = ['Applied', 'Pending', 'Awarded', 'Rejected'];
 
+// Order statuses
+const ORDER_STATUSES = ['Submitted and in review', 'Ordered', 'Received'];
+
 // Funding row types (used as the Type discriminator column in the Fundraising tab)
 const FUNDING_TYPES = {
   FUNDRAISING: 'fundraising',
-  SPONSOR: 'sponsor',
-  GRANT: 'grant',
-  CLUB_DUES: 'club_dues',
+  SPONSOR:     'sponsor',
+  GRANT:       'grant',
+  CLUB_DUES:   'club_dues',
+  OTHER:       'other',
 };
 
 // Google Sheets tab names
 const SHEET_NAMES = {
-  ORDERS: process.env.ORDERS_SHEET_NAME || 'Part Orders', // Formerly Expenses
-  FUNDING: process.env.FUNDING_SHEET_NAME  || 'Fundraising',
+  ORDERS:   process.env.ORDERS_SHEET_NAME   || 'Orders',
+  EXPENSES: process.env.EXPENSES_SHEET_NAME || 'Expenses',
+  FUNDING:  process.env.FUNDING_SHEET_NAME  || 'Fundraising',
 };
 
-// Column indices (0-based) for the Orders sheet: A→0, B→1, …, J→9
+// Column indices (0-based) for the Orders sheet: A→0, B→1, …, K→10
 const ORDER_COLS = {
   ITEM:      0,
   COMPANY:   1,
@@ -38,11 +43,12 @@ const ORDER_COLS = {
   USER:      7,
   TIMESTAMP: 8,
   TOTAL:     9,
+  STATUS:    10,
 };
 
 // Column indices for the Funding sheet
 const FUNDING_COLS = {
-  TYPE:              0,  // fundraising | sponsor | grant
+  TYPE:              0,  // fundraising | sponsor | grant | club_dues | other
   NAME:              1,  // source name / sponsor name / grant name
   AMOUNT:            2,
   DATE:              3,
@@ -53,11 +59,23 @@ const FUNDING_COLS = {
   DEADLINE:          8,  // used by grants
 };
 
+// Default category budgets (in dollars) — overridden by DB settings
+const DEFAULT_BUDGETS = {
+  hardware:      500,
+  software:      200,
+  outreach:      300,
+  food:          150,
+  miscellaneous: 100,
+};
+
 // Optional season budget cap (set to null to hide the budget bar)
 const SEASON_BUDGET = process.env.SEASON_BUDGET ? Number(process.env.SEASON_BUDGET) : null;
 
 // Cache TTL in milliseconds
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 30) * 1000;
+
+// Admin password for protected endpoints
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '/dev3432';
 
 module.exports = {
   SPREADSHEET_ID: process.env.SPREADSHEET_ID,
@@ -66,10 +84,13 @@ module.exports = {
   CATEGORIES,
   CONTRIBUTION_TYPES,
   GRANT_STATUSES,
+  ORDER_STATUSES,
   FUNDING_TYPES,
   SHEET_NAMES,
   ORDER_COLS,
   FUNDING_COLS,
+  DEFAULT_BUDGETS,
   SEASON_BUDGET,
   CACHE_TTL_MS,
+  ADMIN_PASSWORD,
 };

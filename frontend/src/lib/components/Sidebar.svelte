@@ -2,12 +2,14 @@
   import { page } from '$app/stores';
 
   const navItems = [
-    { href: '/',          label: 'Dashboard',  icon: '◈' },
-    { href: '/orders',    label: 'Part Orders', icon: '📦' },
-    { href: '/expenses',  label: 'All Expenses', icon: '☰' },
-    { href: '/add',       label: 'Add Expense', icon: '+' },
-    { href: '/stats',     label: 'Analytics',  icon: '◎' },
-    { href: '/funding',   label: 'Funding',    icon: '◆' },
+    { href: '/',        label: 'Dashboard',   icon: '◈' },
+    { href: '/orders',  label: 'Orders',      icon: '📦' },
+    { href: '/expenses',label: 'All Expenses',icon: '☰' },
+    { href: '/add',     label: 'Add Expense', icon: '+' },
+    { href: '/stats',   label: 'Analytics',   icon: '◎' },
+    { href: '/funding', label: 'Funding',     icon: '◆' },
+    { href: '/admin',   label: 'Admin',       icon: '🔐' },
+    { href: '/manager', label: 'Manager',     icon: '⚙' },
   ];
 </script>
 
@@ -96,6 +98,7 @@
     flex-direction: column;
     gap: 2px;
     padding: 0 10px;
+    overflow-y: auto;
   }
 
   .nav-link {

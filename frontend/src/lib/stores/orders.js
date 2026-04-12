@@ -26,6 +26,17 @@ export async function loadOrders(sync = false) {
   }
 }
 
+/** Update order status (and optional tracking info) */
+export async function updateOrderStatus(/** @type {number} */ rowIndex, /** @type {string} */ status, /** @type {string} */ tracking = '') {
+  try {
+    await api.orders.updateStatus(rowIndex, status, tracking);
+    await loadOrders(true); // Refresh from Sheets
+  } catch (e) {
+    error.set(/** @type {Error} */ (e).message);
+    throw e;
+  }
+}
+
 /** Derived: total count */
 export const orderCount = derived(orders, $o => $o.length);
 

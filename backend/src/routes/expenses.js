@@ -1,8 +1,9 @@
-// ─── Expenses Routes (Local SQLite DB) ───────────────────────────────────────
+// ─── Expenses Routes (Local SQLite DB + Google Sheets dual-write) ─────────────
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { CATEGORIES } = require('../config');
+const { CATEGORIES, SHEET_NAMES } = require('../config');
+const { appendRows } = require('../sheetsClient');
 
 // ── GET /api/expenses ──────────────────────────────────────────────────────────
 router.get('/', (req, res) => {
@@ -16,7 +17,7 @@ router.get('/', (req, res) => {
 });
 
 // ── POST /api/expenses ─────────────────────────────────────────────────────────
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { item, company, link, price, quantity, notes, user, category } = req.body;
 
@@ -28,13 +29,14 @@ router.post('/', (req, res) => {
     const priceNum = parseFloat(price);
     const qtyNum   = Math.max(1, parseInt(quantity, 10) || 1);
     const total    = priceNum * qtyNum;
-    
-    // SQLite uses raw primitives
+    const timestamp = new Date().toISOString();
+
+    // ── Write to local SQLite ─────────────────────────────────────────────────
     const insert = db.prepare(`
-      INSERT INTO expenses (item, company, link, price, quantity, notes, category, user_name, total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO expenses (item, company, link, price, quantity, notes, category, user_name, timestamp, total)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     const result = insert.run(
       item.trim(),
       (company || '').trim(),
@@ -44,8 +46,29 @@ router.post('/', (req, res) => {
       (notes || '').trim(),
       category.toLowerCase(),
       (user || '').trim(),
+      timestamp,
       total
     );
+
+    // ── Dual-write to Google Sheets Expenses tab ──────────────────────────────
+    try {
+      const sheetRow = [
+        item.trim(),
+        (company || '').trim(),
+        (link || '').trim(),
+        priceNum.toFixed(2),
+        qtyNum,
+        (notes || '').trim(),
+        category.toLowerCase(),
+        (user || '').trim(),
+        timestamp,
+        total.toFixed(2),
+      ];
+      await appendRows(SHEET_NAMES.EXPENSES, [sheetRow]);
+    } catch (sheetErr) {
+      // Non-fatal: log but don't fail the request if Sheets write fails
+      console.warn('[expenses POST] Sheets write failed (non-fatal):', sheetErr.message);
+    }
 
     // Fetch the newly created row
     const newExpense = db.prepare('SELECT * FROM expenses WHERE id = ?').get(result.lastInsertRowid);
