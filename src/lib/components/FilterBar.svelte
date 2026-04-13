@@ -7,7 +7,7 @@
     search: '',
     category: '',
     company: '',
-    user: '',
+    team: '',
     dateFrom: '',
     dateTo: '',
   });
@@ -20,7 +20,7 @@
     filters.search = '';
     filters.category = '';
     filters.company = '';
-    filters.user = '';
+    filters.team = '';
     filters.dateFrom = '';
     filters.dateTo = '';
     emit();
@@ -40,35 +40,20 @@
       />
     </div>
 
-    <div class="form-group" style="flex:3; min-width:250px">
-      <!-- svelte-ignore a11y_label_has_associated_control -->
-      <label>Category</label>
-      <div class="category-pills">
-        <button
-          type="button"
-          class="cat-pill"
-          class:active={filters.category === ''}
-          onclick={() => { filters.category = ''; emit(); }}
-        >
-          All
-        </button>
+    <div class="form-group" style="flex:1; min-width:150px">
+      <label for="filter-category">Category</label>
+      <select id="filter-category" bind:value={filters.category} onchange={emit}>
+        <option value="">All Categories</option>
         {#each CATEGORIES as cat}
-          <button
-            type="button"
-            class="cat-pill cat-{cat}"
-            class:active={filters.category === cat}
-            onclick={() => { filters.category = cat; emit(); }}
-          >
-            {cat.charAt(0).toUpperCase() + cat.slice(1)}
-          </button>
+          <option value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
         {/each}
-      </div>
+      </select>
     </div>
 
     <div class="form-group">
-      <!-- svelte-ignore a11y_label_has_associated_control -->
-      <label>Company</label>
+      <label for="filter-company">Company</label>
       <input
+        id="filter-company"
         type="text"
         placeholder="Any company"
         bind:value={filters.company}
@@ -77,26 +62,24 @@
     </div>
 
     <div class="form-group">
-      <!-- svelte-ignore a11y_label_has_associated_control -->
-      <label>User</label>
-      <input
-        type="text"
-        placeholder="Any user"
-        bind:value={filters.user}
-        oninput={emit}
-      />
+      <label for="filter-team">Team</label>
+      <select id="filter-team" bind:value={filters.team} onchange={emit}>
+        <option value="">All Teams</option>
+        <option value="Slingshot">Slingshot</option>
+        <option value="Atlatl">Atlatl</option>
+        <option value="Kunai">Kunai</option>
+        <option value="Hunga Munga">Hunga Munga</option>
+      </select>
     </div>
 
     <div class="form-group">
-      <!-- svelte-ignore a11y_label_has_associated_control -->
-      <label>From</label>
-      <input type="date" bind:value={filters.dateFrom} onchange={emit} />
+      <label for="filter-from">From Date</label>
+      <input id="filter-from" type="date" bind:value={filters.dateFrom} onchange={emit} />
     </div>
 
     <div class="form-group">
-      <!-- svelte-ignore a11y_label_has_associated_control -->
-      <label>To</label>
-      <input type="date" bind:value={filters.dateTo} onchange={emit} />
+      <label for="filter-to">To Date</label>
+      <input id="filter-to" type="date" bind:value={filters.dateTo} onchange={emit} />
     </div>
 
     <div class="form-group" style="justify-content:flex-end; padding-top:20px">

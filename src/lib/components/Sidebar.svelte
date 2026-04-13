@@ -1,15 +1,13 @@
 <script>
-  import { page } from '$app/stores';
+  import { page } from "$app/stores";
 
   const navItems = [
-    { href: '/',        label: 'Dashboard',   icon: '◈' },
-    { href: '/orders',  label: 'Orders',      icon: '📦' },
-    { href: '/expenses',label: 'All Expenses',icon: '☰' },
-    { href: '/add',     label: 'Add Expense', icon: '+' },
-    { href: '/stats',   label: 'Analytics',   icon: '◎' },
-    { href: '/funding', label: 'Funding',     icon: '◆' },
-    { href: '/admin',   label: 'Admin',       icon: '🔐' },
-    { href: '/manager', label: 'Manager',     icon: '⚙' },
+    { href: "/", label: "Dashboard", icon: "◈" },
+    { href: "/orders", label: "Orders", icon: "☷" },
+    { href: "/add", label: "Add Expense", icon: "+" },
+    { href: "/stats", label: "Analytics", icon: "◎" },
+    { href: "/funding", label: "Funding", icon: "◆" },
+    { href: "/admin", label: "Admin Console", icon: "⚙" },
   ];
 </script>
 
@@ -28,7 +26,7 @@
         href={item.href}
         class="nav-link"
         class:active={$page.url.pathname === item.href}
-        aria-current={$page.url.pathname === item.href ? 'page' : undefined}
+        aria-current={$page.url.pathname === item.href ? "page" : undefined}
       >
         <span class="nav-icon">{item.icon}</span>
         <span>{item.label}</span>
@@ -37,7 +35,9 @@
   </nav>
 
   <div class="sidebar-footer">
-    <span class="text-muted" style="font-size:0.75rem">Westwood Robotics © 2025</span>
+    <span class="text-muted" style="font-size:0.75rem"
+      >Westwood Robotics © 2025</span
+    >
   </div>
 </aside>
 
@@ -111,7 +111,9 @@
     font-size: 0.875rem;
     font-weight: 500;
     text-decoration: none;
-    transition: background 0.15s, color 0.15s;
+    transition:
+      background 0.15s,
+      color 0.15s;
   }
 
   .nav-link:hover {
