@@ -1,7 +1,9 @@
 <script>
   import { CATEGORIES } from "$lib/utils.js";
-  import { api } from "$lib/api.js";
   import { goto } from "$app/navigation";
+
+  const API_URL =
+    "https://script.google.com/macros/s/AKfycbzsbg_Mm1CjwRtY8KDTVEmWqcde1USoRtkFnYJ6P1VFA4TH-hcz7TaKi6MvEiGqytKY/exec";
 
   let form = $state({
     destination: "sheets",
@@ -11,9 +13,10 @@
     price: "",
     quantity: "1",
     notes: "",
-    user: "",
+    team: "",
     category: "hardware",
   });
+
   let submitting = $state(false);
   let submitError = $state("");
   let submitSuccess = $state("");
@@ -30,38 +33,66 @@
       submitError = "Item name is required.";
       return;
     }
+
     if (!form.price || isNaN(parseFloat(form.price))) {
       submitError = "Valid price is required.";
       return;
     }
 
     submitting = true;
-    try {
-      const payload = {
-        ...form,
-        price: parseFloat(form.price),
-        quantity: parseInt(form.quantity) || 1,
-      };
 
-      if (form.destination === "sheets") {
-        await api.orders.create(payload);
-        submitSuccess = "✓ Order successfully sent to Google Sheets!";
-        setTimeout(() => goto("/orders"), 1500);
+    try {
+      // ✅ FIX: force all values to strings for URLSearchParams
+      const params = new URLSearchParams({
+        action: "addOrder",
+        key: "YOUR_SECRET_KEY",
+        item: form.item,
+        company: form.company,
+        link: form.link,
+        price: String(form.price),
+        quantity: String(form.quantity),
+        notes: form.notes,
+        category: form.category,
+        team: form.team,
+        total: String(computedTotal),
+        status: "Submitted and in review",
+        tracking: "",
+      });
+
+      const url = `${API_URL}?${params.toString()}`;
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      console.log("API result:", result);
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || "Request failed");
       }
 
+      submitSuccess = "✓ Order successfully sent!";
+
+      // reset form
       form = {
-        destination: form.destination,
+        destination: "sheets",
         item: "",
         company: "",
         link: "",
         price: "",
         quantity: "1",
         notes: "",
-        user: "",
+        team: "",
         category: "hardware",
       };
-    } catch (/** @type {any} */ e) {
-      submitError = e.message;
+
+      setTimeout(() => goto("/orders"), 1500);
+    } catch (e) {
+      // ✅ FIX: proper error typing
+      if (e instanceof Error) {
+        submitError = e.message;
+      } else {
+        submitError = "Unknown error occurred";
+      }
     } finally {
       submitting = false;
     }
@@ -172,13 +203,14 @@
         </div>
 
         <div class="form-group">
-          <label for="ae-user">Requested By</label>
-          <input
-            id="ae-user"
-            type="text"
-            bind:value={form.user}
-            placeholder="Name"
-          />
+          <label for="ae-team">Team *</label>
+          <select id="ae-team" bind:value={form.team} required>
+            <option value="" disabled selected>Select your team</option>
+            <option value="Slingshot">Slingshot</option>
+            <option value="Atlatl">Atlatl</option>
+            <option value="Kunai">Kunai</option>
+            <option value="Hunga Munga">Hunga Munga</option>
+          </select>
         </div>
 
         <div class="form-group" style="grid-column:1/-1">
@@ -241,9 +273,9 @@
       <div class="card-title">Categories</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
         {#each CATEGORIES as cat}
-          <span class="badge badge-{cat}"
-            >{cat.charAt(0).toUpperCase() + cat.slice(1)}</span
-          >
+          <span class="badge badge-{cat}">
+            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+          </span>
         {/each}
       </div>
     </div>
@@ -360,6 +392,7 @@
     padding: 4px;
     border: 1px solid var(--border);
   }
+
   .segmented-control button {
     padding: 6px 16px;
     border: none;

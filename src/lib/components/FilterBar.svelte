@@ -96,25 +96,4 @@
     gap: 12px;
     align-items: flex-end;
   }
-  .form-group { min-width: 130px; }
-
-  .category-pills {
-    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
-  }
-  .cat-pill {
-    padding: 6px 14px; font-size: 0.8rem; font-weight: 600;
-    border-radius: 99px; border: 1px solid var(--border);
-    background: transparent; color: var(--text-muted);
-    cursor: pointer; transition: all 0.2s;
-  }
-  .cat-pill:hover { background: var(--surface-2); color: var(--text); }
-  .cat-pill.active { border-color: transparent; color: #fff; box-shadow: var(--shadow-sm); }
-  .cat-pill.active.cat-hardware { background: var(--cat-hardware); }
-  .cat-pill.active.cat-software { background: var(--cat-software); }
-  .cat-pill.active.cat-outreach { background: var(--cat-outreach); }
-  .cat-pill.active.cat-miscellaneous { background: var(--cat-miscellaneous); }
-  /* For the "All" button active state */
-  .cat-pill.active:not(.cat-hardware):not(.cat-software):not(.cat-outreach):not(.cat-miscellaneous) {
-    background: var(--text); color: var(--surface);
-  }
 </style>

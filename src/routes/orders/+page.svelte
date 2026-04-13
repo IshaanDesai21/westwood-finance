@@ -49,24 +49,26 @@
   }
 
   let filtered = $derived(
-    orders.filter((e) => {
-      if (filters.category && e.category !== filters.category) return false;
-      if (
-        filters.company &&
-        !e.company?.toLowerCase().includes(filters.company.toLowerCase())
-      )
-        return false;
-      if (
-        filters.team &&
-        !e.team?.toLowerCase().includes(filters.team.toLowerCase())
-      )
-        return false;
-      if (filters.dateFrom && e.timestamp < filters.dateFrom) return false;
-      if (filters.dateTo && e.timestamp?.slice(0, 10) > filters.dateTo)
-        return false;
-      if (!matchSearch(e, filters.search)) return false;
-      return true;
-    }),
+    orders
+      .filter((e) => {
+        if (filters.category && e.category !== filters.category) return false;
+        if (
+          filters.company &&
+          !e.company?.toLowerCase().includes(filters.company.toLowerCase())
+        )
+          return false;
+        if (
+          filters.team &&
+          !e.team?.toLowerCase().includes(filters.team.toLowerCase())
+        )
+          return false;
+        if (filters.dateFrom && e.timestamp < filters.dateFrom) return false;
+        if (filters.dateTo && e.timestamp?.slice(0, 10) > filters.dateTo)
+          return false;
+        if (!matchSearch(e, filters.search)) return false;
+        return true;
+      })
+      .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || "")),
   );
 
   let filteredTotal = $derived(
