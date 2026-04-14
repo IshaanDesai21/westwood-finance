@@ -2,6 +2,7 @@
   /** @type {{ status: string }} */
   let { status } = $props();
 
+  /** @type {Record<string, { color: string, bg: string, icon: string }>} */
   const config = {
     'Submitted and in review': { color: '#4e9af1', bg: 'rgba(78,154,241,0.12)', icon: '📋' },
     'Ordered':                  { color: '#f1c84e', bg: 'rgba(241,200,78,0.12)',  icon: '🚚' },

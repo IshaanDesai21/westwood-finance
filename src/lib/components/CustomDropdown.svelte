@@ -65,13 +65,17 @@
         <li 
           class="dropdown-item" 
           class:selected={value === val}
-          onclick={() => select(val)}
-          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && select(val)}
-          role="option"
-          aria-selected={value === val}
-          tabindex="0"
+          role="none"
         >
-          {label}
+          <button
+            type="button"
+            class="dropdown-item-button"
+            onclick={() => select(val)}
+            role="option"
+            aria-selected={value === val}
+          >
+            {label}
+          </button>
         </li>
       {/each}
     </ul>
@@ -147,20 +151,32 @@
   }
 
   .dropdown-item {
+    padding: 0;
+    list-style: none;
+  }
+
+  .dropdown-item-button {
+    width: 100%;
     padding: 10px 12px;
-    border-radius: 4px;
+    border: none;
+    background: transparent;
+    text-align: left;
     cursor: pointer;
     font-size: 0.875rem;
     transition: all 0.15s ease;
     color: var(--text-muted);
+    border-radius: 4px;
+    display: block;
+    outline: none;
   }
 
-  .dropdown-item:hover {
+  .dropdown-item-button:hover,
+  .dropdown-item-button:focus {
     background: var(--surface-3);
     color: var(--text);
   }
 
-  .dropdown-item.selected {
+  .dropdown-item.selected .dropdown-item-button {
     background: var(--primary-glow);
     color: var(--primary);
     font-weight: 600;
