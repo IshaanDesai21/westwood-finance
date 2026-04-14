@@ -3,7 +3,7 @@
   import { goto } from "$app/navigation";
 
   const API_URL =
-    "https://script.google.com/macros/s/AKfycbzsbg_Mm1CjwRtY8KDTVEmWqcde1USoRtkFnYJ6P1VFA4TH-hcz7TaKi6MvEiGqytKY/exec";
+    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
 
   let form = $state({
     destination: "sheets",
@@ -210,6 +210,8 @@
             <option value="Atlatl">Atlatl</option>
             <option value="Kunai">Kunai</option>
             <option value="Hunga Munga">Hunga Munga</option>
+            <option value="FRC">FRC</option>
+            <option value="WWROBO">WWRobotics</option>
           </select>
         </div>
 

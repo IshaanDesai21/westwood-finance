@@ -1,15 +1,15 @@
 <script>
-  import { CATEGORIES } from '../utils.js';
+  import { CATEGORIES } from "../utils.js";
 
   let { onchange } = $props();
 
   let filters = $state({
-    search: '',
-    category: '',
-    company: '',
-    team: '',
-    dateFrom: '',
-    dateTo: '',
+    search: "",
+    category: "",
+    company: "",
+    team: "",
+    dateFrom: "",
+    dateTo: "",
   });
 
   function emit() {
@@ -17,12 +17,12 @@
   }
 
   function reset() {
-    filters.search = '';
-    filters.category = '';
-    filters.company = '';
-    filters.team = '';
-    filters.dateFrom = '';
-    filters.dateTo = '';
+    filters.search = "";
+    filters.category = "";
+    filters.company = "";
+    filters.team = "";
+    filters.dateFrom = "";
+    filters.dateTo = "";
     emit();
   }
 </script>
@@ -42,10 +42,16 @@
 
     <div class="form-group" style="flex:1; min-width:150px">
       <label for="filter-category">Category</label>
-      <select id="filter-category" bind:value={filters.category} onchange={emit}>
+      <select
+        id="filter-category"
+        bind:value={filters.category}
+        onchange={emit}
+      >
         <option value="">All Categories</option>
         {#each CATEGORIES as cat}
-          <option value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+          <option value={cat}
+            >{cat.charAt(0).toUpperCase() + cat.slice(1)}</option
+          >
         {/each}
       </select>
     </div>
@@ -69,17 +75,29 @@
         <option value="Atlatl">Atlatl</option>
         <option value="Kunai">Kunai</option>
         <option value="Hunga Munga">Hunga Munga</option>
+        <option value="FRC">FRC</option>
+        <option value="WWROBO">WWRobotics</option>
       </select>
     </div>
 
     <div class="form-group">
       <label for="filter-from">From Date</label>
-      <input id="filter-from" type="date" bind:value={filters.dateFrom} onchange={emit} />
+      <input
+        id="filter-from"
+        type="date"
+        bind:value={filters.dateFrom}
+        onchange={emit}
+      />
     </div>
 
     <div class="form-group">
       <label for="filter-to">To Date</label>
-      <input id="filter-to" type="date" bind:value={filters.dateTo} onchange={emit} />
+      <input
+        id="filter-to"
+        type="date"
+        bind:value={filters.dateTo}
+        onchange={emit}
+      />
     </div>
 
     <div class="form-group" style="justify-content:flex-end; padding-top:20px">
@@ -89,7 +107,10 @@
 </div>
 
 <style>
-  .filter-bar { margin-bottom: 16px; padding: 16px; }
+  .filter-bar {
+    margin-bottom: 16px;
+    padding: 16px;
+  }
   .filter-row {
     display: flex;
     flex-wrap: wrap;
