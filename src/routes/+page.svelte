@@ -5,106 +5,42 @@
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import { formatCurrency, formatDate } from "$lib/utils.js";
+  import { dataService } from "$lib/dataService.svelte.js";
 
-  // ── API Config ──────────────────────────────────────────────────────────────
-  const BASE_URL =
-    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
-  const SECRET_KEY = "YOUR_SECRET_KEY";
+  /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
-  // ── State ───────────────────────────────────────────────────────────────────
-  /** @type {any[]} */
-  let orders = $state([]);
-  /** @type {any[]} */
-  let funds = $state([]);
-  /** @type {any} */
-  let budget = $state(null);
-  let loading = $state(true);
-  let error = $state(/** @type {string|null} */ (null));
+  /** @type {{ orders: Order[], funds: any[], budget: any, loading: boolean, error: string|null }} */
+  let { orders, funds, budget, loading, error } = $derived(dataService);
   let syncing = $state(false);
-
-  // Generate a stable color from a UUID
-  function getOrderColor(/** @type {string} */ uuid) {
-    if (!uuid) return 'transparent';
-    let hash = 0;
-    for (let i = 0; i < uuid.length; i++) {
-      hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return `hsl(${hash % 360}, 70%, 80%)`;
-  }
-
-  let filters = $state({
-    search: "",
-    category: "",
-    company: "",
-    team: "",
-    status: "",
-    dateFrom: "",
-    dateTo: "",
-  });
-
-  async function loadAll() {
-    loading = true;
-    error = null;
-    try {
-      const [oRes, fRes, bRes] = await Promise.all([
-        fetch(`${BASE_URL}?action=getOrders&key=${SECRET_KEY}`),
-        fetch(`${BASE_URL}?action=getFunds&key=${SECRET_KEY}`),
-        fetch(`${BASE_URL}?action=getBudget&key=${SECRET_KEY}`),
-      ]);
-
-      if (!oRes.ok || !fRes.ok || !bRes.ok) throw new Error("API Fetch Failed");
-
-      orders = await oRes.json();
-      funds = await fRes.json();
-      budget = await bRes.json();
-    } catch (e) {
-      error = e instanceof Error ? e.message : "Data loading failed";
-      console.error(e);
-    } finally {
-      loading = false;
-    }
-  }
-
-  onMount(() => {
-    loadAll();
-  });
 
   async function sync() {
     syncing = true;
-    await loadAll();
+    await dataService.load(true); // force refresh
     syncing = false;
   }
 
-  // ── Derived Derived Stats ───────────────────────────────────────────────────
+  onMount(() => {
+    dataService.load(); // uses cache if available
+  });
+
+  // ── Derived Stats ───────────────────────────────────────────────────────────
   // "Expenses" are orders that have been received
   let expenses = $derived(
     orders
-      .filter((o) => (o.Status ?? o.status) === "Received")
-      .map((o) => ({
-        ...o,
-        item: o.Item ?? o.item,
-        company: o.Company ?? o.company,
-        timestamp: o.Timestamp ?? o.timestamp,
-        price: Number(o.Price ?? o.price),
-        quantity: Number(o.Quantity ?? o.quantity),
-        user: o.Team ?? o.team ?? o.user, // Using Team as user
-        total: Number(o.Total ?? o.total) || (Number(o.Price ?? o.price) * Number(o.Quantity ?? o.quantity)) || 0,
-        category: (o.Category ?? o.category ?? "miscellaneous").toLowerCase(),
-      })),
+      .filter((/** @type {Order} */ o) => (o.status || "").toLowerCase().trim() === "received")
   );
 
   let totalRaised = $derived(
-    funds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0),
+    funds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
   );
 
-  let totalSpent = $derived(expenses.reduce((s, e) => s + (e.total || 0), 0));
+  let totalSpent = $derived(expenses.reduce((/** @type {number} */ s, /** @type {Order} */ e) => s + (e.total || 0), 0));
   let netBalance = $derived(totalRaised - totalSpent);
 
   let recentExpenses = $derived(expenses.slice(-5).reverse());
   let recentOrders = $derived(orders.slice(-5).reverse());
 
   let budgetTotalValue = $derived(budget?.Total?.["Final"] || 0);
-  let budgetRemaining = $derived(budgetTotalValue - totalSpent);
 
   // Category breakdown
   let spentByCategory = $derived(() => {
@@ -114,12 +50,6 @@
       map[cat] = (map[cat] || 0) + (e.total || 0);
     }
     return map;
-  });
-
-  let topCat = $derived(() => {
-    const data = spentByCategory();
-    const sorted = Object.entries(data).sort(([, a], [, b]) => b - a);
-    return sorted.length > 0 ? sorted[0] : null;
   });
 
   const CATEGORY_LABELS = /** @type {Record<string,string>} */ ({
@@ -199,24 +129,25 @@
         </div>
         <div class="recent-list">
           {#each recentOrders as order}
-            <div class="recent-item" role="button" tabindex="0" onclick={() => console.log('Recent Order Data:', order)} onkeydown={(e) => {if(e.key==='Enter') console.log('Recent Order Data:', order)}}>
+            <div 
+              class="recent-item" 
+              role="button" 
+              tabindex="0" 
+              onclick={() => console.log('Recent Order Data:', order)} 
+              onkeydown={(e) => {if(e.key==='Enter' || e.key===' ') console.log('Recent Order Data:', order)}}
+              aria-label="Order detail for {order.item}"
+            >
               <div class="item-info">
-                <div class="item-name">{order.Item || order.item}</div>
+                <div class="item-name">{order.item}</div>
                 <div class="item-meta">
-                  {order.Company || order.company} • {formatDate(
-                    order.Timestamp || order.timestamp,
-                  )}
+                  {order.company} • {formatDate(order.timestamp)}
                 </div>
               </div>
               <div class="item-status">
-                <OrderStatusBadge status={order.Status || order.status || "Submitted and in review"} />
+                <OrderStatusBadge status={order.status} />
               </div>
               <div class="item-amount monospace">
-                {formatCurrency(
-                  Number(order.Total || order.total) ||
-                    Number(order.Price || order.price) *
-                      Number(order.Quantity || order.quantity),
-                )}
+                {formatCurrency(order.total)}
               </div>
             </div>
           {:else}

@@ -22,17 +22,8 @@
     { label: 'Cancelled', value: 'Cancelled' }
   ];
 
-  let { onchange } = $props();
-
-  let filters = $state({
-    search: "",
-    category: "",
-    company: "",
-    team: "",
-    status: "",
-    dateFrom: "",
-    dateTo: "",
-  });
+  /** @type {{ onchange?: (f: any) => void, filters: any }} */
+  let { onchange, filters = $bindable() } = $props();
 
   function emit() {
     onchange?.({ ...filters });
