@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
+  import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import { formatCurrency, formatDate } from "$lib/utils.js";
 
   // ── API Config ──────────────────────────────────────────────────────────────
@@ -279,9 +280,7 @@
       {/if}
 
       {#if loading && !orders.length}
-        <div class="empty-state">
-          <span class="spinning">↻</span> Loading orders…
-        </div>
+        <LoadingIndicator text="Loading orders" />
       {:else if inProgressOrders.length === 0}
         <div class="empty-state card">
           <div class="icon">✅</div>
@@ -374,7 +373,7 @@
           {/if}
 
           {#if loading && !budget}
-            <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
+            <LoadingIndicator />
           {:else}
             <div class="budget-editor">
               {#each Object.entries(CATEGORY_META) as [cat, meta]}
@@ -408,7 +407,7 @@
         </div>
 
         <div>
-          <div class="section-title" style="margin-bottom:12px">Current Allocation</div>
+          <div class="section-title" style="margin-bottom:12px; margin-top:36px;">Current Allocation</div>
           <div class="allocation-cards">
             {#each Object.entries(CATEGORY_META) as [cat, meta]}
               {@const current = budgetCategories[cat] || 0}

@@ -12,6 +12,16 @@
     ...TEAMS.map(team => ({ label: team, value: team }))
   ];
 
+  const statusOptions = [
+    { label: 'All Statuses', value: '' },
+    { label: 'Submitted and in review', value: 'Submitted and in review' },
+    { label: 'Ordered', value: 'Ordered' },
+    { label: 'Received', value: 'Received' },
+    { label: 'Approved', value: 'Approved' },
+    { label: 'Denied', value: 'Denied' },
+    { label: 'Cancelled', value: 'Cancelled' }
+  ];
+
   let { onchange } = $props();
 
   let filters = $state({
@@ -19,6 +29,7 @@
     category: "",
     company: "",
     team: "",
+    status: "",
     dateFrom: "",
     dateTo: "",
   });
@@ -32,6 +43,7 @@
     filters.category = "";
     filters.company = "";
     filters.team = "";
+    filters.status = "";
     filters.dateFrom = "";
     filters.dateTo = "";
     emit();
@@ -79,6 +91,16 @@
         bind:value={filters.team} 
         onchange={emit} 
         placeholder="All Teams" 
+      />
+    </div>
+
+    <div class="form-group" style="flex:1; min-width:160px">
+      <label for="filter-status">Status</label>
+      <CustomDropdown 
+        options={statusOptions} 
+        bind:value={filters.status} 
+        onchange={emit} 
+        placeholder="All Statuses" 
       />
     </div>
 

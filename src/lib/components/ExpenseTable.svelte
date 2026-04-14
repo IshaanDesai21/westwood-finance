@@ -1,23 +1,51 @@
 <script>
-  import { formatCurrency, formatDate, truncate, capitalize } from '../utils.js';
+  import { formatCurrency, formatDate, truncate, capitalize, getTeamBadgeClass } from '../utils.js';
 
   let { expenses = [], limit = 0 } = $props();
 
-  let display = $derived(limit > 0 ? expenses.slice(0, limit) : expenses);
+  let sortCol = $state("timestamp");
+  let sortDir = $state("desc");
+
+  function toggleSort(/** @type {string} */ col) {
+    if (sortCol === col) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortCol = col;
+      sortDir = col === "timestamp" || col === "total" || col === "price" ? "desc" : "asc";
+    }
+  }
+
+  let sortedExpenses = $derived(
+    expenses.slice().sort((a, b) => {
+      let valA = a[sortCol] || "";
+      let valB = b[sortCol] || "";
+      
+      if (sortCol === 'total' || sortCol === 'price' || sortCol === 'quantity') {
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+      }
+
+      if (valA < valB) return sortDir === "asc" ? -1 : 1;
+      if (valA > valB) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    })
+  );
+
+  let display = $derived(limit > 0 ? sortedExpenses.slice(0, limit) : sortedExpenses);
 </script>
 
 <div class="table-wrap">
   <table>
     <thead>
       <tr>
-        <th>Item</th>
-        <th>Company</th>
-        <th>Category</th>
-        <th>User</th>
-        <th>Date</th>
-        <th class="text-right">Price</th>
-        <th class="text-right">Qty</th>
-        <th class="text-right">Total</th>
+        <th class="sortable" onclick={() => toggleSort("item")}>Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("company")}>Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("category")}>Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("user")}>User {sortCol === "user" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("timestamp")}>Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="text-right sortable" onclick={() => toggleSort("price")}>Price {sortCol === "price" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="text-right sortable" onclick={() => toggleSort("quantity")}>Qty {sortCol === "quantity" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="text-right sortable" onclick={() => toggleSort("total")}>Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
       </tr>
     </thead>
     <tbody>
@@ -43,7 +71,13 @@
               {capitalize(expense.category)}
             </span>
           </td>
-          <td>{expense.user || '—'}</td>
+          <td>
+            {#if expense.user}
+              <span class="badge {getTeamBadgeClass(expense.user)}">{expense.user}</span>
+            {:else}
+              —
+            {/if}
+          </td>
           <td class="text-muted">{formatDate(expense.timestamp)}</td>
           <td class="text-right monospace">{formatCurrency(expense.price)}</td>
           <td class="text-right">{expense.quantity}</td>

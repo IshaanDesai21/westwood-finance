@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import StatCard from "$lib/components/StatCard.svelte";
   import ExpenseTable from "$lib/components/ExpenseTable.svelte";
+  import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
+  import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import { formatCurrency, formatDate } from "$lib/utils.js";
 
   // ── API Config ──────────────────────────────────────────────────────────────
@@ -19,6 +21,26 @@
   let loading = $state(true);
   let error = $state(/** @type {string|null} */ (null));
   let syncing = $state(false);
+
+  // Generate a stable color from a UUID
+  function getOrderColor(/** @type {string} */ uuid) {
+    if (!uuid) return 'transparent';
+    let hash = 0;
+    for (let i = 0; i < uuid.length; i++) {
+      hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return `hsl(${hash % 360}, 70%, 80%)`;
+  }
+
+  let filters = $state({
+    search: "",
+    category: "",
+    company: "",
+    team: "",
+    status: "",
+    dateFrom: "",
+    dateTo: "",
+  });
 
   async function loadAll() {
     loading = true;
@@ -121,10 +143,7 @@
 </div>
 
 {#if loading && !orders.length}
-  <div class="empty-state">
-    <div class="spinning" style="font-size:2rem;margin-bottom:16px">↻</div>
-    Loading dashboard data…
-  </div>
+  <LoadingIndicator text="Loading dashboard data" />
 {:else}
   <div class="stat-grid fade-in">
     <StatCard
@@ -174,7 +193,7 @@
         </div>
         <div class="recent-list">
           {#each recentOrders as order}
-            <div class="recent-item">
+            <div class="recent-item" role="button" tabindex="0" onclick={() => console.log('Recent Order Data:', order)} onkeydown={(e) => {if(e.key==='Enter') console.log('Recent Order Data:', order)}}>
               <div class="item-info">
                 <div class="item-name">{order.Item || order.item}</div>
                 <div class="item-meta">
@@ -184,12 +203,7 @@
                 </div>
               </div>
               <div class="item-status">
-                <span
-                  class="status-pill"
-                  data-status={order.Status || order.status}
-                >
-                  {order.Status || order.status}
-                </span>
+                <OrderStatusBadge status={order.Status || order.status || "Submitted and in review"} />
               </div>
               <div class="item-amount monospace">
                 {formatCurrency(
@@ -270,6 +284,12 @@
     gap: 24px;
   }
 
+  .side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
   .dashboard-section {
     padding: 24px;
   }
@@ -297,13 +317,22 @@
     grid-template-columns: 1fr auto 100px;
     gap: 12px;
     align-items: center;
-    padding-bottom: 12px;
+    padding: 12px;
     border-bottom: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s;
+    cursor: pointer;
+  }
+
+  .recent-item:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background: var(--surface-2);
+    border-bottom-color: transparent;
   }
 
   .recent-item:last-child {
     border-bottom: none;
-    padding-bottom: 0;
   }
 
   .item-name {
@@ -316,18 +345,15 @@
     color: var(--text-muted);
   }
 
+  .item-status {
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+
   .item-amount {
     text-align: right;
     font-weight: 600;
     font-size: 0.9rem;
-  }
-
-  .status-pill {
-    font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 99px;
-    background: var(--surface-2);
-    font-weight: 700;
   }
 
   /* Category List */
