@@ -35,6 +35,7 @@
   let unlocked = $state(false);
   let passwordInput = $state("");
   let authError = $state("");
+  let showPassword = $state(false);
 
   // Per-order state for status and tracking inputs
   /** @type {Record<string, { status: string, tracking: string, saving: boolean, addingExpense: boolean }>} */
@@ -238,13 +239,29 @@
       >
         <div class="form-group" style="margin-bottom:16px">
           <label for="admin-password">Password</label>
-          <input
-            id="admin-password"
-            type="password"
-            bind:value={passwordInput}
-            placeholder="Enter admin password"
-            autocomplete="current-password"
-          />
+          <div style="position:relative; display:flex; align-items:center;">
+            <input
+              id="admin-password"
+              type={showPassword ? "text" : "password"}
+              bind:value={passwordInput}
+              placeholder="Enter admin password"
+              autocomplete="current-password"
+              style="padding-right: 40px;"
+            />
+            <button
+              type="button"
+              onmousedown={() => { showPassword = true; }}
+              onmouseup={() => { showPassword = false; }}
+              onmouseleave={() => { showPassword = false; }}
+              ontouchstart={(e) => { e.preventDefault(); showPassword = true; }}
+              ontouchend={(e) => { e.preventDefault(); showPassword = false; }}
+              style="position:absolute; right:10px; background:none; border:none; cursor:pointer; font-size:1.1rem; color:var(--text-muted); display:flex; padding:4px;"
+              title="Hold to show password"
+              aria-label="Hold to show password"
+            >
+              {showPassword ? "👁️‍🗨️" : "👁️"}
+            </button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary" style="width:100%"
           >Unlock</button

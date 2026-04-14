@@ -82,6 +82,12 @@
       .filter((o) => (o.Status ?? o.status) === "Received")
       .map((o) => ({
         ...o,
+        item: o.Item ?? o.item,
+        company: o.Company ?? o.company,
+        timestamp: o.Timestamp ?? o.timestamp,
+        price: Number(o.Price ?? o.price),
+        quantity: Number(o.Quantity ?? o.quantity),
+        user: o.Team ?? o.team ?? o.user, // Using Team as user
         total: Number(o.Total ?? o.total) || (Number(o.Price ?? o.price) * Number(o.Quantity ?? o.quantity)) || 0,
         category: (o.Category ?? o.category ?? "miscellaneous").toLowerCase(),
       })),
