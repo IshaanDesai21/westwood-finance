@@ -1,7 +1,8 @@
 <script>
   import { onMount } from "svelte";
-  import { formatCurrency } from "$lib/utils.js";
+  import { formatCurrency, getTeamBadgeClass } from "$lib/utils.js";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
+  import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
 
   // ── API Config ──────────────────────────────────────────────────────────────
   const BASE_URL =
@@ -30,6 +31,8 @@
   let budgetError = $state(/** @type {string|null} */ (null));
 
   let activeTab = $state("overview");
+  let sortCol = $state("Date");
+  let sortDir = $state("desc");
 
   let form = $state({
     type: "Fundraiser",
@@ -108,11 +111,33 @@
     return map;
   });
 
-  // Budget teams (all except "Total")
   let budgetTeams = $derived(
     budget ? Object.entries(budget).filter(([key]) => key !== "Total") : [],
   );
   let budgetTotal = $derived(/** @type {any} */ (budget)?.Total ?? null);
+
+  let sortedFunds = $derived(
+    funds.slice().sort((a, b) => {
+      let valA = a[sortCol] || "";
+      let valB = b[sortCol] || "";
+      if (sortCol === "Amount") {
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+      }
+      if (valA < valB) return sortDir === "asc" ? -1 : 1;
+      if (valA > valB) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    })
+  );
+
+  function toggleSort(/** @type {string} */ col) {
+    if (sortCol === col) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortCol = col;
+      sortDir = col === "Date" || col === "Amount" ? "desc" : "asc";
+    }
+  }
 
   // ── Add Funds ───────────────────────────────────────────────────────────────
   async function addFunds() {
@@ -204,7 +229,8 @@
 
 <!-- ── Tab Nav ──────────────────────────────────────────────────────────────── -->
 <div class="tabs-container">
-  <div class="segmented-control">
+  <div class="segmented-control" style="position:relative; z-index:0;">
+    <div class="segment-highlight" style="transform: translateX(calc({['overview', 'history', 'budget', 'add'].indexOf(activeTab)} * 100%));"></div>
     {#each [["overview", "Overview"], ["history", "Funding History"], ["budget", "Team Budgets"], ["add", "+ Add Funds"]] as [key, label]}
       <button
         class="segment"
@@ -271,7 +297,7 @@
   <!-- Type breakdown -->
   <div class="section-title" style="margin-top:28px">Funding by Type</div>
   {#if loadingFunds}
-    <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
+    <LoadingIndicator />
   {:else}
     <div class="type-breakdown card">
       {#each FUND_TYPES as type}
@@ -298,7 +324,7 @@
   <!-- ══ HISTORY ══════════════════════════════════════════════════════════════ -->
 {:else if activeTab === "history"}
   {#if loadingFunds}
-    <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
+    <LoadingIndicator />
   {:else if funds.length === 0}
     <div class="empty-state card">
       <div class="icon">💰</div>
@@ -309,18 +335,16 @@
       <table>
         <thead>
           <tr>
-            <th>Type</th>
-            <th>Source</th>
-            <th>Recipient</th>
-            <th>Date</th>
-            <th>Notes</th>
-            <th class="text-right">Amount</th>
+            <th class="sortable" onclick={() => toggleSort("Type")}>Type {sortCol === "Type" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("Source")}>Source {sortCol === "Source" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("Recipient")}>Recipient {sortCol === "Recipient" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("Date")}>Date {sortCol === "Date" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("Notes")}>Notes {sortCol === "Notes" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable text-right" onclick={() => toggleSort("Amount")}>Amount {sortCol === "Amount" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
           </tr>
         </thead>
         <tbody>
-          {#each funds
-            .slice()
-            .sort( (a, b) => (b.Date || "").localeCompare(a.Date || ""), ) as entry}
+          {#each sortedFunds as entry}
             <tr class="fade-in">
               <td>
                 <span
@@ -332,7 +356,11 @@
               </td>
               <td style="font-weight:500">{entry.Source || "—"}</td>
               <td>
-                <span class="recipient-chip">{entry.Recipient || "—"}</span>
+                {#if entry.Recipient && entry.Recipient !== 'All'}
+                  <span class="badge {getTeamBadgeClass(entry.Recipient)}">{entry.Recipient}</span>
+                {:else}
+                  <span class="recipient-chip">{entry.Recipient || "—"}</span>
+                {/if}
               </td>
               <td class="text-muted">{formatDate(entry.Date)}</td>
               <td class="text-muted" style="font-size:0.82rem"
@@ -349,8 +377,8 @@
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="5"><strong>Total</strong></td>
-            <td class="text-right monospace" style="color:#6bcb77"
+            <td colspan="5" style="padding-top:20px; padding-bottom:20px; font-size:1rem;"><strong>Total</strong></td>
+            <td class="text-right monospace" style="color:#6bcb77; padding-top:20px; padding-bottom:20px; font-size:1.1rem;"
               ><strong>{formatCurrency(totalRaised)}</strong></td
             >
           </tr>
@@ -362,7 +390,7 @@
   <!-- ══ TEAM BUDGETS ═════════════════════════════════════════════════════════ -->
 {:else if activeTab === "budget"}
   {#if loadingBudget}
-    <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
+    <LoadingIndicator />
   {:else if !budget}
     <div class="empty-state card">
       <div class="icon">📊</div>
@@ -677,15 +705,30 @@
     margin-bottom: 24px;
   }
   .segmented-control {
-    display: inline-flex;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     background: var(--surface-2);
     padding: 4px;
     border-radius: 99px;
     border: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 2px;
+    position: relative;
+    gap: 0;
+  }
+  .segment-highlight {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 8px) / 4);
+    background: var(--surface);
+    border-radius: 99px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
   }
   .segment {
+    position: relative;
+    z-index: 2;
     background: transparent;
     border: none;
     padding: 8px 18px;
@@ -700,9 +743,7 @@
     color: var(--text);
   }
   .segment.active {
-    background: var(--surface);
     color: var(--primary);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
   /* ── Overview ─────────────────────────────────────────────────────────────── */

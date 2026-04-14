@@ -2,9 +2,10 @@
   import { onMount } from "svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import FilterBar from "$lib/components/FilterBar.svelte";
+  import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import { fetchOrders } from "./fetchOrders.ts";
   // @ts-ignore
-  import { formatCurrency } from "$lib/utils.js";
+  import { formatCurrency, getTeamBadgeClass } from "$lib/utils.js";
 
   let orders = $state(/** @type {any[]} */ ([]));
   let loading = $state(false);
@@ -15,13 +16,26 @@
     category: "",
     company: "",
     team: "",
+    status: "",
     dateFrom: "",
     dateTo: "",
   });
   let syncing = $state(false);
 
+  let sortCol = $state("timestamp");
+  let sortDir = $state("desc");
+
+  function toggleSort(/** @type {string} */ col) {
+    if (sortCol === col) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortCol = col;
+      sortDir = col === "timestamp" || col === "total" || col === "price" ? "desc" : "asc";
+    }
+  }
+
   // Generate a stable color from a UUID
-  function getOrderColor(uuid) {
+  function getOrderColor(/** @type {any} */ uuid) {
     if (!uuid) return 'transparent';
     let hash = 0;
     for (let i = 0; i < uuid.length; i++) {
@@ -76,21 +90,36 @@
         if (filters.dateFrom && e.timestamp < filters.dateFrom) return false;
         if (filters.dateTo && e.timestamp?.slice(0, 10) > filters.dateTo)
           return false;
+        if (filters.status && e.status !== filters.status && filters.status !== "All Statuses")
+          return false;
         if (!matchSearch(e, filters.search)) return false;
         return true;
       })
       .sort((a, b) => {
-        // 1. Status priority: 'In-progress' items first, 'Approved/Denied/Received/Cancelled' at bottom
-        const bottomStatuses = ['Approved', 'Denied', 'Received', 'Cancelled'];
-        const aBottom = bottomStatuses.includes(a.status);
-        const bBottom = bottomStatuses.includes(b.status);
-        if (aBottom !== bBottom) return aBottom ? 1 : -1;
+        let valA = a[sortCol] || "";
+        let valB = b[sortCol] || "";
+        if (sortCol === 'timestamp' || sortCol === 'date') {
+            valA = a.timestamp || "";
+            valB = b.timestamp || "";
+        } else if (sortCol === 'total' || sortCol === 'price' || sortCol === 'quantity') {
+            valA = Number(valA) || 0;
+            valB = Number(valB) || 0;
+        }
 
-        // 2. Date priority: Newest first
+        if (valA < valB) return sortDir === "asc" ? -1 : 1;
+        if (valA > valB) return sortDir === "asc" ? 1 : -1;
+
+        // Fallbacks
+        if (sortCol !== "status") {
+            const bottomStatuses = ['Approved', 'Denied', 'Received', 'Cancelled'];
+            const aBottom = bottomStatuses.includes(a.status);
+            const bBottom = bottomStatuses.includes(b.status);
+            if (aBottom !== bBottom) return aBottom ? 1 : -1;
+        }
+
         const dateComp = (b.timestamp || "").localeCompare(a.timestamp || "");
         if (dateComp !== 0) return dateComp;
 
-        // 3. Group priority: Keep same orderUUID together
         return (a.orderUUID || "").localeCompare(b.orderUUID || "");
       }),
   );
@@ -227,22 +256,22 @@
 
 <div class="card" style="padding:0;overflow:hidden">
   {#if loading}
-    <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
+    <LoadingIndicator text="Loading orders" />
   {:else}
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Item</th>
-            <th>Company</th>
-            <th>Category</th>
-            <th>Team</th>
-            <th>Date</th>
-            <th class="text-right">Price</th>
-            <th class="text-right">Qty</th>
-            <th class="text-right">Total</th>
-            <th>Status</th>
-            <th class="text-right">Order ID</th>
+            <th class="sortable" onclick={() => toggleSort("item")}>Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("company")}>Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("category")}>Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("team")}>Team {sortCol === "team" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("timestamp")}>Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable text-right" onclick={() => toggleSort("price")}>Price {sortCol === "price" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable text-right" onclick={() => toggleSort("quantity")}>Qty {sortCol === "quantity" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable text-right" onclick={() => toggleSort("total")}>Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("status")}>Status {sortCol === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable text-right" onclick={() => toggleSort("orderUUID")}>Order ID {sortCol === "orderUUID" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
           </tr>
         </thead>
         <tbody>
@@ -271,7 +300,13 @@
                   >{order.category}</span
                 >
               </td>
-              <td>{order.team || "—"}</td>
+              <td>
+                {#if order.team}
+                  <span class="badge {getTeamBadgeClass(order.team)}">{order.team}</span>
+                {:else}
+                  —
+                {/if}
+              </td>
               <td class="text-muted">{order.timestamp?.slice(0, 10) || "—"}</td>
               <td class="text-right monospace">{formatCurrency(order.price)}</td
               >

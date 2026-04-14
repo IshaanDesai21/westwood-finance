@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
-  import { formatCurrency } from "$lib/utils.js";
+  import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
+  import { formatCurrency, formatDate } from "$lib/utils.js";
 
   // ── API Config ──────────────────────────────────────────────────────────────
   const BASE_URL =
@@ -26,6 +27,7 @@
   let unlocked = $state(false);
   let adminPassInput = $state("");
   let authError = $state("");
+  let showPassword = $state(false);
 
   let actionMsg = $state("");
   let actionErr = $state("");
@@ -53,11 +55,10 @@
           id: order.id || order["List UUID"] || `order-${index}`,
           rowIndex: order.rowIndex ?? index + 2,
         }))
-        .sort(
-          (/** @type {any} */ a, /** @type {any} */ b) =>
-            (b.Timestamp || b.timestamp || "").localeCompare(
-              a.Timestamp || a.timestamp || "",
-            ),
+        .sort((/** @type {any} */ a, /** @type {any} */ b) =>
+          (b.Timestamp || b.timestamp || "").localeCompare(
+            a.Timestamp || a.timestamp || "",
+          ),
         );
     } catch (e) {
       error = e instanceof Error ? e.message : "Data loading failed";
@@ -175,14 +176,70 @@
       >
         <div class="form-group" style="margin-bottom:16px">
           <label for="admin-password">Password</label>
-          <input
-            id="admin-password"
-            type="password"
-            bind:value={adminPassInput}
-            placeholder="Enter admin password"
-            autocomplete="current-password"
-            required
-          />
+          <div style="position:relative; display:flex; align-items:center;">
+            <input
+              id="admin-password"
+              type={showPassword ? "text" : "password"}
+              bind:value={adminPassInput}
+              placeholder="Enter admin password"
+              autocomplete="current-password"
+              style="padding-right: 40px;"
+            />
+            <button
+              type="button"
+              onmousedown={() => {
+                showPassword = true;
+              }}
+              onmouseup={() => {
+                showPassword = false;
+              }}
+              onmouseleave={() => {
+                showPassword = false;
+              }}
+              ontouchstart={(e) => {
+                e.preventDefault();
+                showPassword = true;
+              }}
+              ontouchend={(e) => {
+                e.preventDefault();
+                showPassword = false;
+              }}
+              style="position:absolute; right:10px; background:none; border:none; cursor:pointer; color:var(--text-muted); display:flex; padding:4px;"
+              title="Hold to show password"
+              aria-label="Hold to show password"
+            >
+              {#if showPassword}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                  ></path><circle cx="12" cy="12" r="3"></circle></svg
+                >
+              {:else}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path
+                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                  ></path><line x1="1" y1="1" x2="23" y2="23"></line></svg
+                >
+              {/if}
+            </button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary" style="width:100%"
           >Unlock</button
@@ -218,14 +275,13 @@
       In-Progress Orders ({inProgressOrders.length})
     </div>
     <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-      Click <strong>Edit</strong> on any row to update status, UUID, or tracking. Sorted newest first.
+      Click <strong>Edit</strong> on any row to update status, UUID, or tracking.
+      Sorted newest first.
     </p>
 
     <div class="card" style="padding:0;overflow:hidden">
       {#if loading && !orders.length}
-        <div class="empty-state">
-          <span class="spinning">↻</span> Loading orders…
-        </div>
+        <LoadingIndicator text="Loading orders" />
       {:else if inProgressOrders.length === 0}
         <div class="empty-state">
           <div class="icon">✅</div>
@@ -275,14 +331,19 @@
                   </td>
                   <td>{order.Company || order.company || "—"}</td>
                   <td>
-                    <span class="badge badge-{(order.Category || order.category || '').toLowerCase()}"
+                    <span
+                      class="badge badge-{(
+                        order.Category ||
+                        order.category ||
+                        ''
+                      ).toLowerCase()}"
                       >{order.Category || order.category || "—"}</span
                     >
                   </td>
                   <td>{order.Team || order.team || "—"}</td>
                   <td class="text-muted"
-                    >{(order.Timestamp || order.timestamp || "")
-                      .slice(0, 10) || "—"}</td
+                    >{(order.Timestamp || order.timestamp || "").slice(0, 10) ||
+                      "—"}</td
                   >
                   <td class="text-right monospace"
                     >{formatCurrency(
@@ -293,7 +354,9 @@
                     >{order.Quantity || order.quantity || "—"}</td
                   >
                   <td class="text-right monospace" style="font-weight:600"
-                    >{formatCurrency(Number(order.Total || order.total) || 0)}</td
+                    >{formatCurrency(
+                      Number(order.Total || order.total) || 0,
+                    )}</td
                   >
                   <td
                     ><OrderStatusBadge
@@ -302,7 +365,9 @@
                         "Submitted and in review"}
                     /></td
                   >
-                  <td class="text-right monospace" style="font-size:0.72rem;color:var(--text-muted)"
+                  <td
+                    class="text-right monospace"
+                    style="font-size:0.72rem;color:var(--text-muted)"
                     >{order["List UUID"] || order.orderUUID || "—"}</td
                   >
                   <td>
@@ -326,7 +391,14 @@
 <!-- ── Edit Modal ────────────────────────────────────────────────────────────── -->
 {#if editingOrder}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-  <div class="modal-backdrop" onclick={closeEdit} onkeydown={(e) => e.key === 'Escape' && closeEdit()} role="button" tabindex="0" aria-label="Close modal">
+  <div
+    class="modal-backdrop"
+    onclick={closeEdit}
+    onkeydown={(e) => e.key === "Escape" && closeEdit()}
+    role="button"
+    tabindex="0"
+    aria-label="Close modal"
+  >
     <div
       class="modal-card card"
       onclick={(e) => e.stopPropagation()}
@@ -343,7 +415,9 @@
             {editingOrder.Item || editingOrder.item}
           </p>
         </div>
-        <button class="modal-close" onclick={closeEdit} aria-label="Close">✕</button>
+        <button class="modal-close" onclick={closeEdit} aria-label="Close"
+          >✕</button
+        >
       </div>
 
       {#if actionErr}
@@ -360,10 +434,7 @@
         <div class="modal-fields">
           <div class="form-group">
             <label for="edit-status">Status</label>
-            <CustomDropdown
-              options={ORDER_STATUSES}
-              bind:value={editStatus}
-            />
+            <CustomDropdown options={ORDER_STATUSES} bind:value={editStatus} />
           </div>
 
           <div class="form-group">
@@ -412,8 +483,10 @@
           <div class="summary-row">
             <span class="text-muted">Date</span>
             <span
-              >{(editingOrder.Timestamp || editingOrder.timestamp || "")
-                .slice(0, 10) || "—"}</span
+              >{(editingOrder.Timestamp || editingOrder.timestamp || "").slice(
+                0,
+                10,
+              ) || "—"}</span
             >
           </div>
           {#if editingOrder.Notes || editingOrder.notes}
@@ -538,7 +611,9 @@
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 4px;
-    transition: color 0.15s, background 0.15s;
+    transition:
+      color 0.15s,
+      background 0.15s;
   }
   .modal-close:hover {
     color: var(--text);

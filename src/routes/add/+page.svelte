@@ -3,7 +3,10 @@
   import { goto } from "$app/navigation";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
 
-  const teamOptions = TEAMS.map(team => ({ label: team, value: team }));
+  const teamOptions = TEAMS.map((/** @type {string} */ team) => ({
+    label: team,
+    value: team,
+  }));
 
   const API_URL =
     "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
@@ -18,6 +21,7 @@
     notes: "",
     team: "",
     category: "hardware",
+    uuid: "",
   });
 
   let submitting = $state(false);
@@ -60,6 +64,7 @@
         total: String(computedTotal),
         status: "Submitted and in review",
         tracking: "",
+        uuid: form.uuid,
       });
 
       const url = `${API_URL}?${params.toString()}`;
@@ -86,6 +91,7 @@
         notes: "",
         team: "",
         category: "hardware",
+        uuid: "",
       };
 
       setTimeout(() => goto("/orders"), 1500);
@@ -211,7 +217,16 @@
             options={teamOptions} 
             bind:value={form.team} 
             placeholder="Select your team" 
-            required 
+          />
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="ae-uuid">Order ID / UUID (Optional)</label>
+          <input
+            id="ae-uuid"
+            type="text"
+            bind:value={form.uuid}
+            placeholder="Leave blank to auto-generate…"
           />
         </div>
 
@@ -393,24 +408,5 @@
     border-radius: 99px;
     padding: 4px;
     border: 1px solid var(--border);
-  }
-
-  .segmented-control button {
-    padding: 6px 16px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    border-radius: 99px;
-    transition: all 0.2s;
-  }
-  .segmented-control button.active {
-    background: var(--surface);
-    color: var(--text);
-    padding: 6px 16px;
-    box-shadow: var(--shadow-sm);
-    pointer-events: none;
   }
 </style>
