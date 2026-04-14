@@ -1,4 +1,4 @@
-const BASE_URL = "https://script.google.com/macros/s/AKfycbyXV4zW95BNG4oxUkY-efWG6jX9W9JxsdgO3JC8qGfoZ9EmTqjTVPJpnZiHJc1jA7SXiA/exec";
+const BASE_URL = "https://script.google.com/macros/s/AKfycbyN3GVRJLgyyOy35q6FUnnKdVlMxFVTVlpsemhyI8qu6DvXkLhP43zRbxPD_lhJ8nXwXQ/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
 /**
@@ -17,11 +17,12 @@ const SECRET_KEY = "YOUR_SECRET_KEY";
  * @property {string} tracking
  * @property {string} id
  * @property {string} orderUUID
+ * @property {number} rowIndex
  */
 
 /**
  * Global reactive data store for the application.
- * Uses Svelte 5 $state for fine-grained reactivity.
+ * Uses Svelte 5 $state with localStorage persistence for "Instant Load".
  */
 class DataStore {
   /** @type {Order[]} */
@@ -37,13 +38,45 @@ class DataStore {
   /** @type {number | null} */
   lastFetched = $state(/** @type {number|null} */ (null));
 
+  constructor() {
+    // 🏠 Initialize from localStorage for instant boot
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('westwood_finance_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          this.orders = parsed.orders || [];
+          this.funds = parsed.funds || [];
+          this.budget = parsed.budget || null;
+          this.lastFetched = parsed.lastFetched || null;
+        }
+      } catch (e) {
+        console.warn("Failed to load cache:", e);
+      }
+    }
+  }
+
+  /**
+   * Persists current state to localStorage
+   */
+  persist() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('westwood_finance_cache', JSON.stringify({
+        orders: this.orders,
+        funds: this.funds,
+        budget: this.budget,
+        lastFetched: this.lastFetched
+      }));
+    }
+  }
+
   /**
    * Normalizes order data from the API
    * @param {any[]} data 
    * @returns {Order[]}
    */
   normalizeOrders(data) {
-    return data.map(o => ({
+    return data.map((o, index) => ({
       item: o.Item ?? o.item,
       company: o.Company ?? o.company,
       link: o.Link ?? o.link,
@@ -57,42 +90,42 @@ class DataStore {
       status: (o.Status ?? o.status ?? "Submitted and in review").toString().trim(),
       tracking: o.Tracking ?? o.tracking,
       id: o["List UUID"] || o.id || crypto.randomUUID(),
-      orderUUID: o["Order UUID"] || "",
+      orderUUID: o["Order UUID"] || o.orderUUID || "",
+      rowIndex: o.rowIndex ?? (index + 3)
     }));
   }
 
   /**
-   * Main loader for the entire dataset
+   * Performance-optimized loader.
+   * Uses getAllData to fetch everything in ONE request.
    * @param {boolean} force - If true, ignores cache and re-fetches
    */
   async load(force = false) {
-    // If not forced and we have data less than 5 minutes old, skip
-    if (!force && this.orders.length > 0 && this.lastFetched && (Date.now() - this.lastFetched < 300000)) {
+    // If not forced and we have fresh data (under 2 mins), skip background refresh
+    if (!force && this.orders.length > 0 && this.lastFetched && (Date.now() - this.lastFetched < 120000)) {
       return;
     }
 
-    this.loading = true;
+    // Only show loading indicator if we have NO data at all
+    if (this.orders.length === 0) {
+      this.loading = true;
+    }
+    
     this.error = null;
 
     try {
-      const [oRes, fRes, bRes] = await Promise.all([
-        fetch(`${BASE_URL}?action=getOrders&key=${SECRET_KEY}`),
-        fetch(`${BASE_URL}?action=getFunds&key=${SECRET_KEY}`),
-        fetch(`${BASE_URL}?action=getBudget&key=${SECRET_KEY}`),
-      ]);
+      // 🚀 Consolidated 'getAllData' call (Faster Dashboard)
+      const res = await fetch(`${BASE_URL}?action=getAllData&key=${SECRET_KEY}`);
+      if (!res.ok) throw new Error("Network response was not ok");
 
-      if (!oRes.ok || !fRes.ok || !bRes.ok) throw new Error("Network response was not ok");
-
-      const [oData, fData, bData] = await Promise.all([
-        oRes.json(),
-        fRes.json(),
-        bRes.json()
-      ]);
-
-      this.orders = this.normalizeOrders(oData);
-      this.funds = fData; 
-      this.budget = bData;
+      const data = await res.json();
+      
+      this.orders = this.normalizeOrders(data.orders || []);
+      this.funds = data.funds || []; 
+      this.budget = data.budget || null;
       this.lastFetched = Date.now();
+      
+      this.persist();
     } catch (e) {
       this.error = e instanceof Error ? e.message : "Failed to load data";
       console.error("DataStore Load Error:", e);

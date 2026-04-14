@@ -4,10 +4,12 @@
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import { formatCurrency, formatDate } from "$lib/utils.js";
+  import { dataService } from "$lib/dataService.svelte.js";
+
+  /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
   // ── API Config ──────────────────────────────────────────────────────────────
-  const BASE_URL =
-    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbyN3GVRJLgyyOy35q6FUnnKdVlMxFVTVlpsemhyI8qu6DvXkLhP43zRbxPD_lhJ8nXwXQ/exec";
   const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const ORDER_STATUSES = [
@@ -20,9 +22,9 @@
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
-  let orders = $state(/** @type {any[]} */ ([]));
-  let loading = $state(true);
-  let error = $state(/** @type {string|null} */ (null));
+  /** @type {{ orders: Order[], loading: boolean, error: string|null }} */
+  let { orders, loading, error } = $derived(dataService);
+  let syncing = $state(false);
 
   let unlocked = $state(false);
   let adminPassInput = $state("");
@@ -33,7 +35,7 @@
   let actionErr = $state("");
 
   // ── Modal state ─────────────────────────────────────────────────────────────
-  /** @type {any|null} */
+  /** @type {Order|null} */
   let editingOrder = $state(null);
   let editStatus = $state("");
   let editTracking = $state("");
@@ -41,36 +43,15 @@
   let editSaving = $state(false);
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
-  async function loadData() {
-    loading = true;
-    error = null;
-    try {
-      const res = await fetch(`${BASE_URL}?action=getOrders&key=${SECRET_KEY}`);
-      if (!res.ok) throw new Error("API Fetch Failed");
-      const data = await res.json();
-
-      orders = data
-        .map((/** @type {any} */ order, /** @type {number} */ index) => ({
-          ...order,
-          id: order.id || order["List UUID"] || `order-${index}`,
-          rowIndex: order.rowIndex ?? index + 2,
-        }))
-        .sort((/** @type {any} */ a, /** @type {any} */ b) =>
-          (b.Timestamp || b.timestamp || "").localeCompare(
-            a.Timestamp || a.timestamp || "",
-          ),
-        );
-    } catch (e) {
-      error = e instanceof Error ? e.message : "Data loading failed";
-      console.error(e);
-    } finally {
-      loading = false;
-    }
-  }
-
   onMount(() => {
-    loadData();
+    dataService.load(); // Uses persistent cache for instant load
   });
+
+  async function sync() {
+    syncing = true;
+    await dataService.load(true);
+    syncing = false;
+  }
 
   function tryUnlock() {
     const cleanPass = adminPassInput.trim();
@@ -84,22 +65,12 @@
     }
   }
 
-  // ── Derived ──────────────────────────────────────────────────────────────────
-  let inProgressOrders = $derived(
-    orders.filter(
-      (o) =>
-        (o.Status || o.status) !== "Received" &&
-        (o.Status || o.status) !== "Denied" &&
-        (o.Status || o.status) !== "Cancelled",
-    ),
-  );
-
   // ── Modal helpers ─────────────────────────────────────────────────────────────
-  function openEdit(/** @type {any} */ order) {
+  function openEdit(/** @type {Order} */ order) {
     editingOrder = order;
-    editStatus = order.Status || order.status || "Submitted and in review";
-    editTracking = order.Tracking || order.tracking || "";
-    editUUID = order["List UUID"] || order.orderUUID || "";
+    editStatus = order.status || "Submitted and in review";
+    editTracking = order.tracking || "";
+    editUUID = order.orderUUID || "";
     editSaving = false;
     actionMsg = "";
     actionErr = "";
@@ -119,7 +90,7 @@
         action: "updateOrderStatus",
         key: SECRET_KEY,
         id: editingOrder.id,
-        rowIndex: editingOrder.rowIndex,
+        rowIndex: editingOrder.rowIndex.toString(),
         status: editStatus,
         tracking: editTracking,
         orderUUID: editUUID,
@@ -129,9 +100,9 @@
       if (!res.ok || result?.error)
         throw new Error(result?.error || "Update failed");
 
-      actionMsg = `✓ "${editingOrder.Item || editingOrder.item}" updated!`;
+      actionMsg = `✓ "${editingOrder.item}" updated!`;
       closeEdit();
-      await loadData();
+      await dataService.load(true); // Force refresh shared store
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Update failed";
     } finally {
@@ -139,7 +110,7 @@
     }
   }
 
-  // Generate a stable hue from an order UUID (matches orders page)
+  // Generate a stable hue from an order UUID
   function getOrderColor(/** @type {string|undefined} */ uuid) {
     if (!uuid) return "transparent";
     let hash = 0;
@@ -159,7 +130,6 @@
   <!-- ── Lock Screen ──────────────────────────────────────────────────────── -->
   <div class="lock-screen">
     <div class="lock-card card">
-      <div class="lock-icon">🔐</div>
       <h1>Admin Console Access</h1>
       <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
         Enter the admin password to access advanced modules.
@@ -252,13 +222,12 @@
   <div class="page-header">
     <h1>Admin <span>Console</span></h1>
     <div style="display:flex;gap:8px;align-items:center">
-      <span class="unlocked-badge">🔓 Unlocked</span>
       <button
         class="btn btn-ghost btn-sm"
-        onclick={loadData}
-        disabled={loading}
+        onclick={sync}
+        disabled={syncing}
       >
-        <span class:spinning={loading}>↻</span> Refresh
+        <span class:spinning={syncing}>↻</span> {syncing ? "Syncing..." : "Refresh Data"}
       </button>
     </div>
   </div>
@@ -272,20 +241,19 @@
 
   <section>
     <div class="section-title" style="margin-bottom:12px">
-      In-Progress Orders ({inProgressOrders.length})
+      Manage All Orders ({orders.length})
     </div>
     <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-      Click <strong>Edit</strong> on any row to update status, UUID, or tracking.
-      Sorted newest first.
+      Manage order statuses, UUIDs, and tracking links. All updates sync directly to Google Sheets.
     </p>
 
     <div class="card" style="padding:0;overflow:hidden">
       {#if loading && !orders.length}
-        <LoadingIndicator text="Loading orders" />
-      {:else if inProgressOrders.length === 0}
+        <LoadingIndicator text="Loading orders from cache..." />
+      {:else if orders.length === 0}
         <div class="empty-state">
-          <div class="icon">✅</div>
-          All orders processed! No pending orders.
+          <div class="icon">📦</div>
+          No orders found in the database.
         </div>
       {:else}
         <div class="table-wrap">
@@ -301,81 +269,46 @@
                 <th class="text-right">Qty</th>
                 <th class="text-right">Total</th>
                 <th>Status</th>
-                <th class="text-right">Order ID</th>
+                <th class="text-right">Order UUID</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {#each inProgressOrders as order (order.id)}
-                {@const orderColor = getOrderColor(
-                  order["List UUID"] || order.orderUUID,
-                )}
-                <tr class="fade-in" style="border-left: 4px solid {orderColor}">
+              {#each orders as order (order.id)}
+                {@const orderColor = getOrderColor(order.orderUUID)}
+                <tr class="fade-in group-row" style="--group-color: {orderColor}">
                   <td>
                     <div style="font-weight:500">
-                      {#if order.Link || order.link}
-                        <a
-                          href={order.Link || order.link}
-                          target="_blank"
-                          rel="noopener">{order.Item || order.item}</a
-                        >
+                      {#if order.link}
+                        <a href={order.link} target="_blank" rel="noopener">{order.item}</a>
                       {:else}
-                        {order.Item || order.item}
+                        {order.item}
                       {/if}
                     </div>
-                    {#if order.Notes || order.notes}
-                      <div style="font-size:0.78rem;color:var(--text-muted)">
-                        {order.Notes || order.notes}
-                      </div>
+                    {#if order.notes}
+                      <div style="font-size:0.78rem;color:var(--text-muted)">{order.notes}</div>
                     {/if}
                   </td>
-                  <td>{order.Company || order.company || "—"}</td>
+                  <td>{order.company || "—"}</td>
                   <td>
-                    <span
-                      class="badge badge-{(
-                        order.Category ||
-                        order.category ||
-                        ''
-                      ).toLowerCase()}"
-                      >{order.Category || order.category || "—"}</span
-                    >
+                    <span class="badge badge-{(order.category || '').toLowerCase()}">
+                      {order.category || "—"}
+                    </span>
                   </td>
-                  <td>{order.Team || order.team || "—"}</td>
-                  <td class="text-muted"
-                    >{(order.Timestamp || order.timestamp || "").slice(0, 10) ||
-                      "—"}</td
-                  >
-                  <td class="text-right monospace"
-                    >{formatCurrency(
-                      Number(order.Price || order.price) || 0,
-                    )}</td
-                  >
-                  <td class="text-right"
-                    >{order.Quantity || order.quantity || "—"}</td
-                  >
-                  <td class="text-right monospace" style="font-weight:600"
-                    >{formatCurrency(
-                      Number(order.Total || order.total) || 0,
-                    )}</td
-                  >
-                  <td
-                    ><OrderStatusBadge
-                      status={order.Status ||
-                        order.status ||
-                        "Submitted and in review"}
-                    /></td
-                  >
-                  <td
-                    class="text-right monospace"
-                    style="font-size:0.72rem;color:var(--text-muted)"
-                    >{order["List UUID"] || order.orderUUID || "—"}</td
-                  >
+                  <td>{order.team || "—"}</td>
+                  <td class="text-muted">{(order.timestamp || "").slice(0, 10) || "—"}</td>
+                  <td class="text-right monospace">{formatCurrency(order.price)}</td>
+                  <td class="text-right">{order.quantity || "—"}</td>
+                  <td class="text-right monospace" style="font-weight:600">
+                    {formatCurrency(order.total)}
+                  </td>
+                  <td><OrderStatusBadge status={order.status} /></td>
+                  <td class="text-right monospace" style="font-size:0.72rem;color:var(--text-muted)">
+                    {order.orderUUID || "—"}
+                  </td>
                   <td>
-                    <button
-                      class="btn btn-primary btn-xs"
-                      onclick={() => openEdit(order)}
-                    >
-                      Edit
+                    <button class="btn btn-primary btn-edit" onclick={() => openEdit(order)}>
+                      Manage
                     </button>
                   </td>
                 </tr>
@@ -412,25 +345,17 @@
         <div>
           <h2 style="margin:0">Edit Order</h2>
           <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">
-            {editingOrder.Item || editingOrder.item}
+            {editingOrder.item}
           </p>
         </div>
-        <button class="modal-close" onclick={closeEdit} aria-label="Close"
-          >✕</button
-        >
+        <button class="modal-close" onclick={closeEdit} aria-label="Close">✕</button>
       </div>
 
       {#if actionErr}
         <div class="error-bar" style="margin-bottom:16px">{actionErr}</div>
       {/if}
 
-      <form
-        onsubmit={(e) => {
-          e.preventDefault();
-          saveEdit();
-        }}
-        id="edit-order-form"
-      >
+      <form onsubmit={(e) => { e.preventDefault(); saveEdit(); }} id="edit-order-form">
         <div class="modal-fields">
           <div class="form-group">
             <label for="edit-status">Status</label>
@@ -439,74 +364,27 @@
 
           <div class="form-group">
             <label for="edit-uuid">Order UUID</label>
-            <input
-              id="edit-uuid"
-              type="text"
-              bind:value={editUUID}
-              placeholder="e.g. ORD-2026-001"
-            />
+            <input id="edit-uuid" type="text" bind:value={editUUID} placeholder="e.g. ORD-2026-001" />
           </div>
 
           <div class="form-group" style="grid-column: 1 / -1">
             <label for="edit-tracking">Tracking Link / Number</label>
-            <input
-              id="edit-tracking"
-              type="text"
-              bind:value={editTracking}
-              placeholder="e.g. https://track.ups.com/... or 1Z999AA10123456784"
-            />
+            <input id="edit-tracking" type="text" bind:value={editTracking} placeholder="e.g. UPS/Status..." />
           </div>
         </div>
 
-        <!-- Order details summary -->
         <div class="order-summary">
-          <div class="summary-row">
-            <span class="text-muted">Company</span>
-            <span>{editingOrder.Company || editingOrder.company || "—"}</span>
-          </div>
-          <div class="summary-row">
-            <span class="text-muted">Team</span>
-            <span>{editingOrder.Team || editingOrder.team || "—"}</span>
-          </div>
-          <div class="summary-row">
-            <span class="text-muted">Category</span>
-            <span>{editingOrder.Category || editingOrder.category || "—"}</span>
-          </div>
-          <div class="summary-row">
-            <span class="text-muted">Total</span>
-            <span class="monospace" style="font-weight:700;color:#6bcb77"
-              >{formatCurrency(
-                Number(editingOrder.Total || editingOrder.total) || 0,
-              )}</span
-            >
-          </div>
-          <div class="summary-row">
-            <span class="text-muted">Date</span>
-            <span
-              >{(editingOrder.Timestamp || editingOrder.timestamp || "").slice(
-                0,
-                10,
-              ) || "—"}</span
-            >
-          </div>
-          {#if editingOrder.Notes || editingOrder.notes}
-            <div class="summary-row" style="grid-column:1/-1">
-              <span class="text-muted">Notes</span>
-              <span>{editingOrder.Notes || editingOrder.notes}</span>
-            </div>
-          {/if}
+          <div class="summary-row"><span class="text-muted">Company</span><span>{editingOrder.company || "—"}</span></div>
+          <div class="summary-row"><span class="text-muted">Team</span><span>{editingOrder.team || "—"}</span></div>
+          <div class="summary-row"><span class="text-muted">Category</span><span>{editingOrder.category || "—"}</span></div>
+          <div class="summary-row"><span class="text-muted">Total</span><span class="monospace" style="font-weight:700;color:#6bcb77">{formatCurrency(editingOrder.total)}</span></div>
         </div>
 
         <div class="modal-actions">
           <button type="submit" class="btn btn-primary" disabled={editSaving}>
             {editSaving ? "Saving…" : "Save Changes"}
           </button>
-          <button
-            type="button"
-            class="btn btn-ghost"
-            onclick={closeEdit}
-            disabled={editSaving}
-          >
+          <button type="button" class="btn btn-ghost" onclick={closeEdit} disabled={editSaving}>
             Cancel
           </button>
         </div>
@@ -529,26 +407,39 @@
     padding: 40px;
     text-align: center;
   }
-  .lock-icon {
-    font-size: 3rem;
-    margin-bottom: 20px;
-  }
 
-  .unlocked-badge {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #6bcb77;
-    background: rgba(107, 203, 119, 0.1);
-    padding: 4px 10px;
-    border-radius: 99px;
-    border: 1px solid rgba(107, 203, 119, 0.3);
+  /* Group Indicator Line */
+  .group-row td:first-child {
+    position: relative;
+    padding-left: 20px;
+  }
+  .group-row td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 4px;
+    background: var(--group-color);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 2px 0 6px var(--group-color);
+    opacity: 0.8;
   }
 
   /* ── Table ────────────────────────────────────────────────────────────────── */
-  .btn-xs {
-    font-size: 0.7rem;
-    padding: 3px 10px;
-    white-space: nowrap;
+  .btn-edit {
+    padding: 6px 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 6px;
+    background: var(--primary);
+    box-shadow: 0 2px 8px rgba(78, 154, 241, 0.25);
+    transition: all 0.2s ease;
+  }
+  .btn-edit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(78, 154, 241, 0.4);
+    filter: brightness(1.1);
   }
 
   /* ── Modal ────────────────────────────────────────────────────────────────── */
@@ -563,16 +454,6 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
-    animation: fadeIn 0.15s ease;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
   }
 
   .modal-card {
@@ -580,20 +461,8 @@
     max-width: 560px;
     padding: 32px;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
-    animation: slideUp 0.2s ease;
     max-height: 90vh;
     overflow-y: auto;
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(16px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
   }
 
   .modal-header {
@@ -611,13 +480,6 @@
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 4px;
-    transition:
-      color 0.15s,
-      background 0.15s;
-  }
-  .modal-close:hover {
-    color: var(--text);
-    background: var(--surface-2);
   }
 
   .modal-fields {
@@ -625,12 +487,6 @@
     grid-template-columns: 1fr 1fr;
     gap: 16px;
     margin-bottom: 20px;
-  }
-
-  @media (max-width: 480px) {
-    .modal-fields {
-      grid-template-columns: 1fr;
-    }
   }
 
   .order-summary {
