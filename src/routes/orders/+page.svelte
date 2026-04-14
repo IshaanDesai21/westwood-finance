@@ -22,8 +22,8 @@
   });
   let syncing = $state(false);
 
-  let sortCol = $state("timestamp");
-  let sortDir = $state("desc");
+  let sortCol = $state("status");
+  let sortDir = $state("asc");
 
   function toggleSort(/** @type {string} */ col) {
     if (sortCol === col) {
@@ -96,6 +96,32 @@
         return true;
       })
       .sort((a, b) => {
+        // Define priority for statuses
+        const STATUS_PRIORITY = {
+          "Submitted and in review": 0,
+          "Approved": 1,
+          "Ordered": 2,
+          "Received": 3,
+          "Denied": 4,
+          "Cancelled": 5
+        };
+
+        /** @param {string} s */
+        const getPriority = (s) => (/** @type {Record<string, number>} */ (STATUS_PRIORITY))[s] ?? 99;
+
+        // If we are sorting by status (the default), handle priority then date
+        if (sortCol === "status") {
+          const priorityA = getPriority(a.status);
+          const priorityB = getPriority(b.status);
+          
+          if (priorityA !== priorityB) {
+            return sortDir === "asc" ? priorityA - priorityB : priorityB - priorityA;
+          }
+          // If priorities are equal, fallback to timestamp descending (newest first)
+          return (b.timestamp || "").localeCompare(a.timestamp || "");
+        }
+
+        // Otherwise handle standard manual sorting
         let valA = a[sortCol] || "";
         let valB = b[sortCol] || "";
         if (sortCol === 'timestamp' || sortCol === 'date') {
@@ -109,18 +135,8 @@
         if (valA < valB) return sortDir === "asc" ? -1 : 1;
         if (valA > valB) return sortDir === "asc" ? 1 : -1;
 
-        // Fallbacks
-        if (sortCol !== "status") {
-            const bottomStatuses = ['Approved', 'Denied', 'Received', 'Cancelled'];
-            const aBottom = bottomStatuses.includes(a.status);
-            const bBottom = bottomStatuses.includes(b.status);
-            if (aBottom !== bBottom) return aBottom ? 1 : -1;
-        }
-
-        const dateComp = (b.timestamp || "").localeCompare(a.timestamp || "");
-        if (dateComp !== 0) return dateComp;
-
-        return (a.orderUUID || "").localeCompare(b.orderUUID || "");
+        // Final fallback for all sorts: newest first
+        return (b.timestamp || "").localeCompare(a.timestamp || "");
       }),
   );
 

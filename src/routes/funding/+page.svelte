@@ -393,7 +393,7 @@
     <LoadingIndicator />
   {:else if !budget}
     <div class="empty-state card">
-      <div class="icon">📊</div>
+      <div class="icon"></div>
       No budget data available.
     </div>
   {:else}

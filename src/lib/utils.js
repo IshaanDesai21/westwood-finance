@@ -63,7 +63,10 @@ export const CATEGORIES = ['hardware', 'software', 'outreach', 'food', 'miscella
 /** Valid teams */
 export const TEAMS = ['FRC', 'WWROBO', 'Slingshot', 'Atlatl', 'Kunai', 'Hunga Munga'];
 
-/** Helper for team badge CSS classes */
+/** 
+ * Helper for team badge CSS classes 
+ * @param {string} team 
+ */
 export function getTeamBadgeClass(team) {
   if (!team || team === 'All') return '';
   return `badge-${team.toString().toLowerCase().trim().replace(/\s+/g, '-')}`;
