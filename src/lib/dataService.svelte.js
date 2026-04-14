@@ -1,4 +1,4 @@
-const BASE_URL = "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
+const BASE_URL = "https://script.google.com/macros/s/AKfycbyXV4zW95BNG4oxUkY-efWG6jX9W9JxsdgO3JC8qGfoZ9EmTqjTVPJpnZiHJc1jA7SXiA/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
 /**
