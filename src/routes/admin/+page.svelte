@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
+  import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import {
     orders,
     loading,
@@ -278,11 +279,10 @@
                 <div class="control-row">
                   <div class="form-group" style="flex:1;min-width:200px">
                     <label for="status-{order.id}">Change Status</label>
-                    <select id="status-{order.id}" bind:value={st.status}>
-                      {#each ORDER_STATUSES as s}
-                        <option value={s}>{s}</option>
-                      {/each}
-                    </select>
+                    <CustomDropdown 
+                      options={ORDER_STATUSES} 
+                      bind:value={st.status} 
+                    />
                   </div>
 
                   {#if st.status === "Ordered"}

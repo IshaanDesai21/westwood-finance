@@ -1,5 +1,5 @@
-<script>
   import { onMount } from 'svelte';
+  import CustomDropdown from '$lib/components/CustomDropdown.svelte';
   import {
     fundraising, sponsors, grants, clubDues, other, loading, error,
     loadFunding, totalRaised,
@@ -204,11 +204,11 @@
           </div>
           <div class="form-group">
             <label for="sp-type">Contribution Type *</label>
-            <select id="sp-type" bind:value={spForm.contributionType} required>
-              {#each CONTRIBUTION_TYPES as t}
-                <option value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>
-              {/each}
-            </select>
+            <CustomDropdown 
+              options={CONTRIBUTION_TYPES} 
+              bind:value={spForm.contributionType} 
+              required 
+            />
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label for="sp-notes">Notes</label>
@@ -246,11 +246,11 @@
           </div>
           <div class="form-group">
             <label for="gr-status">Status *</label>
-            <select id="gr-status" bind:value={grForm.status} required>
-              {#each GRANT_STATUSES as s}
-                <option value={s}>{s}</option>
-              {/each}
-            </select>
+            <CustomDropdown 
+              options={GRANT_STATUSES} 
+              bind:value={grForm.status} 
+              required 
+            />
           </div>
           <div class="form-group">
             <label for="gr-deadline">Deadline</label>
