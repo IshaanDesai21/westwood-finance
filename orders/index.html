@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="text-scale" content="scale" />
+		<link href="../_app/immutable/entry/start.CdPkiXXY.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/CAlSApfC.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/BxGYdVSg.js" rel="modulepreload">
+		<link href="../_app/immutable/entry/app.ZV1Kc-Ox.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/DxLN9Q9A.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/v_jBEYI6.js" rel="modulepreload">
+		<link href="../_app/immutable/nodes/0.B2abQalh.js" rel="modulepreload">
+		<link href="../_app/immutable/nodes/6.BHiwQnf1.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/BuJh4kwo.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/BHrNzQ4E.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/CgBXsE5h.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/CBSc0kZz.js" rel="modulepreload">
+		<!--12qhfyh--><meta name="description" content="Finance management system for Westwood Robotics"/><!----><!--1c7g62i--><!----><title>Orders — Westwood Finance</title>
+		<link href="../_app/immutable/assets/0.BUHoDP3F.css" rel="stylesheet">
+		<link href="../_app/immutable/assets/CustomDropdown.B2zcY2-h.css" rel="stylesheet">
+		<link href="../_app/immutable/assets/LoadingIndicator.CBNwqRxH.css" rel="stylesheet">
+		<link href="../_app/immutable/assets/OrderStatusBadge._I-HVO4V.css" rel="stylesheet">
+		<link href="../_app/immutable/assets/6.V8ZLLVHE.css" rel="stylesheet">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents"><!--[--><!--[0--><!--[--><div class="app-shell"><aside class="sidebar svelte-129hoe0"><div class="sidebar-brand svelte-129hoe0"><span class="brand-icon svelte-129hoe0">W</span> <div><div class="brand-name svelte-129hoe0">Westwood</div> <div class="brand-sub svelte-129hoe0">Finance</div></div></div> <nav class="sidebar-nav svelte-129hoe0"><!--[--><a href="/" class="nav-link svelte-129hoe0"><span class="nav-icon svelte-129hoe0">◈</span> <span>Dashboard</span></a><a href="/orders" class="nav-link svelte-129hoe0"><span class="nav-icon svelte-129hoe0">☷</span> <span>Orders</span></a><a href="/add" class="nav-link svelte-129hoe0"><span class="nav-icon svelte-129hoe0">+</span> <span>Add Expense</span></a><a href="/stats" class="nav-link svelte-129hoe0"><span class="nav-icon svelte-129hoe0">◎</span> <span>Analytics</span></a><a href="/funding" class="nav-link svelte-129hoe0"><span class="nav-icon svelte-129hoe0">◆</span> <span>Funding</span></a><a href="/admin" class="nav-link svelte-129hoe0"><span class="nav-icon svelte-129hoe0">⚙</span> <span>Admin Console</span></a><!--]--></nav> <div class="sidebar-footer svelte-129hoe0"><span class="text-muted" style="font-size:0.75rem">Westwood Robotics © 2025</span></div></aside><!----> <main class="main-content"><!--[--><div class="page-header"><h1>Orders</h1> <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="export-csv-btn">↓ CSV</button> <button class="btn btn-ghost btn-sm" id="export-pdf-btn">↓ PDF</button> <button class="btn btn-ghost btn-sm"><span>↻</span> Sync</button> <a href="/admin" class="btn btn-ghost btn-sm">🔐 Manage Status</a> <a href="https://docs.google.com/spreadsheets/d/1NpbvcOCyG7NZxLWVYu3aqHqw57Zwh3DxD7_UpGxHcVE/view?gid=0#gid=0" target="_blank" class="btn btn-primary btn-sm">Open Sheet</a></div></div> <!--[-1--><!--]--> <div class="filter-bar card svelte-m9tjun"><div class="filter-row svelte-m9tjun"><div class="form-group" style="flex:2; min-width:180px"><label for="filter-search">Search</label> <input id="filter-search" type="search" placeholder="Item name, notes…" value=""/></div> <div class="form-group" style="flex:1; min-width:160px"><label for="filter-category">Category</label> <div class="custom-dropdown svelte-h0x55e"><button type="button" class="dropdown-trigger svelte-h0x55e" aria-haspopup="listbox" aria-expanded="false"><span class="label svelte-h0x55e">All Categories</span> <span class="chevron svelte-h0x55e"><svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></button> <!--[-1--><!--]--></div><!----></div> <div class="form-group"><label for="filter-company">Company</label> <input id="filter-company" type="text" placeholder="Any company" value=""/></div> <div class="form-group" style="flex:1; min-width:160px"><label for="filter-team">Team</label> <div class="custom-dropdown svelte-h0x55e"><button type="button" class="dropdown-trigger svelte-h0x55e" aria-haspopup="listbox" aria-expanded="false"><span class="label svelte-h0x55e">All Teams</span> <span class="chevron svelte-h0x55e"><svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></button> <!--[-1--><!--]--></div><!----></div> <div class="form-group" style="flex:1; min-width:160px"><label for="filter-status">Status</label> <div class="custom-dropdown svelte-h0x55e"><button type="button" class="dropdown-trigger svelte-h0x55e" aria-haspopup="listbox" aria-expanded="false"><span class="label svelte-h0x55e">All Statuses</span> <span class="chevron svelte-h0x55e"><svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></button> <!--[-1--><!--]--></div><!----></div> <div class="form-group"><label for="filter-from">From Date</label> <input id="filter-from" type="date" value=""/></div> <div class="form-group"><label for="filter-to">To Date</label> <input id="filter-to" type="date" value=""/></div> <div class="form-group" style="justify-content:flex-end; padding-top:20px"><button class="btn btn-ghost btn-sm">Reset</button></div></div></div><!----> <div class="card" style="padding:0;overflow:hidden"><!--[-1--><div class="table-wrap"><table><thead><tr><th class="sortable">Item </th><th class="sortable">Company </th><th class="sortable">Category </th><th class="sortable">Team </th><th class="sortable">Date ↓</th><th class="sortable text-right">Price </th><th class="sortable text-right">Qty </th><th class="sortable text-right">Total </th><th class="sortable">Status </th><th class="sortable text-right">Order ID </th></tr></thead><tbody><!--[--><!--]--><!--[0--><tr><td colspan="9"><div class="empty-state"><div class="icon">📦</div> No orders found</div></td></tr><!--]--></tbody></table></div><!--]--></div> <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:0.85rem"><span class="text-muted">0 of 0 orders</span> <span>Filtered total: <strong>$0.00</strong></span></div><!--]--><!----></main></div><!--]--><!--]--> <!--[-1--><!--]--><!--]-->
+			
+			<script>
+				{
+					__sveltekit_i8rnwx = {
+						base: new URL("..", location).pathname.slice(0, -1)
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("../_app/immutable/entry/start.CdPkiXXY.js"),
+						import("../_app/immutable/entry/app.ZV1Kc-Ox.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 6],
+							data: [null,null],
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>
