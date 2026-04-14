@@ -5,7 +5,7 @@
     options = [], 
     value = $bindable(''), 
     placeholder = 'Select...', 
-    onchange 
+    onchange = undefined
   } = $props();
 
   let isOpen = $state(false);
@@ -15,13 +15,13 @@
     isOpen = !isOpen;
   }
 
-  function select(optValue) {
+  function select(/** @type {string} */ optValue) {
     value = optValue;
     isOpen = false;
     onchange?.({ target: { value: optValue } }); // Mimic native event for compatibility
   }
 
-  function handleClickOutside(event) {
+  function handleClickOutside(/** @type {MouseEvent} */ event) {
     if (dropdownRef && !dropdownRef.contains(event.target)) {
       isOpen = false;
     }
@@ -66,8 +66,10 @@
           class="dropdown-item" 
           class:selected={value === val}
           onclick={() => select(val)}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && select(val)}
           role="option"
           aria-selected={value === val}
+          tabindex="0"
         >
           {label}
         </li>

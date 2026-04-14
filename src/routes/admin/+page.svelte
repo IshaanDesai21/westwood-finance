@@ -2,32 +2,15 @@
   import { onMount } from "svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
-  import {
-    orders,
-    loading,
-    error,
-    loadOrders,
-    updateOrderStatus,
-  } from "$lib/stores/orders.js";
-  import {
-    budgetCategories,
-    budgetTotal,
-    budgetLoading,
-    budgetError,
-    loadBudget,
-    saveBudget,
-  } from "$lib/stores/budget.js";
-  import { api } from "$lib/api.js";
   import { formatCurrency, formatDate } from "$lib/utils.js";
 
+  // ── API Config ──────────────────────────────────────────────────────────────
+  const BASE_URL =
+    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
+  const SECRET_KEY = "YOUR_SECRET_KEY";
+
   const ORDER_STATUSES = ["Submitted and in review", "Ordered", "Received"];
-  const CATEGORIES = [
-    "hardware",
-    "software",
-    "outreach",
-    "food",
-    "miscellaneous",
-  ];
+  const CATEGORIES = ["hardware", "software", "outreach", "food", "miscellaneous"];
 
   const CATEGORY_META =
     /** @type {Record<string, {label:string, color:string, icon:string}>} */ ({
@@ -42,17 +25,18 @@
       },
     });
 
+  // ── State ───────────────────────────────────────────────────────────────────
+  let orders = $state(/** @type {any[]} */ ([]));
+  let budget = $state(/** @type {Record<string,any>|null} */ (null));
+  let loading = $state(true);
+  let error = $state(/** @type {string|null} */ (null));
+
   let unlocked = $state(false);
   let passwordInput = $state("");
   let authError = $state("");
-  let currentPassword = "";
-
-  let updatingRow = $state(/** @type {number|null} */ (null));
-  let actionMsg = $state("");
-  let actionErr = $state("");
 
   // Per-order state for status and tracking inputs
-  /** @type {Record<number, { status: string, tracking: string, saving: boolean, addingExpense: boolean }>} */
+  /** @type {Record<string, { status: string, tracking: string, saving: boolean, addingExpense: boolean }>} */
   let orderState = $state({});
 
   // Local editable copy of budgets
@@ -62,21 +46,47 @@
   let saveMsg = $state("");
   let saveErr = $state("");
 
-  onMount(async () => {
-    loadOrders(true);
-    await loadBudget();
-    resetDraft();
-  });
+  let actionMsg = $state("");
+  let actionErr = $state("");
 
-  function resetDraft() {
-    draftBudgets = { ...$budgetCategories };
+  // ── Data Loading ─────────────────────────────────────────────────────────────
+  async function loadData() {
+    loading = true;
+    error = null;
+    try {
+      const [oRes, bRes] = await Promise.all([
+        fetch(`${BASE_URL}?action=getOrders&key=${SECRET_KEY}`),
+        fetch(`${BASE_URL}?action=getBudget&key=${SECRET_KEY}`),
+      ]);
+
+      if (!oRes.ok || !bRes.ok) throw new Error("API Fetch Failed");
+
+      orders = await oRes.json();
+      budget = await bRes.json();
+      
+      // Initialize draft budgets
+      if (budget?.Total) {
+        draftBudgets = {};
+        for (const cat of CATEGORIES) {
+          draftBudgets[cat] = budget.Total[cat] || 0;
+        }
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Data loading failed";
+      console.error(e);
+    } finally {
+      loading = false;
+    }
   }
 
-  async function tryUnlock() {
+  onMount(() => {
+    loadData();
+  });
+
+  function tryUnlock() {
     if (passwordInput === "/dev3432") {
       unlocked = true;
       authError = "";
-      currentPassword = passwordInput;
       passwordInput = "";
     } else {
       authError = "Incorrect password. Please try again.";
@@ -84,64 +94,83 @@
     }
   }
 
-  // Initialize per-order state from loaded orders
+  // ── Derived logic ───────────────────────────────────────────────────────────
   let inProgressOrders = $derived(
-    $orders.filter((o) => o.status !== "Received"),
+    orders.filter((o) => (o.Status || o.status) !== "Received"),
   );
 
+  let budgetTotalValue = $derived(budget?.Total?.["Final"] || 0);
+  let budgetCategories = $derived(budget?.Total || {});
+
   function getState(/** @type {any} */ order) {
-    if (!orderState[order.id]) {
-      orderState[order.id] = {
-        status: order.status || "Submitted and in review",
-        tracking: order.tracking || "",
+    const id = order["List UUID"] || order.id || order.rowIndex;
+    if (!orderState[id]) {
+      orderState[id] = {
+        status: order.Status || order.status || "Submitted and in review",
+        tracking: order.Tracking || order.tracking || "",
         saving: false,
         addingExpense: false,
       };
     }
-    return orderState[order.id];
+    return orderState[id];
   }
 
+  // ── Actions ─────────────────────────────────────────────────────────────────
   async function saveStatus(/** @type {any} */ order) {
+    const id = order["List UUID"] || order.id || order.rowIndex;
     const st = getState(order);
     st.saving = true;
     actionErr = "";
     actionMsg = "";
     try {
-      await updateOrderStatus(order.rowIndex, st.status, st.tracking);
-      actionMsg = `✓ Status updated for "${order.item}"`;
+      const params = new URLSearchParams({
+        action: "updateOrderStatus",
+        key: SECRET_KEY,
+        id: id,
+        rowIndex: order.rowIndex,
+        status: st.status,
+        tracking: st.tracking
+      });
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || result?.error) throw new Error(result?.error || "Update failed");
+      
+      actionMsg = `✓ Status updated for "${order.Item || order.item}"`;
+      await loadData();
     } catch (e) {
-      actionErr = /** @type {any} */ (e)?.message || String(e);
+      actionErr = e instanceof Error ? e.message : "Update failed";
     } finally {
       st.saving = false;
     }
   }
 
   async function promoteToExpense(/** @type {any} */ order) {
+    const id = order["List UUID"] || order.id || order.rowIndex;
     const st = getState(order);
-    if (!confirm(`Add "${order.item}" as an expense and mark as Received?`))
+    if (!confirm(`Mark "${order.Item || order.item}" as Received and sync to budget?`))
       return;
+    
     st.addingExpense = true;
     actionErr = "";
     actionMsg = "";
     try {
-      // Add to expenses
-      await api.expenses.create({
-        item: order.item,
-        company: order.company,
-        link: order.link,
-        price: order.price,
-        quantity: order.quantity,
-        notes: order.notes,
-        category: CATEGORIES.includes(order.category)
-          ? order.category
-          : "miscellaneous",
-        user: order.user,
+      // Promoting to expense usually means marking as Received
+      const params = new URLSearchParams({
+        action: "updateOrderStatus",
+        key: SECRET_KEY,
+        id: id,
+        rowIndex: order.rowIndex,
+        status: "Received",
+        tracking: st.tracking
       });
-      // Update order status to Received
-      await updateOrderStatus(order.rowIndex, "Received", st.tracking);
-      actionMsg = `✓ "${order.item}" added as an expense and marked Received!`;
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || result?.error) throw new Error(result?.error || "Failed; to promote");
+
+      actionMsg = `✓ "${order.Item || order.item}" marked as Received!`;
+      await loadData();
     } catch (e) {
-      actionErr = /** @type {any} */ (e)?.message || String(e);
+      actionErr = e instanceof Error ? e.message : "Promotion failed";
     } finally {
       st.addingExpense = false;
     }
@@ -152,12 +181,29 @@
     saveMsg = "";
     saveErr = "";
     try {
-      await saveBudget(draftBudgets, currentPassword);
+      const params = new URLSearchParams({
+        action: "saveBudget",
+        key: SECRET_KEY,
+        ...draftBudgets
+      });
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || result?.error) throw new Error(result?.error || "Save failed");
+
       saveMsg = "✓ Budget saved successfully!";
-    } catch (/** @type {any} */ e) {
-      saveErr = e?.message || String(e);
+      await loadData();
+    } catch (e) {
+      saveErr = e instanceof Error ? e.message : "Save failed";
     } finally {
       savingBudget = false;
+    }
+  }
+
+  function resetDraft() {
+    if (budget?.Total) {
+      for (const cat of CATEGORIES) {
+        draftBudgets[cat] = budget.Total[cat] || 0;
+      }
     }
   }
 
@@ -173,7 +219,7 @@
 {#if !unlocked}
   <!-- ── Lock Screen ──────────────────────────────────────────────────────── -->
   <div class="lock-screen">
-    <div class="lock-card">
+    <div class="lock-card card">
       <div class="lock-icon">🔐</div>
       <h1>Admin Console Access</h1>
       <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
@@ -211,17 +257,19 @@
     <h1>Admin <span>Console</span></h1>
     <div style="display:flex;gap:8px;align-items:center">
       <span class="unlocked-badge">🔓 Unlocked</span>
-      <button class="btn btn-ghost btn-sm" onclick={() => { loadOrders(true); loadBudget(); }}>
-        <span>↻</span> Refresh All
+      <button class="btn btn-ghost btn-sm" onclick={loadData} disabled={loading}>
+        <span class:spinning={loading}>↻</span> Refresh All
       </button>
     </div>
   </div>
 
-  <div class="admin-sections">
+  <div class="admin-sections fade-in">
     <!-- ── ORDER MANAGEMENT ─────────────────────────────────────────────── -->
     <section class="admin-section">
       <h2>Order Management</h2>
-      <p class="text-muted" style="margin-bottom:16px;font-size:0.9rem">Update statuses for pending orders.</p>
+      <p class="text-muted" style="margin-bottom:16px;font-size:0.9rem">
+        Update statuses for pending orders and track shipments.
+      </p>
 
       {#if actionErr}
         <div class="error-bar">{actionErr}</div>
@@ -230,7 +278,7 @@
         <div class="success-bar">{actionMsg}</div>
       {/if}
 
-      {#if $loading}
+      {#if loading && !orders.length}
         <div class="empty-state">
           <span class="spinning">↻</span> Loading orders…
         </div>
@@ -245,40 +293,34 @@
         </div>
 
         <div class="orders-list">
-          {#each inProgressOrders as order (order.id)}
+          {#each inProgressOrders as order (order["List UUID"] || order.id || order.rowIndex)}
             {@const st = getState(order)}
             <div class="order-card card fade-in">
               <div class="order-header">
                 <div class="order-info">
                   <div class="order-name">
-                    {#if order.link}
-                      <a href={order.link} target="_blank" rel="noopener">{order.item}</a>
+                    {#if order.Link || order.link}
+                      <a href={order.Link || order.link} target="_blank" rel="noopener">{order.Item || order.item}</a>
                     {:else}
-                      {order.item}
+                      {order.Item || order.item}
                     {/if}
                   </div>
                   <div class="order-meta">
-                    {#if order.company}<span class="meta-chip">🏢 {order.company}</span>{/if}
-                    <span class="meta-chip">📂 {order.category}</span>
-                    <span class="meta-chip">👤 {order.user || "—"}</span>
-                    <span class="meta-chip monospace">{formatCurrency(order.total)}</span>
-                    {#if order.timestamp}<span class="meta-chip text-muted">{order.timestamp?.slice(0, 10)}</span>{/if}
+                    {#if order.Company || order.company}<span class="meta-chip">🏢 {order.Company || order.company}</span>{/if}
+                    <span class="meta-chip">📂 {order.Category || order.category}</span>
+                    <span class="meta-chip">👤 {order.Team || order.user || "—"}</span>
+                    <span class="meta-chip monospace">{formatCurrency(order.Total || order.total)}</span>
                   </div>
-                  {#if order.notes}
-                    <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
-                      {order.notes}
-                    </div>
-                  {/if}
                 </div>
                 <div class="current-status">
-                  <OrderStatusBadge status={order.status || "Submitted and in review"} />
+                  <OrderStatusBadge status={order.Status || order.status || "Submitted and in review"} />
                 </div>
               </div>
 
               <div class="order-controls">
                 <div class="control-row">
                   <div class="form-group" style="flex:1;min-width:200px">
-                    <label for="status-{order.id}">Change Status</label>
+                    <label for="status-{order.rowIndex}">Change Status</label>
                     <CustomDropdown 
                       options={ORDER_STATUSES} 
                       bind:value={st.status} 
@@ -287,8 +329,8 @@
 
                   {#if st.status === "Ordered"}
                     <div class="form-group" style="flex:2;min-width:200px">
-                      <label for="tracking-{order.id}">Tracking Info <span class="text-muted">(optional)</span></label>
-                      <input id="tracking-{order.id}" type="text" bind:value={st.tracking} placeholder="Tracking number or link" />
+                      <label for="tracking-{order.rowIndex}">Tracking Info</label>
+                      <input id="tracking-{order.rowIndex}" type="text" bind:value={st.tracking} placeholder="Tracking number or link" />
                     </div>
                   {/if}
                 </div>
@@ -298,19 +340,13 @@
                     {st.saving ? "Saving…" : "Update Status"}
                   </button>
 
-                  {#if st.status === "Ordered" || order.status === "Ordered"}
-                    <button class="btn btn-expense btn-sm" onclick={() => promoteToExpense(order)} disabled={st.addingExpense} title="Add this order as an expense and mark it Received">
-                      {st.addingExpense ? "Adding…" : "📋 Add as Expense"}
+                  {#if st.status === "Ordered" || (order.Status || order.status) === "Ordered"}
+                    <button class="btn btn-expense btn-sm" onclick={() => promoteToExpense(order)} disabled={st.addingExpense}>
+                      {st.addingExpense ? "Adding…" : "📋 Mark Received"}
                     </button>
                   {/if}
                 </div>
               </div>
-
-              {#if st.tracking && order.status === "Ordered"}
-                <div class="tracking-info">
-                  🚚 Tracking: <span class="monospace">{st.tracking}</span>
-                </div>
-              {/if}
             </div>
           {/each}
         </div>
@@ -321,18 +357,15 @@
     <section class="admin-section">
       <div style="border-top:1px solid var(--border); margin: 32px 0;"></div>
       <h2>Budget Settings</h2>
-      <p class="text-muted" style="margin-bottom:16px;font-size:0.9rem">Adjust category budget allocations.</p>
+      <p class="text-muted" style="margin-bottom:16px;font-size:0.9rem">Adjust category budget allocations for the season.</p>
 
       <div class="manager-layout">
         <div class="card editor-card">
           <h3 style="margin-bottom:4px">Category Budgets</h3>
           <p class="text-muted" style="font-size:0.85rem;margin-bottom:24px">
-            Set the spending budget for each category. These are reflected on the dashboard.
+            Set the spending budget for each category.
           </p>
 
-          {#if $budgetError}
-            <div class="error-bar">{$budgetError}</div>
-          {/if}
           {#if saveErr}
             <div class="error-bar">{saveErr}</div>
           {/if}
@@ -340,7 +373,7 @@
             <div class="success-bar">{saveMsg}</div>
           {/if}
 
-          {#if $budgetLoading && Object.keys(draftBudgets).length === 0}
+          {#if loading && !budget}
             <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
           {:else}
             <div class="budget-editor">
@@ -351,10 +384,9 @@
                     <span style="font-weight:600;color:{meta.color}">{meta.label}</span>
                   </div>
                   <div class="form-group" style="flex:1">
-                    <label for="budget-{cat}" class="sr-only">{meta.label} budget</label>
                     <div class="input-dollar">
                       <span class="dollar-sign">$</span>
-                      <input id="budget-{cat}" type="number" min="0" step="1" bind:value={draftBudgets[cat]} placeholder="0" />
+                      <input type="number" min="0" step="1" bind:value={draftBudgets[cat]} placeholder="0" />
                     </div>
                   </div>
                 </div>
@@ -376,15 +408,15 @@
         </div>
 
         <div>
-          <div class="section-title" style="margin-bottom:12px">Current Budget Allocation</div>
+          <div class="section-title" style="margin-bottom:12px">Current Allocation</div>
           <div class="allocation-cards">
             {#each Object.entries(CATEGORY_META) as [cat, meta]}
-              {@const budget = $budgetCategories[cat] || 0}
-              {@const pct = $budgetTotal > 0 ? (budget / $budgetTotal) * 100 : 0}
+              {@const current = budgetCategories[cat] || 0}
+              {@const pct = budgetTotalValue > 0 ? (current / budgetTotalValue) * 100 : 0}
               <div class="card alloc-card">
                 <div class="alloc-icon">{meta.icon}</div>
                 <div class="alloc-label" style="color:{meta.color}">{meta.label}</div>
-                <div class="alloc-amount">{formatCurrency(budget)}</div>
+                <div class="alloc-amount">{formatCurrency(current)}</div>
                 <div class="alloc-bar-track">
                   <div class="alloc-bar-fill" style="width:{pct}%;background:{meta.color}"></div>
                 </div>
@@ -396,10 +428,7 @@
           <div class="card total-card">
             <div class="card-title">Total Season Budget</div>
             <div style="font-size:2rem;font-weight:700;color:var(--primary)">
-              {formatCurrency($budgetTotal)}
-            </div>
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
-              Across {Object.keys(CATEGORY_META).length} categories
+              {formatCurrency(budgetTotalValue)}
             </div>
           </div>
         </div>
@@ -409,258 +438,83 @@
 {/if}
 
 <style>
-  /* ── Lock Screen ──────────────────────────────────────────────────────────── */
+  .admin-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
   .lock-screen {
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     min-height: 70vh;
   }
   .lock-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 48px 40px;
     width: 100%;
     max-width: 400px;
+    padding: 40px;
     text-align: center;
-    box-shadow: var(--shadow-lg);
   }
-  .lock-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-  }
-  .lock-card h1 {
-    margin-bottom: 8px;
-  }
+  .lock-icon { font-size: 3rem; margin-bottom: 20px; }
 
-  /* ── Admin Panel ──────────────────────────────────────────────────────────── */
   .unlocked-badge {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #6bcb77;
-    background: rgba(107, 203, 119, 0.12);
-    border: 1px solid rgba(107, 203, 119, 0.3);
-    padding: 4px 10px;
-    border-radius: 999px;
-  }
-
-  .admin-section h2 {
-    font-size: 1.5rem;
+    font-size: 0.75rem;
     font-weight: 700;
-    margin-bottom: 4px;
-    color: var(--text);
+    color: #6bcb77;
+    background: rgba(107, 203, 119, 0.1);
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid rgba(107, 203, 119, 0.3);
   }
 
+  /* Order Management */
   .orders-list {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-top: 12px;
   }
-
   .order-card {
-    padding: 20px;
-    border-left: 3px solid var(--primary);
-    transition: border-color 0.2s;
+    padding: 24px;
   }
-
   .order-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
   }
-
-  .order-name {
-    font-size: 1.05rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .order-name a {
-    color: var(--primary);
-  }
-
-  .order-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .meta-chip {
-    font-size: 0.78rem;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    padding: 2px 8px;
-    border-radius: 999px;
-    color: var(--text-muted);
-  }
-
-  .current-status {
-    flex-shrink: 0;
-  }
+  .order-name { font-size: 1.1rem; font-weight: 700; }
+  .order-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .meta-chip { font-size: 0.7rem; background: var(--surface-2); padding: 2px 8px; border-radius: 4px; color: var(--text-muted); }
 
   .order-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-
-  .control-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-  }
-
-  .action-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .btn-expense {
-    background: rgba(107, 203, 119, 0.15);
-    color: #6bcb77;
-    border: 1px solid rgba(107, 203, 119, 0.3);
-  }
-  .btn-expense:hover {
-    background: rgba(107, 203, 119, 0.25);
-    color: #6bcb77;
-  }
-
-  .tracking-info {
-    margin-top: 12px;
-    font-size: 0.82rem;
-    color: var(--text-muted);
     background: var(--surface-2);
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-  }
-
-  .success-bar {
-    background: rgba(107, 203, 119, 0.12);
-    border: 1px solid rgba(107, 203, 119, 0.3);
-    color: #6bcb77;
-    padding: 10px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 0.875rem;
-    margin-bottom: 16px;
-  }
-
-  /* ── Manager Panel ────────────────────────────────────────────────────────── */
-  .manager-layout {
-    display: grid;
-    grid-template-columns: 420px 1fr;
-    gap: 24px;
-    align-items: start;
-  }
-  @media (max-width: 1000px) {
-    .manager-layout {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .editor-card {
-    padding: 28px;
-  }
-
-  .budget-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .budget-editor-row {
-    display: grid;
-    grid-template-columns: 160px 1fr;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .cat-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-  }
-  .cat-icon {
-    font-size: 1.1rem;
-  }
-
-  .input-dollar {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  .dollar-sign {
-    position: absolute;
-    left: 12px;
-    color: var(--text-muted);
-    font-weight: 600;
-    pointer-events: none;
-  }
-  .input-dollar input {
-    padding-left: 28px;
-  }
-
-  .total-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  /* ── Allocation Cards ─────────────────────────────────────────────────────── */
-  .allocation-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  .alloc-card {
     padding: 16px;
-    text-align: center;
+    border-radius: var(--radius-md);
   }
-  .alloc-icon {
-    font-size: 1.5rem;
-    margin-bottom: 8px;
-  }
-  .alloc-label {
-    font-weight: 600;
-    font-size: 0.85rem;
-    margin-bottom: 4px;
-  }
-  .alloc-amount {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin-bottom: 10px;
-  }
-  .alloc-bar-track {
-    height: 4px;
-    background: var(--surface-2);
-    border-radius: 999px;
-    overflow: hidden;
-    margin-bottom: 6px;
-  }
-  .alloc-bar-fill {
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.4s ease;
-  }
-  .alloc-pct {
-    font-size: 0.75rem;
-  }
+  .control-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .action-row { display: flex; gap: 12px; }
 
-  .total-card {
-    padding: 20px;
-    text-align: center;
-    border: 1px solid var(--primary);
-    background: var(--primary-glow);
-  }
+  /* Budget Management */
+  .manager-layout { display: grid; grid-template-columns: 1fr 300px; gap: 24px; }
+  @media (max-width: 900px) { .manager-layout { grid-template-columns: 1fr; } }
+
+  .budget-editor { display: flex; flex-direction: column; gap: 12px; }
+  .budget-editor-row { display: flex; align-items: center; gap: 16px; padding: 12px; border-bottom: 1px solid var(--border); }
+  .cat-label { display: flex; align-items: center; gap: 10px; width: 140px; }
+  .total-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 16px; padding: 12px; background: var(--surface-2); border-radius: 8px; }
+
+  .allocation-cards { display: grid; gap: 12px; margin-top: 10px; }
+  .alloc-card { padding: 12px; position: relative; }
+  .alloc-amount { font-weight: 700; margin: 4px 0; }
+  .alloc-bar-track { height: 4px; background: var(--surface-2); border-radius: 99px; }
+  .alloc-bar-fill { height: 100%; border-radius: 99px; }
+  .alloc-pct { font-size: 0.7rem; margin-top: 4px; }
+
+  .btn-expense { background: #4e9af1; color: white; border: none; }
+  .btn-expense:hover { background: #3a85db; }
+
+  .input-dollar { position: relative; display: flex; align-items: center; }
+  .dollar-sign { position: absolute; left: 10px; color: var(--text-muted); }
+  .input-dollar input { padding-left: 24px !important; }
 </style>

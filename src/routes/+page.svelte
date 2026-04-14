@@ -1,94 +1,106 @@
 <script>
-  import { onMount } from 'svelte';
-  import StatCard from '$lib/components/StatCard.svelte';
-  import ExpenseTable from '$lib/components/ExpenseTable.svelte';
-  import { expenses, loading as expensesLoading, error as expensesError, loadExpenses } from '$lib/stores/expenses.js';
-  import { orders, loading as ordersLoading, error as ordersError, lastSynced, loadOrders } from '$lib/stores/orders.js';
-  import { totalRaised, loading as fundingLoading, loadFunding } from '$lib/stores/funding.js';
-  import { budgetCategories, budgetTotal, loadBudget } from '$lib/stores/budget.js';
-  import { formatCurrency, formatDate } from '$lib/utils.js';
+  import { onMount } from "svelte";
+  import StatCard from "$lib/components/StatCard.svelte";
+  import ExpenseTable from "$lib/components/ExpenseTable.svelte";
+  import { formatCurrency, formatDate } from "$lib/utils.js";
 
+  // ── API Config ──────────────────────────────────────────────────────────────
+  const BASE_URL =
+    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
+  const SECRET_KEY = "YOUR_SECRET_KEY";
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  /** @type {any[]} */
+  let orders = $state([]);
+  /** @type {any[]} */
+  let funds = $state([]);
   /** @type {any} */
-  let stats = $state(null);
+  let budget = $state(null);
+  let loading = $state(true);
+  let error = $state(/** @type {string|null} */ (null));
   let syncing = $state(false);
 
-  onMount(async () => {
-    await Promise.all([loadExpenses(), loadOrders(), loadFunding(), loadBudget()]);
-    await fetchStats();
-  });
-
-  async function fetchStats() {
+  async function loadAll() {
+    loading = true;
+    error = null;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/stats`);
-      stats = await res.json();
+      const [oRes, fRes, bRes] = await Promise.all([
+        fetch(`${BASE_URL}?action=getOrders&key=${SECRET_KEY}`),
+        fetch(`${BASE_URL}?action=getFunds&key=${SECRET_KEY}`),
+        fetch(`${BASE_URL}?action=getBudget&key=${SECRET_KEY}`),
+      ]);
+
+      if (!oRes.ok || !fRes.ok || !bRes.ok) throw new Error("API Fetch Failed");
+
+      orders = await oRes.json();
+      funds = await fRes.json();
+      budget = await bRes.json();
     } catch (e) {
-      console.error('Stats fetch failed:', e);
+      error = e instanceof Error ? e.message : "Data loading failed";
+      console.error(e);
+    } finally {
+      loading = false;
     }
   }
 
+  onMount(() => {
+    loadAll();
+  });
+
   async function sync() {
     syncing = true;
-    await loadOrders(true);
-    await loadExpenses();
-    await loadFunding(true);
-    await loadBudget();
-    await fetchStats();
+    await loadAll();
     syncing = false;
   }
 
-  let recentExpenses = $derived($expenses.slice(-5).reverse());
-  let recentOrders   = $derived($orders.slice(-5).reverse());
-  let topCat = $derived(stats ? Object.entries(stats.byCategory || {}).sort(([,a],[,b]) => b - a)[0] : null);
+  // ── Derived Derived Stats ───────────────────────────────────────────────────
+  // "Expenses" are orders that have been received
+  let expenses = $derived(
+    orders
+      .filter((o) => (o.Status ?? o.status) === "Received")
+      .map((o) => ({
+        ...o,
+        total: Number(o.Total ?? o.total) || (Number(o.Price ?? o.price) * Number(o.Quantity ?? o.quantity)) || 0,
+        category: (o.Category ?? o.category ?? "miscellaneous").toLowerCase(),
+      })),
+  );
 
-  // ── Budget calculations ─────────────────────────────────────────────────────
-  const CATEGORY_LABELS = /** @type {Record<string,string>} */ ({
-    hardware: 'Hardware',
-    software: 'Software',
-    outreach: 'Outreach',
-    food: 'Food',
-    miscellaneous: 'Misc',
-  });
-  const CATEGORY_COLORS = /** @type {Record<string,string>} */ ({
-    hardware:      'var(--cat-hardware)',
-    software:      'var(--cat-software)',
-    outreach:      'var(--cat-outreach)',
-    food:          '#f1a94e',
-    miscellaneous: 'var(--cat-miscellaneous)',
-  });
+  let totalRaised = $derived(
+    funds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0),
+  );
 
-  // Spending per category from expenses store
+  let totalSpent = $derived(expenses.reduce((s, e) => s + (e.total || 0), 0));
+  let netBalance = $derived(totalRaised - totalSpent);
+
+  let recentExpenses = $derived(expenses.slice(-5).reverse());
+  let recentOrders = $derived(orders.slice(-5).reverse());
+
+  let budgetTotalValue = $derived(budget?.Total?.["Final"] || 0);
+  let budgetRemaining = $derived(budgetTotalValue - totalSpent);
+
+  // Category breakdown
   let spentByCategory = $derived(() => {
     const map = /** @type {Record<string,number>} */ ({});
-    for (const e of $expenses) {
-      const cat = e.category || 'miscellaneous';
+    for (const e of expenses) {
+      const cat = e.category || "miscellaneous";
       map[cat] = (map[cat] || 0) + (e.total || 0);
     }
     return map;
   });
 
-  let totalSpentLocal = $derived($expenses.reduce((s, e) => s + (e.total || 0), 0));
-  let moneyRemaining  = $derived($totalRaised - totalSpentLocal);
+  let topCat = $derived(() => {
+    const data = spentByCategory();
+    const sorted = Object.entries(data).sort(([, a], [, b]) => b - a);
+    return sorted.length > 0 ? sorted[0] : null;
+  });
 
-  // Budget progress: budgetTotal vs totalSpent
-  let budgetPct = $derived(
-    $budgetTotal > 0 ? Math.min(100, (totalSpentLocal / $budgetTotal) * 100) : null
-  );
-
-  let topCatPct = $derived(
-    topCat && stats?.totalSpent > 0 ? (topCat[1] / stats.totalSpent) * 100 : null
-  );
-  let mostExpPct = $derived(
-    stats?.mostExpensive && stats?.totalSpent > 0
-      ? (stats.mostExpensive.total / stats.totalSpent) * 100 : null
-  );
-  let avgPct = $derived(
-    stats?.avgCost && stats?.mostExpensive?.total
-      ? Math.min(100, (stats.avgCost / stats.mostExpensive.total) * 100) : null
-  );
-  let vendorPct = $derived(
-    stats?.topVendor && stats?.totalItems > 0
-      ? (stats.topVendor.count / stats.totalItems) * 100 : null
-  );
+  const CATEGORY_LABELS = /** @type {Record<string,string>} */ ({
+    hardware: "Hardware",
+    software: "Software",
+    outreach: "Outreach",
+    food: "Food",
+    miscellaneous: "Misc",
+  });
 </script>
 
 <svelte:head>
@@ -98,212 +110,284 @@
 <div class="page-header">
   <h1>Dashboard <span>Overview</span></h1>
   <div style="display:flex;gap:10px;align-items:center">
-    {#if $lastSynced}
-      <span class="text-muted" style="font-size:0.78rem">
-        Synced {formatDate((/** @type {any} */ ($lastSynced)).toISOString())}
-      </span>
+    {#if error}
+      <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
     {/if}
-    <button
-      id="sync-btn"
-      class="btn btn-ghost btn-sm"
-      onclick={sync}
-      disabled={syncing || $ordersLoading}
-      aria-label="Sync from Google Sheets"
-    >
+    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
-      {syncing ? 'Syncing…' : 'Sync'}
+      {syncing ? "Syncing…" : "Refresh"}
     </button>
-    <a href="/add" class="btn btn-primary btn-sm" id="quick-add-btn">+ Add Expense</a>
   </div>
 </div>
 
-{#if $expensesError || $ordersError}
-  <div class="error-bar">⚠ {$expensesError || $ordersError}</div>
+{#if loading && !orders.length}
+  <div class="empty-state">
+    <div class="spinning" style="font-size:2rem;margin-bottom:16px">↻</div>
+    Loading dashboard data…
+  </div>
+{:else}
+  <div class="stat-grid fade-in">
+    <StatCard
+      label="Net Balance"
+      value={formatCurrency(netBalance)}
+      sub="Total Raised - Spent"
+      accentColor={netBalance >= 0 ? "#6bcb77" : "#f16a4e"}
+    />
+    <StatCard
+      label="Total Raised"
+      value={formatCurrency(totalRaised)}
+      sub={`${funds.length} contributions`}
+      accentColor="var(--primary)"
+    />
+    <StatCard
+      label="Total Expenses"
+      value={formatCurrency(totalSpent)}
+      sub={`${expenses.length} fulfilled orders`}
+      accentColor="#f16a4e"
+    />
+    <StatCard
+      label="Budget Progress"
+      value={budgetTotalValue > 0
+        ? Math.min(100, (totalSpent / budgetTotalValue) * 100).toFixed(1) + "%"
+        : "—"}
+      sub={budgetTotalValue > 0
+        ? `${formatCurrency(totalSpent)} / ${formatCurrency(budgetTotalValue)}`
+        : "No budget set"}
+      accentColor="#b97cf3"
+    />
+  </div>
+
+  <div class="dashboard-content fade-in">
+    <div class="main-column">
+      <section class="dashboard-section card">
+        <div class="section-header">
+          <h2>Recent <span>Expenses</span></h2>
+          <a href="/orders" class="btn btn-ghost btn-xs">View All</a>
+        </div>
+        <ExpenseTable expenses={recentExpenses} limit={5} />
+      </section>
+
+      <section class="dashboard-section card">
+        <div class="section-header">
+          <h2>Recent <span>Orders</span></h2>
+          <a href="/orders" class="btn btn-ghost btn-xs">View All</a>
+        </div>
+        <div class="recent-list">
+          {#each recentOrders as order}
+            <div class="recent-item">
+              <div class="item-info">
+                <div class="item-name">{order.Item || order.item}</div>
+                <div class="item-meta">
+                  {order.Company || order.company} • {formatDate(
+                    order.Timestamp || order.timestamp,
+                  )}
+                </div>
+              </div>
+              <div class="item-status">
+                <span
+                  class="status-pill"
+                  data-status={order.Status || order.status}
+                >
+                  {order.Status || order.status}
+                </span>
+              </div>
+              <div class="item-amount monospace">
+                {formatCurrency(
+                  Number(order.Total || order.total) ||
+                    Number(order.Price || order.price) *
+                      Number(order.Quantity || order.quantity),
+                )}
+              </div>
+            </div>
+          {:else}
+            <div class="empty-text">No orders yet</div>
+          {/each}
+        </div>
+      </section>
+    </div>
+
+    <aside class="side-column">
+      <section class="dashboard-section card">
+        <h2>Spending <span>Breakdown</span></h2>
+        <div class="category-list">
+          {#each Object.entries(spentByCategory()) as [cat, amount]}
+            {@const pct = totalSpent > 0 ? (amount / totalSpent) * 100 : 0}
+            <div class="cat-row">
+              <div class="cat-info">
+                <span class="cat-label"
+                  >{CATEGORY_LABELS[cat] || cat.toUpperCase()}</span
+                >
+                <span class="cat-amount">{formatCurrency(amount)}</span>
+              </div>
+              <div class="cat-bar-track">
+                <div
+                  class="cat-bar-fill"
+                  style="width: {pct}%; background: var(--cat-{cat}, #8a8a8a)"
+                ></div>
+              </div>
+            </div>
+          {:else}
+            <div class="empty-text">No expenses tracked</div>
+          {/each}
+        </div>
+      </section>
+
+      <section class="dashboard-section card promo-card">
+        <h3>Need to <span>Order?</span></h3>
+        <p>Submit a request to the team for approval.</p>
+        <a href="/add" class="btn btn-primary btn-sm" style="margin-top:10px"
+          >+ New Request</a
+        >
+      </section>
+    </aside>
+  </div>
 {/if}
 
-<!-- ── Stat Cards ─────────────────────────────────────────────────────────── -->
-<div class="stat-grid">
-  <StatCard
-    label="Total Spent"
-    value={totalSpentLocal}
-    isCurrency
-    icon="$"
-    accentColor="var(--primary)"
-    sub="{$expenses.length} expenses logged"
-    progress={budgetPct !== null ? budgetPct : totalSpentLocal > 0 ? 100 : 0}
-    progressLabel={budgetPct !== null ? `${budgetPct.toFixed(0)}% of budget` : ''}
-  />
-
-  <StatCard
-    label="Money Remaining"
-    value={moneyRemaining}
-    isCurrency
-    icon="◯"
-    accentColor={moneyRemaining >= 0 ? '#6bcb77' : '#f16a4e'}
-    sub="of {formatCurrency($totalRaised)} raised"
-    progress={$totalRaised > 0 ? Math.min(100, Math.max(0, (moneyRemaining / $totalRaised) * 100)) : 0}
-    progressLabel="{$totalRaised > 0 ? ((moneyRemaining / $totalRaised) * 100).toFixed(0) : 0}% remaining"
-  />
-
-  <StatCard
-    label="Total Budget"
-    value={$budgetTotal}
-    isCurrency
-    icon="▦"
-    accentColor="#4e9af1"
-    sub="across {Object.keys($budgetCategories).length} categories"
-    progress={budgetPct ?? 0}
-    progressLabel={budgetPct !== null ? `${budgetPct.toFixed(0)}% used` : '0% used'}
-  />
-
-  <StatCard
-    label="Top Category"
-    value={topCat ? topCat[0] : '—'}
-    icon="◈"
-    accentColor="var(--cat-hardware)"
-    sub={topCat ? formatCurrency(topCat[1]) + ' spent' : 'No data'}
-    progress={topCatPct ?? 0}
-    progressLabel={topCatPct !== null ? `${topCatPct.toFixed(0)}% of total` : '0%'}
-  />
-
-  {#if stats?.topVendor}
-    <StatCard
-      label="Top Vendor"
-      value={stats.topVendor.company}
-      icon="🏢"
-      accentColor="#6bcb77"
-      sub="{stats.topVendor.count} orders placed"
-      progress={vendorPct ?? 0}
-      progressLabel={vendorPct !== null ? `${vendorPct.toFixed(0)}% of orders` : '0%'}
-    />
-  {/if}
-
-  {#if stats?.mostExpensive}
-    <StatCard
-      label="Most Expensive"
-      value={stats.mostExpensive.total}
-      isCurrency
-      icon="↑"
-      accentColor="#b97cf3"
-      sub={stats.mostExpensive.item}
-      progress={mostExpPct ?? 0}
-      progressLabel={mostExpPct !== null ? `${mostExpPct.toFixed(0)}% of total` : '0%'}
-    />
-  {/if}
-</div>
-
-<!-- ── Budget Breakdown ───────────────────────────────────────────────────── -->
-<div class="section-title" style="margin-top:36px">Budget Breakdown</div>
-<div class="card budget-breakdown">
-  {#each Object.entries($budgetCategories) as [cat, budgeted]}
-    {@const spent = spentByCategory()[cat] || 0}
-    {@const pct = budgeted > 0 ? Math.min(100, (spent / budgeted) * 100) : 0}
-    {@const color = CATEGORY_COLORS[cat] || '#8a8a8a'}
-    <div class="budget-row">
-      <div class="budget-meta">
-        <span class="budget-label">{CATEGORY_LABELS[cat] || cat}</span>
-        <span class="budget-amounts">{formatCurrency(spent)} <span class="text-muted">/ {formatCurrency(budgeted)}</span></span>
-      </div>
-      <div class="budget-bar-track">
-        <div
-          class="budget-bar-fill"
-          style="width:{pct}%;background:{pct >= 90 ? '#f16a4e' : color}"
-        ></div>
-      </div>
-      <span class="budget-pct" style="color:{pct >= 90 ? '#f16a4e' : color}">{pct.toFixed(0)}%</span>
-    </div>
-  {/each}
-</div>
-
-<!-- ── Recent Activity ────────────────────────────────────────────────────── -->
-<div style="margin-top:32px" class="dashboard-tables">
-  <div class="table-column">
-    <div class="section-title">Recent Expenses</div>
-    {#if $expensesLoading}
-      <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
-    {:else}
-      <div class="card" style="padding:0;overflow:hidden">
-        <ExpenseTable expenses={recentExpenses} />
-      </div>
-      {#if $expenses.length > 5}
-        <div style="margin-top:12px;text-align:right">
-          <a href="/expenses" class="btn btn-ghost btn-sm">View all {$expenses.length} expenses →</a>
-        </div>
-      {/if}
-    {/if}
-  </div>
-
-  <div class="table-column">
-    <div class="section-title">Recent Orders (Sheets)</div>
-    {#if $ordersLoading}
-      <div class="empty-state"><span class="spinning">↻</span> Loading…</div>
-    {:else}
-      <div class="card" style="padding:0;overflow:hidden">
-        <ExpenseTable expenses={recentOrders} />
-      </div>
-      {#if $orders.length > 5}
-        <div style="margin-top:12px;text-align:right">
-          <a href="/orders" class="btn btn-ghost btn-sm">View all {$orders.length} orders →</a>
-        </div>
-      {/if}
-    {/if}
-  </div>
-</div>
-
 <style>
-  .dashboard-tables {
+  .stat-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-  }
-  @media (max-width: 1100px) {
-    .dashboard-tables { grid-template-columns: 1fr; }
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
   }
 
-  /* Budget breakdown */
-  .budget-breakdown {
+  .dashboard-content {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .dashboard-content {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .main-column {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 24px;
   }
-  .budget-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 6px 12px;
-    align-items: center;
+
+  .dashboard-section {
+    padding: 24px;
   }
-  .budget-meta {
+
+  .section-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    margin-bottom: 20px;
   }
-  .budget-label {
+
+  .section-header h2 {
+    margin: 0;
+  }
+
+  /* Recent Orders List */
+  .recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .recent-item {
+    display: grid;
+    grid-template-columns: 1fr auto 100px;
+    gap: 12px;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .recent-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .item-name {
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.95rem;
   }
-  .budget-amounts {
+
+  .item-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .item-amount {
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .status-pill {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--surface-2);
+    font-weight: 700;
+  }
+
+  /* Category List */
+  .category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .cat-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .cat-info {
+    display: flex;
+    justify-content: space-between;
     font-size: 0.82rem;
-    font-weight: 500;
+    font-weight: 600;
   }
-  .budget-bar-track {
-    grid-column: 1;
+
+  .cat-bar-track {
     height: 6px;
     background: var(--surface-2);
-    border-radius: 999px;
+    border-radius: 99px;
     overflow: hidden;
   }
-  .budget-bar-fill {
+
+  .cat-bar-fill {
     height: 100%;
-    border-radius: 999px;
+    border-radius: 99px;
     transition: width 0.4s ease;
   }
-  .budget-pct {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    font-size: 0.82rem;
-    font-weight: 700;
-    min-width: 36px;
-    text-align: right;
+
+  .promo-card {
+    background: linear-gradient(
+      135deg,
+      rgba(107, 123, 243, 0.1) 0%,
+      rgba(185, 124, 243, 0.1) 100%
+    );
+    border: 1px solid rgba(107, 123, 243, 0.2);
+    text-align: center;
+  }
+
+  .empty-text {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .error-text {
+    color: #f16a4e;
+    font-weight: 500;
+  }
+
+  .btn-xs {
+    font-size: 0.7rem;
+    padding: 4px 8px;
   }
 </style>

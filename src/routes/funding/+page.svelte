@@ -1,20 +1,7 @@
-  import { onMount } from 'svelte';
-  import CustomDropdown from '$lib/components/CustomDropdown.svelte';
-  import {
-    fundraising, sponsors, grants, clubDues, other, loading, error,
-    loadFunding, totalRaised,
-  } from '$lib/stores/funding.js';
-  import { expenses, totalSpent, loadExpenses } from '$lib/stores/expenses.js';
-  import { api } from '$lib/api.js';
-  import { formatCurrency, formatDate, CONTRIBUTION_TYPES, GRANT_STATUSES } from '$lib/utils.js';
-
-  let activeTab = $state('fundraising');
-
-  let frForm = $state({ name: '', amount: '', date: '', notes: '' });
-  let spForm = $state({ name: '', amount: '', date: '', notes: '', contributionType: 'money' });
-  let grForm = $state({ name: '', organization: '', amount: '', status: 'Applied', deadline: '', notes: '' });
-  let cdForm = $state({ name: '', amount: '', date: '', notes: '' });
-  let otForm = $state({ name: '', amount: '', date: '', notes: '' });
+<script>
+  import { onMount } from "svelte";
+  import { formatCurrency } from "$lib/utils.js";
+  import CustomDropdown from "$lib/components/CustomDropdown.svelte";
 
   // ── API Config ──────────────────────────────────────────────────────────────
   const BASE_URL =
@@ -81,7 +68,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       funds = await res.json();
     } catch (e) {
-      fundsError = /** @type {Error} */ (e).message;
+      fundsError = e instanceof Error ? e.message : "Unknown error";
     } finally {
       loadingFunds = false;
     }
@@ -95,7 +82,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       budget = await res.json();
     } catch (e) {
-      budgetError = /** @type {Error} */ (e).message;
+      budgetError = e instanceof Error ? e.message : "Unknown error";
     } finally {
       loadingBudget = false;
     }
@@ -143,7 +130,7 @@
     submitting = true;
     try {
       const params = new URLSearchParams({
-        action: "addFunds",
+        action: "addFundraising",
         key: SECRET_KEY,
         type: form.type,
         source: form.source,
@@ -154,7 +141,6 @@
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
       const result = await res.json();
-      console.log("addFunds response:", result);
       if (!res.ok || result?.error)
         throw new Error(result?.error || "Request failed");
 
@@ -297,21 +283,11 @@
             <span class="breakdown-label" style="color:{color}">{type}</span>
             <span class="breakdown-amount">{formatCurrency(amount)}</span>
           </div>
-          <div class="form-group">
-            <label for="sp-amount">Contribution Value ($)</label>
-            <input id="sp-amount" type="number" bind:value={spForm.amount} min="0" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="sp-type">Contribution Type *</label>
-            <CustomDropdown 
-              options={CONTRIBUTION_TYPES} 
-              bind:value={spForm.contributionType} 
-              required 
-            />
-          </div>
-          <div class="form-group" style="grid-column:1/-1">
-            <label for="sp-notes">Notes</label>
-            <textarea id="sp-notes" bind:value={spForm.notes} rows="2"></textarea>
+          <div class="breakdown-bar-track">
+            <div
+              class="breakdown-bar-fill"
+              style="width:{pct}%;background:{color}"
+            ></div>
           </div>
           <span class="breakdown-pct text-muted">{pct.toFixed(0)}%</span>
         </div>
@@ -435,13 +411,22 @@
               style="width:{pct}%;background:var(--primary)"
             ></div>
           </div>
-          <div class="form-group">
-            <label for="gr-status">Status *</label>
-            <CustomDropdown 
-              options={GRANT_STATUSES} 
-              bind:value={grForm.status} 
-              required 
-            />
+        </div>
+      {/each}
+    </div>
+
+    <!-- Totals summary -->
+    {#if budgetTotal}
+      <div class="card totals-card fade-in">
+        <div class="card-title" style="font-size:1rem;margin-bottom:16px">
+          Overall Totals
+        </div>
+        <div class="totals-grid">
+          <div>
+            <div class="text-muted" style="font-size:0.8rem">Club Funds</div>
+            <div class="monospace" style="font-size:1.2rem;font-weight:700">
+              {formatCurrency(budgetTotal["Club Funds"] || 0)}
+            </div>
           </div>
           <div>
             <div class="text-muted" style="font-size:0.8rem">Personal</div>
@@ -519,125 +504,127 @@
   {:else}
     <div class="unlocked-header">
       <span class="unlocked-badge">🔓 Unlocked</span>
-      <button class="btn btn-ghost btn-sm" onclick={() => (unlocked = false)}>Lock</button>
+      <button class="btn btn-ghost btn-sm" onclick={() => (unlocked = false)}
+        >Lock</button
+      >
     </div>
     <div class="add-layout fade-in">
       <div class="card add-card">
-      <h3 style="margin-bottom:20px">Add Funding Entry</h3>
+        <h3 style="margin-bottom:20px">Add Funding Entry</h3>
 
-      {#if formErr}
-        <div class="error-bar">{formErr}</div>
-      {/if}
-      {#if formMsg}
-        <div class="success-bar">{formMsg}</div>
-      {/if}
+        {#if formErr}
+          <div class="error-bar">{formErr}</div>
+        {/if}
+        {#if formMsg}
+          <div class="success-bar">{formMsg}</div>
+        {/if}
 
-      <form
-        onsubmit={(e) => {
-          e.preventDefault();
-          addFunds();
-        }}
-        id="add-funds-form"
-      >
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="f-type">Type *</label>
-            <select id="f-type" bind:value={form.type} required>
-              {#each FUND_TYPES as t}
-                <option value={t}>{t}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="f-recipient">Recipient *</label>
-            <select id="f-recipient" bind:value={form.recipient} required>
-              {#each RECIPIENTS as r}
-                <option value={r}>{r}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="form-group" style="grid-column:1/-1">
-            <label for="f-source">Source / Description *</label>
-            <input
-              id="f-source"
-              type="text"
-              bind:value={form.source}
-              placeholder="e.g. Bake Sale, WW Special Team Grant…"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="f-amount">Amount ($) *</label>
-            <input
-              id="f-amount"
-              type="number"
-              bind:value={form.amount}
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="f-date">Date</label>
-            <input id="f-date" type="date" bind:value={form.date} />
-          </div>
-
-          <div class="form-group" style="grid-column:1/-1">
-            <label for="f-notes">Notes</label>
-            <textarea
-              id="f-notes"
-              bind:value={form.notes}
-              rows="3"
-              placeholder="Any additional context…"
-            ></textarea>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          class="btn btn-primary"
-          style="margin-top:16px"
-          disabled={submitting}
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            addFunds();
+          }}
+          id="add-funds-form"
         >
-          {submitting ? "Saving…" : "+ Add Entry"}
-        </button>
-      </form>
-    </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="f-type">Type *</label>
+              <select id="f-type" bind:value={form.type} required>
+                {#each FUND_TYPES as t}
+                  <option value={t}>{t}</option>
+                {/each}
+              </select>
+            </div>
 
-    <aside class="tips-card card">
-      <div class="card-title">Tips</div>
-      <ul class="tips-list">
-        <li>
-          Use <strong>All</strong> as recipient for club-wide income that gets distributed
-          equally.
-        </li>
-        <li>
-          <strong>Grants</strong> and <strong>Sponsors</strong> go to specific teams
-          or WWROBO.
-        </li>
-        <li>The date field is optional but recommended for tracking.</li>
-        <li>Entries appear in Funding History after submission.</li>
-      </ul>
+            <div class="form-group">
+              <label for="f-recipient">Recipient *</label>
+              <select id="f-recipient" bind:value={form.recipient} required>
+                {#each RECIPIENTS as r}
+                  <option value={r}>{r}</option>
+                {/each}
+              </select>
+            </div>
 
-      <div style="margin-top:20px">
-        <div class="card-title">Fund Types</div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
-          {#each FUND_TYPES as t}
-            <span
-              class="type-tag"
-              style="border-left:3px solid {TYPE_COLORS[t] || '#8a8a8a'}"
-            >
-              {t}
-            </span>
-          {/each}
-        </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="f-source">Source / Description *</label>
+              <input
+                id="f-source"
+                type="text"
+                bind:value={form.source}
+                placeholder="e.g. Bake Sale, WW Special Team Grant…"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="f-amount">Amount ($) *</label>
+              <input
+                id="f-amount"
+                type="number"
+                bind:value={form.amount}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="f-date">Date</label>
+              <input id="f-date" type="date" bind:value={form.date} />
+            </div>
+
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="f-notes">Notes</label>
+              <textarea
+                id="f-notes"
+                bind:value={form.notes}
+                rows="3"
+                placeholder="Any additional context…"
+              ></textarea>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            style="margin-top:16px"
+            disabled={submitting}
+          >
+            {submitting ? "Saving…" : "+ Add Entry"}
+          </button>
+        </form>
       </div>
-    </aside>
+
+      <aside class="tips-card card">
+        <div class="card-title">Tips</div>
+        <ul class="tips-list">
+          <li>
+            Use <strong>All</strong> as recipient for club-wide income that gets distributed
+            equally.
+          </li>
+          <li>
+            <strong>Grants</strong> and <strong>Sponsors</strong> go to specific teams
+            or WWROBO.
+          </li>
+          <li>The date field is optional but recommended for tracking.</li>
+          <li>Entries appear in Funding History after submission.</li>
+        </ul>
+
+        <div style="margin-top:20px">
+          <div class="card-title">Fund Types</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+            {#each FUND_TYPES as t}
+              <span
+                class="type-tag"
+                style="border-left:3px solid {TYPE_COLORS[t] || '#8a8a8a'}"
+              >
+                {t}
+              </span>
+            {/each}
+          </div>
+        </div>
+      </aside>
     </div>
   {/if}
 {/if}
@@ -660,8 +647,13 @@
     text-align: center;
     box-shadow: var(--shadow-lg);
   }
-  .lock-icon { font-size: 3rem; margin-bottom: 16px; }
-  .lock-card h2 { margin-bottom: 8px; }
+  .lock-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+  }
+  .lock-card h2 {
+    margin-bottom: 8px;
+  }
   .unlocked-header {
     display: flex;
     align-items: center;
