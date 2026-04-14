@@ -6,7 +6,7 @@
   const teamOptions = TEAMS.map(team => ({ label: team, value: team }));
 
   const API_URL =
-    "https://script.google.com/macros/s/AKfycbzsbg_Mm1CjwRtY8KDTVEmWqcde1USoRtkFnYJ6P1VFA4TH-hcz7TaKi6MvEiGqytKY/exec";
+    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
 
   let form = $state({
     destination: "sheets",

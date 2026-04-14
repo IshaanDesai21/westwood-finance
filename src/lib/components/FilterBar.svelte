@@ -15,12 +15,12 @@
   let { onchange } = $props();
 
   let filters = $state({
-    search: '',
-    category: '',
-    company: '',
-    team: '',
-    dateFrom: '',
-    dateTo: '',
+    search: "",
+    category: "",
+    company: "",
+    team: "",
+    dateFrom: "",
+    dateTo: "",
   });
 
   function emit() {
@@ -28,12 +28,12 @@
   }
 
   function reset() {
-    filters.search = '';
-    filters.category = '';
-    filters.company = '';
-    filters.team = '';
-    filters.dateFrom = '';
-    filters.dateTo = '';
+    filters.search = "";
+    filters.category = "";
+    filters.company = "";
+    filters.team = "";
+    filters.dateFrom = "";
+    filters.dateTo = "";
     emit();
   }
 </script>
@@ -84,12 +84,22 @@
 
     <div class="form-group">
       <label for="filter-from">From Date</label>
-      <input id="filter-from" type="date" bind:value={filters.dateFrom} onchange={emit} />
+      <input
+        id="filter-from"
+        type="date"
+        bind:value={filters.dateFrom}
+        onchange={emit}
+      />
     </div>
 
     <div class="form-group">
       <label for="filter-to">To Date</label>
-      <input id="filter-to" type="date" bind:value={filters.dateTo} onchange={emit} />
+      <input
+        id="filter-to"
+        type="date"
+        bind:value={filters.dateTo}
+        onchange={emit}
+      />
     </div>
 
     <div class="form-group" style="justify-content:flex-end; padding-top:20px">
@@ -99,7 +109,10 @@
 </div>
 
 <style>
-  .filter-bar { margin-bottom: 16px; padding: 16px; }
+  .filter-bar {
+    margin-bottom: 16px;
+    padding: 16px;
+  }
   .filter-row {
     display: flex;
     flex-wrap: wrap;

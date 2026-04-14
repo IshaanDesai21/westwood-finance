@@ -1,4 +1,4 @@
-export const ORDERS_URL = "https://script.google.com/macros/s/AKfycbzlu65HVW4SqV1K3Yjm4sPleXBPqaWkAsWXdxbsosriAK8q8eiFNjyaczPF_FC2wGmwUA/exec?action=getOrders"; // Replace with your actual JSON API URL
+export const ORDERS_URL = "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec?action=getOrders&key=YOUR_SECRET_KEY"; // Replace with your actual JSON API URL
 
 export async function fetchOrders() {
   const res = await fetch(ORDERS_URL);
