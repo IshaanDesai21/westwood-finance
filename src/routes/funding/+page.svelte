@@ -1,6 +1,20 @@
-<script>
-  import { onMount } from "svelte";
-  import { formatCurrency } from "$lib/utils.js";
+  import { onMount } from 'svelte';
+  import CustomDropdown from '$lib/components/CustomDropdown.svelte';
+  import {
+    fundraising, sponsors, grants, clubDues, other, loading, error,
+    loadFunding, totalRaised,
+  } from '$lib/stores/funding.js';
+  import { expenses, totalSpent, loadExpenses } from '$lib/stores/expenses.js';
+  import { api } from '$lib/api.js';
+  import { formatCurrency, formatDate, CONTRIBUTION_TYPES, GRANT_STATUSES } from '$lib/utils.js';
+
+  let activeTab = $state('fundraising');
+
+  let frForm = $state({ name: '', amount: '', date: '', notes: '' });
+  let spForm = $state({ name: '', amount: '', date: '', notes: '', contributionType: 'money' });
+  let grForm = $state({ name: '', organization: '', amount: '', status: 'Applied', deadline: '', notes: '' });
+  let cdForm = $state({ name: '', amount: '', date: '', notes: '' });
+  let otForm = $state({ name: '', amount: '', date: '', notes: '' });
 
   // ── API Config ──────────────────────────────────────────────────────────────
   const BASE_URL =
@@ -283,11 +297,21 @@
             <span class="breakdown-label" style="color:{color}">{type}</span>
             <span class="breakdown-amount">{formatCurrency(amount)}</span>
           </div>
-          <div class="breakdown-bar-track">
-            <div
-              class="breakdown-bar-fill"
-              style="width:{pct}%;background:{color}"
-            ></div>
+          <div class="form-group">
+            <label for="sp-amount">Contribution Value ($)</label>
+            <input id="sp-amount" type="number" bind:value={spForm.amount} min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label for="sp-type">Contribution Type *</label>
+            <CustomDropdown 
+              options={CONTRIBUTION_TYPES} 
+              bind:value={spForm.contributionType} 
+              required 
+            />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label for="sp-notes">Notes</label>
+            <textarea id="sp-notes" bind:value={spForm.notes} rows="2"></textarea>
           </div>
           <span class="breakdown-pct text-muted">{pct.toFixed(0)}%</span>
         </div>
@@ -411,22 +435,13 @@
               style="width:{pct}%;background:var(--primary)"
             ></div>
           </div>
-        </div>
-      {/each}
-    </div>
-
-    <!-- Totals summary -->
-    {#if budgetTotal}
-      <div class="card totals-card fade-in">
-        <div class="card-title" style="font-size:1rem;margin-bottom:16px">
-          Overall Totals
-        </div>
-        <div class="totals-grid">
-          <div>
-            <div class="text-muted" style="font-size:0.8rem">Club Funds</div>
-            <div class="monospace" style="font-size:1.2rem;font-weight:700">
-              {formatCurrency(budgetTotal["Club Funds"] || 0)}
-            </div>
+          <div class="form-group">
+            <label for="gr-status">Status *</label>
+            <CustomDropdown 
+              options={GRANT_STATUSES} 
+              bind:value={grForm.status} 
+              required 
+            />
           </div>
           <div>
             <div class="text-muted" style="font-size:0.8rem">Personal</div>

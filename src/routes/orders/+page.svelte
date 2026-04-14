@@ -20,6 +20,17 @@
   });
   let syncing = $state(false);
 
+  // Generate a stable color from a UUID
+  function getOrderColor(uuid) {
+    if (!uuid) return 'transparent';
+    let hash = 0;
+    for (let i = 0; i < uuid.length; i++) {
+      hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash % 360);
+    return `hsl(${h}, 65%, 45%)`; // Middle saturation/lightness for readability on dark bg
+  }
+
   async function loadOrders() {
     loading = true;
     error = null;
@@ -68,7 +79,20 @@
         if (!matchSearch(e, filters.search)) return false;
         return true;
       })
-      .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || "")),
+      .sort((a, b) => {
+        // 1. Status priority: 'In-progress' items first, 'Approved/Denied/Received/Cancelled' at bottom
+        const bottomStatuses = ['Approved', 'Denied', 'Received', 'Cancelled'];
+        const aBottom = bottomStatuses.includes(a.status);
+        const bBottom = bottomStatuses.includes(b.status);
+        if (aBottom !== bBottom) return aBottom ? 1 : -1;
+
+        // 2. Date priority: Newest first
+        const dateComp = (b.timestamp || "").localeCompare(a.timestamp || "");
+        if (dateComp !== 0) return dateComp;
+
+        // 3. Group priority: Keep same orderUUID together
+        return (a.orderUUID || "").localeCompare(b.orderUUID || "");
+      }),
   );
 
   let filteredTotal = $derived(
@@ -223,7 +247,8 @@
         </thead>
         <tbody>
           {#each filtered as order (order.id)}
-            <tr class="fade-in">
+            {@const orderColor = getOrderColor(order.orderUUID)}
+            <tr class="fade-in" style="border-left: 4px solid {orderColor}">
               <td>
                 <div style="font-weight:500">
                   {#if order.link}

@@ -1,6 +1,9 @@
 <script>
-  import { CATEGORIES } from "$lib/utils.js";
+  import { CATEGORIES, TEAMS } from "$lib/utils.js";
   import { goto } from "$app/navigation";
+  import CustomDropdown from "$lib/components/CustomDropdown.svelte";
+
+  const teamOptions = TEAMS.map(team => ({ label: team, value: team }));
 
   const API_URL =
     "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
@@ -204,15 +207,12 @@
 
         <div class="form-group">
           <label for="ae-team">Team *</label>
-          <select id="ae-team" bind:value={form.team} required>
-            <option value="" disabled selected>Select your team</option>
-            <option value="Slingshot">Slingshot</option>
-            <option value="Atlatl">Atlatl</option>
-            <option value="Kunai">Kunai</option>
-            <option value="Hunga Munga">Hunga Munga</option>
-            <option value="FRC">FRC</option>
-            <option value="WWROBO">WWRobotics</option>
-          </select>
+          <CustomDropdown 
+            options={teamOptions} 
+            bind:value={form.team} 
+            placeholder="Select your team" 
+            required 
+          />
         </div>
 
         <div class="form-group" style="grid-column:1/-1">

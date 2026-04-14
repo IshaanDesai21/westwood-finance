@@ -60,6 +60,9 @@ export const CATEGORY_COLORS = {
 /** Valid categories (mirrors backend config) */
 export const CATEGORIES = ['hardware', 'software', 'outreach', 'food', 'miscellaneous'];
 
+/** Valid teams */
+export const TEAMS = ['FRC', 'WWROBO', 'Slingshot', 'Atlatl', 'Kunai', 'Hunga Munga'];
+
 /** Contribution types for sponsors */
 export const CONTRIBUTION_TYPES = ['money', 'parts', 'services'];
 

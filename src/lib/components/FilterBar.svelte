@@ -1,5 +1,16 @@
 <script>
-  import { CATEGORIES } from "../utils.js";
+  import { CATEGORIES, TEAMS } from '../utils.js';
+  import CustomDropdown from './CustomDropdown.svelte';
+
+  const categoryOptions = [
+    { label: 'All Categories', value: '' },
+    ...CATEGORIES.map(cat => ({ label: cat.charAt(0).toUpperCase() + cat.slice(1), value: cat }))
+  ];
+
+  const teamOptions = [
+    { label: 'All Teams', value: '' },
+    ...TEAMS.map(team => ({ label: team, value: team }))
+  ];
 
   let { onchange } = $props();
 
@@ -40,20 +51,14 @@
       />
     </div>
 
-    <div class="form-group" style="flex:1; min-width:150px">
+    <div class="form-group" style="flex:1; min-width:160px">
       <label for="filter-category">Category</label>
-      <select
-        id="filter-category"
-        bind:value={filters.category}
-        onchange={emit}
-      >
-        <option value="">All Categories</option>
-        {#each CATEGORIES as cat}
-          <option value={cat}
-            >{cat.charAt(0).toUpperCase() + cat.slice(1)}</option
-          >
-        {/each}
-      </select>
+      <CustomDropdown 
+        options={categoryOptions} 
+        bind:value={filters.category} 
+        onchange={emit} 
+        placeholder="All Categories" 
+      />
     </div>
 
     <div class="form-group">
@@ -67,17 +72,14 @@
       />
     </div>
 
-    <div class="form-group">
+    <div class="form-group" style="flex:1; min-width:160px">
       <label for="filter-team">Team</label>
-      <select id="filter-team" bind:value={filters.team} onchange={emit}>
-        <option value="">All Teams</option>
-        <option value="Slingshot">Slingshot</option>
-        <option value="Atlatl">Atlatl</option>
-        <option value="Kunai">Kunai</option>
-        <option value="Hunga Munga">Hunga Munga</option>
-        <option value="FRC">FRC</option>
-        <option value="WWROBO">WWRobotics</option>
-      </select>
+      <CustomDropdown 
+        options={teamOptions} 
+        bind:value={filters.team} 
+        onchange={emit} 
+        placeholder="All Teams" 
+      />
     </div>
 
     <div class="form-group">
