@@ -16,7 +16,7 @@
     category: "",
     company: "",
     team: "",
-    status: "Submitted and in review",
+    status: "",
     dateFrom: "",
     dateTo: "",
   });

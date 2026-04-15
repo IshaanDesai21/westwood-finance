@@ -337,7 +337,7 @@
         Manage order statuses, UUIDs, and tracking links. Updates sync directly to Google Sheets.
       </p>
 
-      <div class="card" style="padding:0;overflow:hidden">
+      <div class="card orders-card" style="padding:0;overflow:hidden">
         {#if loading && !orders.length}
           <LoadingIndicator text="Loading orders..." />
         {:else if orders.length === 0}
@@ -688,6 +688,12 @@
     width: 100%;
     max-width: 100%;
     overflow: hidden;
+  }
+
+  .orders-card {
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   table {
