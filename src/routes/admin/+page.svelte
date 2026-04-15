@@ -622,7 +622,8 @@
   /* ── Segmented Control (Exact Match of Funding Style) ────────────────────── */
   .tabs-container {
     display: flex;
-    justify-content: flex-start; /* Move tabs to the left/under the title */
+    justify-content: center; /* Center the tabs as requested */
+    width: 100%;
   }
 
   .segmented-control {
@@ -679,7 +680,14 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-sm);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    background: var(--surface);
+  }
+
+  .card {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   table {
