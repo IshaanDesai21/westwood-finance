@@ -4,6 +4,7 @@
   import ExpenseTable from "$lib/components/ExpenseTable.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
+  import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import { formatCurrency, formatDate } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
   import appInfo from "$lib/app-info.json";
@@ -13,6 +14,22 @@
   /** @type {{ orders: Order[], funds: any[], budget: any, loading: boolean, error: string|null }} */
   let { orders, funds, budget, loading, error } = $derived(dataService);
   let syncing = $state(false);
+
+  const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "AtlAtl", "Kunai", "Westwood Overall"];
+  let selectedTeam = $state("FRC");
+
+  // ── Derived View Based on Team ─────────────────────────────────────────────
+  let teamOrders = $derived(
+    selectedTeam === "Westwood Overall" 
+      ? orders 
+      : orders.filter((o) => (o.team || "").toLowerCase().includes(selectedTeam.toLowerCase()))
+  );
+
+  let teamFunds = $derived(
+    selectedTeam === "Westwood Overall"
+      ? funds
+      : funds.filter((f) => (f.Recipient || "").toLowerCase().includes(selectedTeam.toLowerCase()))
+  );
 
   async function sync() {
     syncing = true;
@@ -27,7 +44,7 @@
   // ── Derived Stats ───────────────────────────────────────────────────────────
   // "Expenses" are orders that have been received or ordered
   let expenses = $derived(
-    orders
+    teamOrders
       .filter((/** @type {Order} */ o) => {
         const s = (o.status || "").toLowerCase().trim();
         return s === "received" || s === "ordered";
@@ -35,14 +52,14 @@
   );
 
   let totalRaised = $derived(
-    funds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
+    teamFunds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
   );
 
   let totalSpent = $derived(expenses.reduce((/** @type {number} */ s, /** @type {Order} */ e) => s + (e.total || 0), 0));
   let netBalance = $derived(totalRaised - totalSpent);
 
   let recentExpenses = $derived(expenses.slice(-5).reverse());
-  let recentOrders = $derived(orders.slice(-5).reverse());
+  let recentOrders = $derived(teamOrders.slice(-5).reverse());
 
   let budgetTotalValue = $derived(budget?.Total?.["Final"] || 0);
 
@@ -88,6 +105,10 @@
     <div class="deploy-info">
       <span class="version-tag">v{appInfo.version}</span>
       <span class="deploy-time">{appInfo.deployedAt}</span>
+    </div>
+    
+    <div style="width: 170px;">
+      <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
     </div>
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
@@ -138,7 +159,7 @@
           <h2>Recent <span>Expenses</span></h2>
           <a href="/orders" class="btn btn-ghost btn-xs">View All</a>
         </div>
-        <ExpenseTable expenses={recentExpenses} limit={5} />
+        <ExpenseTable expenses={recentExpenses} limit={5} hideTeam={selectedTeam !== "Westwood Overall"} />
       </section>
 
       <section class="dashboard-section card">
@@ -227,7 +248,6 @@
     display: grid;
     grid-template-columns: 1fr 300px;
     gap: 24px;
-    align-items: start;
   }
 
   @media (max-width: 900px) {
@@ -415,4 +435,11 @@
       display: none;
     }
   }
+
+  @media (max-width: 900px) {
+    .dashboard-content {
+      grid-template-columns: 1fr;
+    }
+  }
+  
 </style>

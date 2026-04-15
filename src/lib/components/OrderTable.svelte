@@ -5,8 +5,8 @@
   /** @type {{ orders: any[], limit?: number }} */
   let { orders = [], limit = 0 } = $props();
 
-  let sortCol = $state("timestamp");
-  let sortDir = $state("desc");
+  let sortCol = $state("status");
+  let sortDir = $state("asc");
 
   function toggleSort(/** @type {string} */ col) {
     if (sortCol === col) {
@@ -17,8 +17,27 @@
     }
   }
 
+  const STATUS_PRIORITY = {
+    "submitted, in review": 0,
+    "approved": 1,
+    "ordered": 2,
+    "received": 3,
+    "denied": 4,
+    "cancelled": 5,
+  };
+
   let sortedOrders = $derived(
     orders.slice().sort((a, b) => {
+      if (sortCol === 'status') {
+        let pA = STATUS_PRIORITY[(a.status || "").toLowerCase().trim()] ?? 99;
+        let pB = STATUS_PRIORITY[(b.status || "").toLowerCase().trim()] ?? 99;
+        if (pA !== pB) return sortDir === "asc" ? pA - pB : pB - pA;
+        // Secondary sort: timestamp newest first
+        let tA = new Date(a.timestamp || 0).getTime();
+        let tB = new Date(b.timestamp || 0).getTime();
+        return tB - tA;
+      }
+
       let valA = a[sortCol] || "";
       let valB = b[sortCol] || "";
       

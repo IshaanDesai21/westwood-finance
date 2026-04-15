@@ -83,7 +83,16 @@ class DataStore {
    */
   normalizeOrders(data) {
     if (!Array.isArray(data)) return [];
-    return data.map((o, index) => ({
+    return data
+      .filter(o => {
+          const hasItem = !!(o.Item || o.item);
+          const hasCompany = !!(o.Company || o.company);
+          const hasTracking = !!(o.Tracking || o.tracking);
+          const hasUUID = !!(o["List UUID"] || o.orderUUID || o.id);
+          // Only keep rows that have some actual data
+          return hasItem || hasCompany || hasTracking || hasUUID;
+      })
+      .map((o, index) => ({
       item: o.Item ?? o.item ?? "Unknown",
       company: o.Company ?? o.company ?? "",
       link: o.Link ?? o.link ?? "",

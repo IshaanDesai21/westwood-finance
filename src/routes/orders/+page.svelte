@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import { browser } from "$app/environment";
   import FilterBar from "$lib/components/FilterBar.svelte";
   import OrderTable from "$lib/components/OrderTable.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
@@ -29,6 +30,28 @@
 
   onMount(() => {
     dataService.load();
+    if (browser) {
+      const q = new URLSearchParams(window.location.search);
+      if (q.has("search")) filters.search = q.get("search") || "";
+      if (q.has("category")) filters.category = q.get("category") || "";
+      if (q.has("company")) filters.company = q.get("company") || "";
+      if (q.has("team")) filters.team = q.get("team") || "";
+      if (q.has("status")) filters.status = q.get("status") || "";
+    }
+  });
+
+  $effect(() => {
+    if (browser) {
+      const url = new URL(window.location.href);
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v && v !== "All Categories" && v !== "All Statuses" && v !== "All Teams") {
+          url.searchParams.set(k, v);
+        } else {
+          url.searchParams.delete(k);
+        }
+      });
+      window.history.replaceState(null, "", url.toString());
+    }
   });
 
   /**
@@ -43,6 +66,33 @@
       (exp.notes || "").toLowerCase().includes(s) ||
       (exp.company || "").toLowerCase().includes(s)
     );
+  }
+
+  function exportCSV() {
+    if (!filtered || !filtered.length) return;
+    const headers = ["Item", "Company", "Price", "Quantity", "Total", "Category", "Team", "Status", "Date", "UUID", "Tracking/Link", "Notes"];
+    
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    for (const row of filtered) {
+      const values = [
+         row.item, row.company, row.price, row.quantity, row.total, row.category, 
+         row.team, row.status, (row.timestamp || "").slice(0, 10), row.orderUUID, (row.tracking || row.link || ""), row.notes
+      ].map(val => {
+        let str = String(val || '').replace(/"/g, '""');
+        return `"${str}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `westwood_orders_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   let filtered = $derived(
@@ -62,7 +112,11 @@
         if (filters.dateFrom && e.timestamp < filters.dateFrom) return false;
         if (filters.dateTo && e.timestamp?.slice(0, 10) > filters.dateTo)
           return false;
-        if (filters.status && e.status !== filters.status && filters.status !== "All Statuses")
+        if (
+          filters.status &&
+          e.status !== filters.status &&
+          filters.status !== "All Statuses"
+        )
           return false;
         if (!matchSearch(e, filters.search)) return false;
         return true;
@@ -72,11 +126,11 @@
         /** @type {Record<string, number>} */
         const STATUS_PRIORITY = {
           "Submitted, in review": 0,
-          "Approved": 1,
-          "Ordered": 2,
-          "Received": 3,
-          "Denied": 4,
-          "Cancelled": 5
+          Approved: 1,
+          Ordered: 2,
+          Received: 3,
+          Denied: 4,
+          Cancelled: 5,
         };
 
         const priorityA = STATUS_PRIORITY[a.status] ?? 99;
@@ -106,7 +160,10 @@
     {/if}
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
-      {syncing ? "Syncing…" : "Refresh List"}
+      {syncing ? "Syncing…" : "Refresh"}
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick={exportCSV} disabled={!filtered || !filtered.length}>
+      ↓ Export CSV
     </button>
     <a href="/add" class="btn btn-primary btn-sm">+ New Request</a>
   </div>

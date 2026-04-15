@@ -27,6 +27,27 @@
   let { orders, loading, error } = $derived(dataService);
   let syncing = $state(false);
 
+  const STATUS_PRIORITY = {
+    "submitted, in review": 0,
+    "approved": 1,
+    "ordered": 2,
+    "received": 3,
+    "denied": 4,
+    "cancelled": 5,
+  };
+
+  let sortedAdminOrders = $derived(() => {
+    return orders.slice().sort((a, b) => {
+      let pA = STATUS_PRIORITY[(a.status || "").toLowerCase().trim()] ?? 99;
+      let pB = STATUS_PRIORITY[(b.status || "").toLowerCase().trim()] ?? 99;
+      if (pA !== pB) return pA - pB;
+      // Secondary sort: timestamp newest first
+      let tA = new Date(a.timestamp || 0).getTime();
+      let tB = new Date(b.timestamp || 0).getTime();
+      return tB - tA;
+    });
+  });
+
   let unlocked = $state(false);
   let adminPassInput = $state("");
   let authError = $state("");
@@ -163,6 +184,54 @@
     } finally {
       editSaving = false;
     }
+  }
+  
+  async function deleteOrder() {
+    if (!editingOrder) return;
+    if (!confirm("Are you sure you want to permanently delete this order? This cannot be undone.")) return;
+    
+    editSaving = true;
+    actionErr = "";
+    actionMsg = "";
+    try {
+      const params = new URLSearchParams({
+        action: "deleteOrder",
+        key: SECRET_KEY,
+        rowIndex: editingOrder.rowIndex.toString()
+      });
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || result?.error) throw new Error(result?.error || "Delete failed");
+      
+      actionMsg = "✓ Order deleted successfully!";
+      editingOrder = null;
+      await dataService.load(true);
+    } catch (e) {
+      actionErr = e instanceof Error ? e.message : "Delete failed";
+    } finally {
+      editSaving = false;
+    }
+  }
+
+  function exportMasterCSV() {
+    if (!masterTransactions || !masterTransactions.length) return;
+    const headers = ["Date", "Type", "Source/Item", "Category", "Status", "Amount"];
+    const csvRows = [headers.join(',')];
+    for (const row of masterTransactions) {
+      const values = [
+        row.date, row.type, row.source, row.category, row.status, row.amount
+      ].map(val => `"${String(val || '').replace(/"/g, '""')}"`);
+      csvRows.push(values.join(','));
+    }
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `westwood_finance_master_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   // Generate a stable hue from an order UUID
@@ -396,8 +465,8 @@
 
   {#if activeView === "orders"}
     <section class="fade-in">
-      <div class="section-title" style="margin-bottom:12px">
-        Manage All Orders ({orders.length})
+      <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+        <span>Manage All Orders ({orders.length})</span>
       </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
         Manage order statuses, UUIDs, and tracking links. Updates sync directly
@@ -431,7 +500,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each orders as order (order.id)}
+                {#each sortedAdminOrders() as order (order.id)}
                   {@const orderColor = getOrderColor(order.orderUUID)}
                   <tr
                     class="fade-in group-row"
@@ -564,8 +633,11 @@
   {:else if activeView === "master"}
     <!-- ── Master Finance Management ─────────────────────────────────────────── -->
     <section class="fade-in">
-      <div class="section-title" style="margin-bottom:12px">
-        Master Finance Ledger ({masterTransactions.length})
+      <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+        <span>Master Finance Ledger ({masterTransactions.length})</span>
+        <button class="btn btn-ghost btn-sm" onclick={exportMasterCSV} disabled={!masterTransactions.length}>
+          ↓ Export CSV
+        </button>
       </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
         Combined view of all finalized inbound (Funding) and outbound
@@ -809,18 +881,18 @@
           </div>
         </div>
 
-        <div class="modal-actions">
-          <button type="submit" class="btn btn-primary" disabled={editSaving}>
-            {editSaving ? "Saving…" : "Save Changes"}
+        <div class="modal-actions" style="display: flex; justify-content: space-between; width: 100%;">
+          <button type="button" class="btn btn-ghost" style="color: var(--primary);" onclick={deleteOrder} disabled={editSaving}>
+            Delete Order
           </button>
-          <button
-            type="button"
-            class="btn btn-ghost"
-            onclick={closeEdit}
-            disabled={editSaving}
-          >
-            Cancel
-          </button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-ghost" onclick={closeEdit} disabled={editSaving}>
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" disabled={editSaving}>
+              {editSaving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
         </div>
       </form>
     </div>

@@ -5,6 +5,7 @@
   import LineChart from '$lib/components/LineChart.svelte';
   import BarChart from '$lib/components/BarChart.svelte';
   import LoadingIndicator from '$lib/components/LoadingIndicator.svelte';
+  import CustomDropdown from '$lib/components/CustomDropdown.svelte';
   import { formatCurrency } from '$lib/utils.js';
   import { dataService } from '$lib/dataService.svelte.js';
 
@@ -13,6 +14,9 @@
   /** @type {{ orders: Order[], loading: boolean, error: string|null }} */
   let { orders, loading, error } = $derived(dataService);
   let syncing = $state(false);
+
+  const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "AtlAtl", "Kunai", "Westwood Overall"];
+  let selectedTeam = $state("FRC");
 
   async function sync() {
     syncing = true;
@@ -26,12 +30,19 @@
 
   // ── Stats Calculations ──────────────────────────────────────────────────────
   
-  // Only "Received" and "Ordered" orders count towards spending analytics
-  let expenses = $derived(
-    orders
+  // Use all requested orders (exclude Cancelled and Denied) for analytics 
+  let teamOrders = $derived(
+    selectedTeam === "Westwood Overall" 
+      ? orders 
+      : orders.filter((o) => (o.team || "").toLowerCase().includes(selectedTeam.toLowerCase()))
+  );
+
+  let analyticsOrders = $derived(
+    teamOrders
       .filter((/** @type {Order} */ o) => {
-        const s = o.status?.toLowerCase().trim();
-        return s === 'received' || s === 'ordered';
+        if (selectedTeam !== "Westwood Overall") return true; // Show everything for individual teams
+        const s = o.status?.toLowerCase().trim() || "";
+        return s !== 'cancelled' && s !== 'denied';
       })
       .map((/** @type {Order} */ o) => ({
         ...o,
@@ -49,17 +60,20 @@
     monthlyTrends: Array<{month: string, amount: number}> 
   }} */
   let stats = $derived({
-    totalSpent: expenses.reduce((/** @type {number} */ sum, /** @type {any} */ e) => sum + e.total, 0),
-    totalItems: expenses.length,
-    avgCost: expenses.length > 0 ? (expenses.reduce((/** @type {number} */ sum, /** @type {any} */ e) => sum + e.total, 0) / expenses.length) : 0,
+    totalSpent: analyticsOrders.reduce((sum, e) => sum + (e.total || 0), 0),
+    totalItems: analyticsOrders.length,
+    avgCost: analyticsOrders.length > 0 ? (analyticsOrders.reduce((sum, e) => sum + (e.total || 0), 0) / analyticsOrders.length) : 0,
     
-    mostExpensive: expenses.length > 0 ? [...expenses].sort((a,b) => b.total - a.total)[0] : null,
+    mostExpensive: analyticsOrders.length > 0 ? [...analyticsOrders].sort((a,b) => (b.total||0) - (a.total||0))[0] : null,
     
     topVendor: (() => {
-      if (expenses.length === 0) return null;
+      if (analyticsOrders.length === 0) return null;
       /** @type {Record<string, number>} */
       const map = {};
-      expenses.forEach((/** @type {any} */ e) => map[e.company] = (map[e.company] || 0) + 1);
+      analyticsOrders.forEach((e) => {
+        const comp = e.company || "Unknown";
+        map[comp] = (map[comp] || 0) + 1;
+      });
       const top = Object.entries(map).sort(([,a],[,b]) => b - a)[0];
       return { company: top[0], count: top[1] };
     })(),
@@ -67,15 +81,20 @@
     byCategory: (() => {
       /** @type {Record<string, number>} */
       const map = {};
-      expenses.forEach((/** @type {any} */ e) => map[e.category] = (map[e.category] || 0) + e.total);
+      analyticsOrders.forEach((e) => {
+        const cat = e.category || "misc";
+        map[cat] = (map[cat] || 0) + (e.total || 0);
+      });
       return map;
     })(),
 
     monthlyTrends: (() => {
       /** @type {Record<string, number>} */
       const map = {};
-      expenses.forEach((/** @type {any} */ e) => {
-        if (e.month) map[e.month] = (map[e.month] || 0) + e.total;
+      analyticsOrders.forEach((e) => {
+        if (e.month) {
+          map[e.month] = (map[e.month] || 0) + (e.total || 0);
+        }
       });
       return Object.entries(map)
         .map(([month, amount]) => ({ month, amount }))
@@ -91,9 +110,14 @@
 
 <div class="page-header">
   <h1>Analytics <span>&amp; Stats</span></h1>
-  <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-    <span class:spinning={syncing || (loading && !orders.length)}>↻</span> {syncing ? "Refreshing..." : "Refresh"}
-  </button>
+  <div style="display:flex;gap:10px;align-items:center">
+    <div style="width: 170px;">
+      <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
+      <span class:spinning={syncing || (loading && !orders.length)}>↻</span> {syncing ? "Refreshing..." : "Refresh"}
+    </button>
+  </div>
 </div>
 
 {#if error}
@@ -102,7 +126,7 @@
 
 {#if loading && !orders.length}
   <LoadingIndicator text="Analyzing financial data…" />
-{:else if expenses.length > 0}
+{:else if analyticsOrders.length > 0}
   <div class="fade-in">
     <div class="stat-grid" style="margin-bottom:28px">
       <StatCard label="Total Spent" value={stats.totalSpent.toString()} isCurrency icon="$" />
@@ -169,7 +193,7 @@
   <div class="empty-state card">
     <div class="icon">📊</div>
     <h3>No analytical data found</h3>
-    <p>Stats only include items marked as "Received". once you have orders fulfilled, they will appear here.</p>
+    <p>Stats include all valid orders. Try selecting a different team or submit a new order to see stats.</p>
   </div>
 {/if}
 

@@ -2,6 +2,7 @@
   import { CATEGORIES, TEAMS } from "$lib/utils.js";
   import { goto } from "$app/navigation";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
+  import { dataService } from "$lib/dataService.svelte.js";
 
   const teamOptions = TEAMS.map((/** @type {string} */ team) => ({
     label: team,
@@ -79,6 +80,9 @@
       }
 
       submitSuccess = "✓ Order successfully sent!";
+      
+      // Force refresh so that the cache is updated when they navigate back
+      dataService.load(true);
 
       // reset form
       form = {

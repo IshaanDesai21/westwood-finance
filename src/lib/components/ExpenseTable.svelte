@@ -1,7 +1,8 @@
 <script>
   import { formatCurrency, formatDate, truncate, capitalize, getTeamBadgeClass } from '../utils.js';
 
-  let { expenses = [], limit = 0 } = $props();
+  /** @type {{ expenses?: any[], limit?: number, hideTeam?: boolean }} */
+  let { expenses = [], limit = 0, hideTeam = false } = $props();
 
   let sortCol = $state("timestamp");
   let sortDir = $state("desc");
@@ -41,7 +42,9 @@
         <th class="sortable" onclick={() => toggleSort("item")}>Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="sortable" onclick={() => toggleSort("company")}>Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="sortable" onclick={() => toggleSort("category")}>Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="sortable" onclick={() => toggleSort("user")}>User {sortCol === "user" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        {#if !hideTeam}
+          <th class="sortable" onclick={() => toggleSort("user")}>User {sortCol === "user" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        {/if}
         <th class="sortable" onclick={() => toggleSort("timestamp")}>Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="text-right sortable" onclick={() => toggleSort("price")}>Price {sortCol === "price" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="text-right sortable" onclick={() => toggleSort("quantity")}>Qty {sortCol === "quantity" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
@@ -71,13 +74,15 @@
               {capitalize(expense.category)}
             </span>
           </td>
-          <td>
-            {#if expense.user}
-              <span class="badge {getTeamBadgeClass(expense.user)}">{expense.user}</span>
-            {:else}
-              —
-            {/if}
-          </td>
+          {#if !hideTeam}
+            <td>
+              {#if expense.user}
+                <span class="badge {getTeamBadgeClass(expense.user)}">{expense.user}</span>
+              {:else}
+                —
+              {/if}
+            </td>
+          {/if}
           <td class="text-muted">{formatDate(expense.timestamp)}</td>
           <td class="text-right monospace">{formatCurrency(expense.price)}</td>
           <td class="text-right">{expense.quantity}</td>
