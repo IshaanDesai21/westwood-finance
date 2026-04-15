@@ -52,7 +52,49 @@
     Type: "",
     Date: ""
   });
-  let activeView = $state("orders"); // "orders" | "funding"
+  let activeView = $state("orders"); // "orders" | "funding" | "master"
+
+  let masterTransactions = $derived.by(() => {
+    /** @type {any[]} */
+    const arr = [];
+    
+    // Expenses (Ordered, Received, Approved)
+    const expenses = orders.filter((/** @type {Order} */ o) => {
+      const s = o.status?.toLowerCase().trim();
+      return s === 'received' || s === 'ordered' || s === 'approved';
+    });
+    for (let e of expenses) {
+      arr.push({
+        id: e.id,
+        type: "Expense",
+        source: e.company || e.item,
+        category: e.category,
+        date: e.timestamp?.slice(0, 10) || "—",
+        amount: -e.total,
+        status: e.status
+      });
+    }
+    
+    // Income
+    for (let f of dataService.funds) {
+      arr.push({
+        id: f.id,
+        type: "Income",
+        source: f.Source,
+        category: f.Type,
+        date: f.Date || "—",
+        amount: Number(f.Amount) || 0,
+        status: "Received"
+      });
+    }
+    
+    arr.sort((a,b) => {
+      const dateA = new Date(a.date).getTime() || 0;
+      const dateB = new Date(b.date).getTime() || 0;
+      return dateB - dateA;
+    });
+    return arr;
+  });
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
   onMount(() => {
@@ -301,7 +343,7 @@
 
       <div class="tabs-container">
         <div class="segmented-control">
-          <div class="segment-highlight" style="transform: translateX(calc({activeView === 'orders' ? 0 : 1} * 100%));"></div>
+          <div class="segment-highlight" style="transform: translateX(calc({activeView === 'orders' ? 0 : activeView === 'funding' ? 1 : 2} * 100%)); width: calc((100% - 8px) / 3);"></div>
           <button 
             class="segment" 
             class:active={activeView === 'orders'} 
@@ -315,6 +357,13 @@
             onclick={() => activeView = 'funding'}
           >
             Funding
+          </button>
+          <button 
+            class="segment" 
+            class:active={activeView === 'master'} 
+            onclick={() => activeView = 'master'}
+          >
+            Master Finance
           </button>
         </div>
       </div>
@@ -409,7 +458,7 @@
         {/if}
       </div>
     </section>
-  {:else}
+  {:else if activeView === 'funding'}
     <!-- ── Funding Management ────────────────────────────────────────────────── -->
     <section class="fade-in">
       <div class="section-title" style="margin-bottom:12px">
@@ -454,6 +503,60 @@
                       <button class="btn btn-primary btn-edit" onclick={() => openEditFund(fund)}>
                         Manage
                       </button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
+    </section>
+  {:else if activeView === 'master'}
+    <!-- ── Master Finance Management ─────────────────────────────────────────── -->
+    <section class="fade-in">
+      <div class="section-title" style="margin-bottom:12px">
+        Master Finance Ledger ({masterTransactions.length})
+      </div>
+      <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
+        Combined view of all finalized inbound (Funding) and outbound (Approved/Ordered/Received) transactions.
+      </p>
+
+      <div class="card orders-card" style="padding:0;overflow:hidden">
+        {#if loading && !masterTransactions.length}
+          <LoadingIndicator text="Loading ledger..." />
+        {:else if masterTransactions.length === 0}
+          <div class="empty-state">
+            <div class="icon">🧾</div>
+            No transactions found.
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Source / Item</th>
+                  <th>Type</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each masterTransactions as tx (tx.id + tx.type)}
+                  <tr class="fade-in">
+                    <td class="text-muted">{tx.date}</td>
+                    <td style="font-weight:500">{tx.source || "—"}</td>
+                    <td>
+                      <span class="badge {tx.type === 'Income' ? 'badge-hardware' : 'badge-software'}">
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td>{tx.category || "—"}</td>
+                    <td><OrderStatusBadge status={tx.status} /></td>
+                    <td class="text-right monospace" style="font-weight:600; color: {tx.amount > 0 ? '#6bcb77' : '#f16a4e'}">
+                      {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
                     </td>
                   </tr>
                 {/each}
@@ -634,7 +737,7 @@
     border: 1px solid var(--border);
     position: relative;
     gap: 0;
-    width: 300px; /* Fixed width for symmetry */
+    width: 450px; /* Wider to accommodate 3 tabs */
   }
 
   .segment-highlight {
@@ -642,7 +745,7 @@
     top: 4px;
     bottom: 4px;
     left: 4px;
-    width: calc((100% - 8px) / 2); /* 2 options */
+    /* Overridden inline for the 3 tabs, but default is calc(100%/3) */
     background: var(--surface);
     border-radius: 99px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);

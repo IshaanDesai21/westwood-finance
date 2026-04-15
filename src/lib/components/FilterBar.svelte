@@ -41,9 +41,9 @@
   }
 </script>
 
-<div class="filter-bar card">
+<div class="filter-bar">
   <div class="filter-row">
-    <div class="form-group" style="flex:2; min-width:180px">
+    <div class="form-group search-input">
       <label for="filter-search">Search</label>
       <input
         id="filter-search"
@@ -54,7 +54,7 @@
       />
     </div>
 
-    <div class="form-group" style="flex:1; min-width:160px">
+    <div class="form-group">
       <label for="filter-category">Category</label>
       <CustomDropdown 
         options={categoryOptions} 
@@ -75,7 +75,7 @@
       />
     </div>
 
-    <div class="form-group" style="flex:1; min-width:160px">
+    <div class="form-group">
       <label for="filter-team">Team</label>
       <CustomDropdown 
         options={teamOptions} 
@@ -85,7 +85,7 @@
       />
     </div>
 
-    <div class="form-group" style="flex:1; min-width:160px">
+    <div class="form-group">
       <label for="filter-status">Status</label>
       <CustomDropdown 
         options={statusOptions} 
@@ -115,8 +115,8 @@
       />
     </div>
 
-    <div class="form-group" style="justify-content:flex-end; padding-top:20px">
-      <button class="btn btn-ghost btn-sm" onclick={reset}>Reset</button>
+    <div class="form-group reset-button" style="justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" style="width: 100%; height: 42px;" onclick={reset}>Reset</button>
     </div>
   </div>
 </div>
