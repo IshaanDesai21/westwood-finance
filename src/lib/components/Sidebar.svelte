@@ -13,10 +13,13 @@
 
 <aside class="sidebar">
   <div class="sidebar-brand">
-    <span class="brand-icon">W</span>
-    <div>
-      <div class="brand-name">Westwood</div>
-      <div class="brand-sub">Finance</div>
+    <div class="logo-wrapper">
+      <div class="logo-placeholder">W</div>
+      <!-- <img src="/logo.png" alt="Logo" class="logo-actual" /> -->
+    </div>
+    <div class="brand-text">
+       <span class="brand-title">WESTWOOD</span>
+       <span class="brand-module">FINANCE</span>
     </div>
   </div>
 
@@ -58,38 +61,52 @@
 
   .sidebar-brand {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 20px 24px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
+    margin-bottom: 8px;
   }
 
-  .brand-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--primary);
-    border-radius: 8px;
+  .logo-wrapper {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--primary) 0%, #b97cf3 100%);
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 800;
-    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(78, 154, 241, 0.3);
+  }
+
+  .logo-placeholder {
+    font-weight: 900;
+    font-size: 1.4rem;
     color: #fff;
-    flex-shrink: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
 
-  .brand-name {
-    font-weight: 700;
-    font-size: 0.95rem;
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .brand-title {
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.12em;
     color: var(--text);
+    line-height: 1;
   }
 
-  .brand-sub {
-    font-size: 0.7rem;
-    color: var(--text-muted);
+  .brand-module {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.3em;
+    opacity: 0.9;
   }
 
   .sidebar-nav {

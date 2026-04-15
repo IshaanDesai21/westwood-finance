@@ -3,10 +3,10 @@
   import { formatCurrency, getTeamBadgeClass } from "$lib/utils.js";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
+  import { dataService } from "$lib/dataService.svelte.js";
 
   // ── API Config ──────────────────────────────────────────────────────────────
-  const BASE_URL =
-    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbyN3GVRJLgyyOy35q6FUnnKdVlMxFVTVlpsemhyI8qu6DvXkLhP43zRbxPD_lhJ8nXwXQ/exec";
   const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const FUND_TYPES = ["Fundraiser", "Grant", "Dues", "Sponsor", "Other"];
@@ -21,14 +21,8 @@
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
-  /** @type {any[]} */
-  let funds = $state([]);
-  /** @type {Record<string, any> | null} */
-  let budget = $state(null);
-  let loadingFunds = $state(false);
-  let loadingBudget = $state(false);
-  let fundsError = $state(/** @type {string|null} */ (null));
-  let budgetError = $state(/** @type {string|null} */ (null));
+  let { funds, budget, loading, error } = $derived(dataService);
+  let syncing = $state(false);
 
   let activeTab = $state("overview");
   let sortCol = $state("Date");
@@ -63,38 +57,15 @@
   }
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
-  async function loadFunds() {
-    loadingFunds = true;
-    fundsError = null;
-    try {
-      const res = await fetch(`${BASE_URL}?action=getFunds&key=${SECRET_KEY}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      funds = await res.json();
-    } catch (e) {
-      fundsError = e instanceof Error ? e.message : "Unknown error";
-    } finally {
-      loadingFunds = false;
-    }
-  }
-
-  async function loadBudget() {
-    loadingBudget = true;
-    budgetError = null;
-    try {
-      const res = await fetch(`${BASE_URL}?action=getBudget&key=${SECRET_KEY}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      budget = await res.json();
-    } catch (e) {
-      budgetError = e instanceof Error ? e.message : "Unknown error";
-    } finally {
-      loadingBudget = false;
-    }
-  }
-
   onMount(() => {
-    loadFunds();
-    loadBudget();
+    dataService.load(); // Uses cache for instant load
   });
+
+  async function sync() {
+    syncing = true;
+    await dataService.load(true);
+    syncing = false;
+  }
 
   // ── Derived totals ──────────────────────────────────────────────────────────
   let totalRaised = $derived(
@@ -178,8 +149,7 @@
         notes: "",
         recipient: "All",
       };
-      await loadFunds();
-      await loadBudget();
+      await dataService.load(true); // Force refresh shared store
     } catch (e) {
       formErr = e instanceof Error ? e.message : "Unknown error";
     } finally {
@@ -215,14 +185,15 @@
 <div class="page-header">
   <h1>Funding <span>& Budget</span></h1>
   <div style="display:flex;gap:8px;">
+    {#if error}
+      <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
+    {/if}
     <button
       class="btn btn-ghost btn-sm"
-      onclick={() => {
-        loadFunds();
-        loadBudget();
-      }}
+      onclick={sync}
+      disabled={syncing}
     >
-      <span class:spinning={loadingFunds || loadingBudget}>↻</span> Refresh
+      <span class:spinning={syncing}>↻</span> {syncing ? "Syncing..." : "Refresh"}
     </button>
   </div>
 </div>
@@ -241,13 +212,6 @@
     {/each}
   </div>
 </div>
-
-{#if fundsError}
-  <div class="error-bar">⚠ Funds: {fundsError}</div>
-{/if}
-{#if budgetError}
-  <div class="error-bar">⚠ Budget: {budgetError}</div>
-{/if}
 
 <!-- ══ OVERVIEW ══════════════════════════════════════════════════════════════ -->
 {#if activeTab === "overview"}
@@ -296,8 +260,8 @@
 
   <!-- Type breakdown -->
   <div class="section-title" style="margin-top:28px">Funding by Type</div>
-  {#if loadingFunds}
-    <LoadingIndicator />
+  {#if loading && !funds.length}
+    <LoadingIndicator text="Fetching data..." />
   {:else}
     <div class="type-breakdown card">
       {#each FUND_TYPES as type}
@@ -323,8 +287,8 @@
 
   <!-- ══ HISTORY ══════════════════════════════════════════════════════════════ -->
 {:else if activeTab === "history"}
-  {#if loadingFunds}
-    <LoadingIndicator />
+  {#if loading && !funds.length}
+    <LoadingIndicator text="Loading history..." />
   {:else if funds.length === 0}
     <div class="empty-state card">
       <div class="icon">💰</div>
@@ -389,11 +353,11 @@
 
   <!-- ══ TEAM BUDGETS ═════════════════════════════════════════════════════════ -->
 {:else if activeTab === "budget"}
-  {#if loadingBudget}
-    <LoadingIndicator />
+  {#if loading && !budget}
+    <LoadingIndicator text="Loading budgets..." />
   {:else if !budget}
     <div class="empty-state card">
-      <div class="icon"></div>
+      <div class="icon">📊</div>
       No budget data available.
     </div>
   {:else}
@@ -798,134 +762,117 @@
   }
   .breakdown-pct {
     grid-column: 2;
-    grid-row: 1 / 3;
-    font-size: 0.78rem;
-    font-weight: 700;
-    min-width: 32px;
-    text-align: right;
+    font-size: 0.75rem;
   }
 
-  /* ── History ──────────────────────────────────────────────────────────────── */
-  .type-badge {
-    font-weight: 700;
-    font-size: 0.8rem;
+  .sortable {
+    cursor: pointer;
+    user-select: none;
   }
-  .recipient-chip {
-    font-size: 0.78rem;
+  .sortable:hover {
     background: var(--surface-2);
-    border: 1px solid var(--border);
-    padding: 2px 8px;
-    border-radius: 999px;
-    color: var(--text-muted);
   }
 
-  /* ── Team Budgets ─────────────────────────────────────────────────────────── */
+  /* ── Budget Grid ──────────────────────────────────────────────────────────── */
   .budget-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
   }
   .budget-card {
-    padding: 20px;
+    padding: 24px;
   }
   .budget-team-name {
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 700;
     margin-bottom: 4px;
-    color: var(--text);
   }
   .budget-final {
-    font-size: 1.6rem;
+    font-size: 1.8rem;
     font-weight: 700;
-    margin-bottom: 12px;
+    margin-bottom: 20px;
   }
   .budget-details {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
   }
   .budget-detail-row {
     display: flex;
     justify-content: space-between;
-    font-size: 0.82rem;
+    font-size: 0.875rem;
   }
   .budget-bar-track {
-    height: 4px;
+    height: 6px;
     background: var(--surface-2);
-    border-radius: 999px;
+    border-radius: 99px;
     overflow: hidden;
   }
   .budget-bar-fill {
     height: 100%;
-    border-radius: 999px;
-    transition: width 0.4s ease;
+    transition: width 0.6s ease;
   }
 
   .totals-card {
-    padding: 20px;
-    margin-top: 4px;
-    border-color: var(--primary);
+    padding: 30px;
+    border: 1px solid var(--border);
   }
   .totals-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 30px;
   }
 
-  /* ── Add Funds ────────────────────────────────────────────────────────────── */
+  /* ── Add Layout ───────────────────────────────────────────────────────────── */
   .add-layout {
     display: grid;
-    grid-template-columns: 1fr 240px;
+    grid-template-columns: 1fr 280px;
     gap: 24px;
     align-items: start;
   }
-  @media (max-width: 900px) {
+  @media (max-width: 800px) {
     .add-layout {
       grid-template-columns: 1fr;
     }
   }
   .add-card {
-    padding: 28px;
+    padding: 32px;
   }
-
-  .success-bar {
-    background: rgba(107, 203, 119, 0.12);
-    border: 1px solid rgba(107, 203, 119, 0.3);
-    color: #6bcb77;
-    padding: 10px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 0.875rem;
-    margin-bottom: 16px;
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
   }
   .tips-card {
-    padding: 20px;
+    padding: 24px;
+    background: var(--surface-2);
   }
   .tips-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 10px;
+    margin: 12px 0 0 18px;
+    padding: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
   }
   .tips-list li {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    padding-left: 16px;
-    position: relative;
-  }
-  .tips-list li::before {
-    content: "›";
-    position: absolute;
-    left: 0;
-    color: var(--primary);
+    margin-bottom: 12px;
+    line-height: 1.5;
   }
   .type-tag {
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: 0.78rem;
+    background: var(--surface);
     padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .error-text {
+    color: #f16a4e;
+    font-weight: 500;
+  }
+  .recipient-chip {
+    font-size: 0.75rem;
     background: var(--surface-2);
-    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    border-radius: 99px;
     color: var(--text-muted);
   }
 </style>

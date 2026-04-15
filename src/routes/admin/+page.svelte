@@ -417,13 +417,12 @@
     content: '';
     position: absolute;
     left: 0;
-    top: 6px;
-    bottom: 6px;
+    top: 0;
+    bottom: 0;
     width: 4px;
     background: var(--group-color);
-    border-radius: 0 4px 4px 0;
-    box-shadow: 2px 0 6px var(--group-color);
-    opacity: 0.8;
+    box-shadow: none;
+    opacity: 0.9;
   }
 
   /* ── Table ────────────────────────────────────────────────────────────────── */

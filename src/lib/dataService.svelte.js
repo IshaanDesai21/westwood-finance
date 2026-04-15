@@ -118,7 +118,7 @@ class DataStore {
     }
     
     this.error = null;
-    console.log("🌐 DataStore: Syncing with Google Sheets...");
+    console.log("DataStore: Syncing with Google Sheets...");
 
     try {
       // Add a timeout to prevent infinite loading if Google is slow

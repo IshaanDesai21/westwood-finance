@@ -6,6 +6,7 @@
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import { formatCurrency, formatDate } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
+  import appInfo from "$lib/app-info.json";
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
@@ -43,7 +44,7 @@
   let budgetTotalValue = $derived(budget?.Total?.["Final"] || 0);
 
   // Category breakdown
-  let spentByCategory = $derived(() => {
+  let spentByCategory = $derived.by(() => {
     const map = /** @type {Record<string,number>} */ ({});
     for (const e of expenses) {
       const cat = e.category || "miscellaneous";
@@ -59,6 +60,16 @@
     food: "Food",
     miscellaneous: "Misc",
   });
+  // Generate a stable hue from an order UUID
+  function getOrderColor(/** @type {string|undefined} */ uuid) {
+    if (!uuid) return "transparent";
+    let hash = 0;
+    for (let i = 0; i < uuid.length; i++) {
+        hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash % 360);
+    return `hsl(${h}, 65%, 45%)`;
+  }
 </script>
 
 <svelte:head>
@@ -71,6 +82,10 @@
     {#if error}
       <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
     {/if}
+    <div class="deploy-info">
+      <span class="version-tag">v{appInfo.version}</span>
+      <span class="deploy-time">{appInfo.deployedAt}</span>
+    </div>
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
       {syncing ? "Syncing…" : "Refresh"}
@@ -78,8 +93,9 @@
   </div>
 </div>
 
-{#if loading && !orders.length}
-  <LoadingIndicator text="Loading dashboard data" />
+<!-- Only show full loading screen if we have absolutely NO data (first visit ever) -->
+{#if loading && !orders.length && !funds.length}
+  <LoadingIndicator text="Initial data fetch..." />
 {:else}
   <div class="stat-grid fade-in">
     <StatCard
@@ -128,9 +144,11 @@
           <a href="/orders" class="btn btn-ghost btn-xs">View All</a>
         </div>
         <div class="recent-list">
-          {#each recentOrders as order}
+          {#each recentOrders as order (order.id)}
+            {@const orderColor = getOrderColor(order.orderUUID)}
             <div 
-              class="recent-item" 
+              class="recent-item group-row" 
+              style="--group-color: {orderColor}"
               role="button" 
               tabindex="0" 
               onclick={() => console.log('Recent Order Data:', order)} 
@@ -161,7 +179,7 @@
       <section class="dashboard-section card">
         <h2>Spending <span>Breakdown</span></h2>
         <div class="category-list">
-          {#each Object.entries(spentByCategory()) as [cat, amount]}
+          {#each Object.entries(spentByCategory) as [cat, amount]}
             {@const pct = totalSpent > 0 ? (amount / totalSpent) * 100 : 0}
             <div class="cat-row">
               <div class="cat-info">
@@ -246,7 +264,10 @@
   .recent-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 1px; /* Minimal gap for continuous line look */
+    background: var(--border); /* Optional: creates a thin separator */
+    border-radius: var(--radius-sm);
+    overflow: hidden;
   }
 
   .recent-item {
@@ -254,22 +275,27 @@
     grid-template-columns: 1fr auto 100px;
     gap: 12px;
     align-items: center;
-    padding: 12px;
-    border-bottom: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s;
+    padding: 12px 16px 12px 24px;
+    background: var(--surface);
+    transition: background 0.2s;
     cursor: pointer;
+    position: relative;
+  }
+
+  /* Group Indicator Line (Full Height, No Glow) */
+  .recent-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--group-color);
+    opacity: 0.9;
   }
 
   .recent-item:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     background: var(--surface-2);
-    border-bottom-color: transparent;
-  }
-
-  .recent-item:last-child {
-    border-bottom: none;
   }
 
   .item-name {
@@ -340,6 +366,7 @@
   .empty-text {
     text-align: center;
     padding: 20px;
+    background: var(--surface);
     color: var(--text-muted);
     font-size: 0.9rem;
   }
@@ -352,5 +379,37 @@
   .btn-xs {
     font-size: 0.7rem;
     padding: 4px 8px;
+  }
+
+  /* Deploy Info Styling */
+  .deploy-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    margin-right: 8px;
+    padding-right: 12px;
+    border-right: 1px solid var(--border);
+    line-height: 1;
+  }
+
+  .version-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .deploy-time {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 600px) {
+    .deploy-info {
+      display: none;
+    }
   }
 </style>

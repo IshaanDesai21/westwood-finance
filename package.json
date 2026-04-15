@@ -10,7 +10,8 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"deploy": "npm run build && touch build/.nojekyll && npx gh-pages -d build"
+		"deploy": "node scripts/update-version.js && npm run build && touch build/.nojekyll && npx gh-pages -d build && node scripts/log-success.js",
+		"deploy:later": "node scripts/deploy-later.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",
