@@ -462,7 +462,7 @@
     <!-- Lock Screen -->
     <div class="lock-screen">
       <div class="lock-card card">
-        <div class="lock-icon">🔐</div>
+        <div class="lock-icon"></div>
         <h2>Add Funds Access</h2>
         <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
           Enter the password to add a funding entry.
@@ -495,7 +495,7 @@
     </div>
   {:else}
     <div class="unlocked-header">
-      <span class="unlocked-badge">🔓 Unlocked</span>
+      <span class="unlocked-badge">Unlocked</span>
       <button class="btn btn-ghost btn-sm" onclick={() => (unlocked = false)}
         >Lock</button
       >
