@@ -27,6 +27,7 @@
   let { orders, loading, error } = $derived(dataService);
   let syncing = $state(false);
 
+  /** @type {Record<string, number>} */
   const STATUS_PRIORITY = {
     "submitted, in review": 0,
     "approved": 1,
