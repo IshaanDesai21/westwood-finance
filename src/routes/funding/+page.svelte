@@ -6,7 +6,8 @@
   import { dataService } from "$lib/dataService.svelte.js";
 
   // ── API Config ──────────────────────────────────────────────────────────────
-  const BASE_URL = "https://script.google.com/macros/s/AKfycbyN3GVRJLgyyOy35q6FUnnKdVlMxFVTVlpsemhyI8qu6DvXkLhP43zRbxPD_lhJ8nXwXQ/exec";
+  const BASE_URL =
+    "https://script.google.com/macros/s/AKfycbw5haNqtdJJfP1iS5myexglJ7qpr-HRi7n9zTF2FCESQ97_j_mQjQipfsCRN6-xMFjK7A/exec";
   const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const FUND_TYPES = ["Fundraiser", "Grant", "Dues", "Sponsor", "Other"];
@@ -83,13 +84,15 @@
   });
 
   let budgetTeams = $derived(
-    budget ? Object.entries(budget)
-      .filter(([key]) => key !== "Total")
-      .sort(([a], [b]) => {
-        if (a === "FRC") return -1;
-        if (b === "FRC") return 1;
-        return a.localeCompare(b);
-      }) : [],
+    budget
+      ? Object.entries(budget)
+          .filter(([key]) => key !== "Total")
+          .sort(([a], [b]) => {
+            if (a === "FRC") return -1;
+            if (b === "FRC") return 1;
+            return a.localeCompare(b);
+          })
+      : [],
   );
   let budgetTotal = $derived(/** @type {any} */ (budget)?.Total ?? null);
 
@@ -104,7 +107,7 @@
       if (valA < valB) return sortDir === "asc" ? -1 : 1;
       if (valA > valB) return sortDir === "asc" ? 1 : -1;
       return 0;
-    })
+    }),
   );
 
   function toggleSort(/** @type {string} */ col) {
@@ -194,12 +197,9 @@
     {#if error}
       <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
     {/if}
-    <button
-      class="btn btn-ghost btn-sm"
-      onclick={sync}
-      disabled={syncing}
-    >
-      <span class:spinning={syncing}>↻</span> {syncing ? "Syncing..." : "Refresh"}
+    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
+      <span class:spinning={syncing}>↻</span>
+      {syncing ? "Syncing..." : "Refresh"}
     </button>
   </div>
 </div>
@@ -207,7 +207,15 @@
 <!-- ── Tab Nav ──────────────────────────────────────────────────────────────── -->
 <div class="tabs-container">
   <div class="segmented-control" style="position:relative; z-index:0;">
-    <div class="segment-highlight" style="transform: translateX(calc({['overview', 'history', 'budget', 'add'].indexOf(activeTab)} * 100%));"></div>
+    <div
+      class="segment-highlight"
+      style="transform: translateX(calc({[
+        'overview',
+        'history',
+        'budget',
+        'add',
+      ].indexOf(activeTab)} * 100%));"
+    ></div>
     {#each [["overview", "Overview"], ["history", "Funding History"], ["budget", "Team Budgets"], ["add", "+ Add Funds"]] as [key, label]}
       <button
         class="segment"
@@ -305,12 +313,48 @@
       <table>
         <thead>
           <tr>
-            <th class="sortable" onclick={() => toggleSort("Type")}>Type {sortCol === "Type" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-            <th class="sortable" onclick={() => toggleSort("Source")}>Source {sortCol === "Source" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-            <th class="sortable" onclick={() => toggleSort("Recipient")}>Recipient {sortCol === "Recipient" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-            <th class="sortable" onclick={() => toggleSort("Date")}>Date {sortCol === "Date" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-            <th class="sortable" onclick={() => toggleSort("Notes")}>Notes {sortCol === "Notes" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-            <th class="sortable text-right" onclick={() => toggleSort("Amount")}>Amount {sortCol === "Amount" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+            <th class="sortable" onclick={() => toggleSort("Type")}
+              >Type {sortCol === "Type"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}</th
+            >
+            <th class="sortable" onclick={() => toggleSort("Source")}
+              >Source {sortCol === "Source"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}</th
+            >
+            <th class="sortable" onclick={() => toggleSort("Recipient")}
+              >Recipient {sortCol === "Recipient"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}</th
+            >
+            <th class="sortable" onclick={() => toggleSort("Date")}
+              >Date {sortCol === "Date"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}</th
+            >
+            <th class="sortable" onclick={() => toggleSort("Notes")}
+              >Notes {sortCol === "Notes"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}</th
+            >
+            <th class="sortable text-right" onclick={() => toggleSort("Amount")}
+              >Amount {sortCol === "Amount"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}</th
+            >
           </tr>
         </thead>
         <tbody>
@@ -326,8 +370,10 @@
               </td>
               <td style="font-weight:500">{entry.Source || "—"}</td>
               <td>
-                {#if entry.Recipient && entry.Recipient !== 'All'}
-                  <span class="badge {getTeamBadgeClass(entry.Recipient)}">{entry.Recipient}</span>
+                {#if entry.Recipient && entry.Recipient !== "All"}
+                  <span class="badge {getTeamBadgeClass(entry.Recipient)}"
+                    >{entry.Recipient}</span
+                  >
                 {:else}
                   <span class="recipient-chip">{entry.Recipient || "—"}</span>
                 {/if}
@@ -352,8 +398,13 @@
         <tfoot class="total-row-container">
           <tr>
             <td></td>
-            <td colspan="4" style="font-weight:700; color:var(--text-muted)">Total Raised</td>
-            <td class="text-right monospace amount-total" style="font-weight:700">
+            <td colspan="4" style="font-weight:700; color:var(--text-muted)"
+              >Total Raised</td
+            >
+            <td
+              class="text-right monospace amount-total"
+              style="font-weight:700"
+            >
               {formatCurrency(totalRaised)}
             </td>
           </tr>
@@ -473,8 +524,15 @@
     <!-- Lock Screen -->
     <div class="lock-screen">
       <div class="lock-card card">
-        <div class="lock-logo" style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;">
-          <img src="/logo.png" alt="Westwood Logo" style="width: 100%; height: 100%; object-fit: cover;" />
+        <div
+          class="lock-logo"
+          style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;"
+        >
+          <img
+            src="/logo.png"
+            alt="Westwood Logo"
+            style="width: 100%; height: 100%; object-fit: cover;"
+          />
         </div>
         <h2>Add Funds Access</h2>
         <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
@@ -605,12 +663,12 @@
         <div class="card-title">Tips</div>
         <ul class="tips-list">
           <li>
-            Use <strong>All</strong> as recipient for club-wide income that gets distributed
-            equally.
+            Use <strong>All</strong> as recipient for club-wide income that gets
+            distributed equally.
           </li>
           <li>
-            <strong>Grants</strong> and <strong>Sponsors</strong> go to specific teams
-            or WWROBO.
+            <strong>Grants</strong> and <strong>Sponsors</strong> go to specific
+            teams or WWROBO.
           </li>
           <li>The date field is optional but recommended for tracking.</li>
           <li>Entries appear in Funding History after submission.</li>
@@ -618,7 +676,9 @@
 
         <div style="margin-top:20px">
           <div class="card-title">Fund Types</div>
-          <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+          <div
+            style="display:flex;flex-direction:column;gap:6px;margin-top:8px"
+          >
             {#each FUND_TYPES as t}
               <span
                 class="type-tag"
@@ -854,7 +914,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -920,7 +980,7 @@
     position: relative;
   }
   .total-row-container tr::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -1px;
     left: 0;

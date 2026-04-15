@@ -9,7 +9,8 @@
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
   // ── API Config ──────────────────────────────────────────────────────────────
-  const BASE_URL = "https://script.google.com/macros/s/AKfycbyN3GVRJLgyyOy35q6FUnnKdVlMxFVTVlpsemhyI8qu6DvXkLhP43zRbxPD_lhJ8nXwXQ/exec";
+  const BASE_URL =
+    "https://script.google.com/macros/s/AKfycbw5haNqtdJJfP1iS5myexglJ7qpr-HRi7n9zTF2FCESQ97_j_mQjQipfsCRN6-xMFjK7A/exec";
   const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const ORDER_STATUSES = [
@@ -41,7 +42,7 @@
   let editTracking = $state("");
   let editUUID = $state("");
   let editSaving = $state(false);
-  
+
   // ── Funding Edit State ──────────────────────────────────────────────────────
   let editingFund = $state(null);
   let editFundFields = $state({
@@ -50,18 +51,18 @@
     Recipient: "",
     Notes: "",
     Type: "",
-    Date: ""
+    Date: "",
   });
   let activeView = $state("orders"); // "orders" | "funding" | "master"
 
   let masterTransactions = $derived.by(() => {
     /** @type {any[]} */
     const arr = [];
-    
+
     // Expenses (Ordered, Received, Approved)
     const expenses = orders.filter((/** @type {Order} */ o) => {
       const s = o.status?.toLowerCase().trim();
-      return s === 'received' || s === 'ordered' || s === 'approved';
+      return s === "received" || s === "ordered" || s === "approved";
     });
     for (let e of expenses) {
       arr.push({
@@ -71,10 +72,10 @@
         category: e.category,
         date: e.timestamp?.slice(0, 10) || "—",
         amount: -e.total,
-        status: e.status
+        status: e.status,
       });
     }
-    
+
     // Income
     for (let f of dataService.funds) {
       arr.push({
@@ -84,11 +85,11 @@
         category: f.Type,
         date: f.Date || "—",
         amount: Number(f.Amount) || 0,
-        status: "Received"
+        status: "Received",
       });
     }
-    
-    arr.sort((a,b) => {
+
+    arr.sort((a, b) => {
       const dateA = new Date(a.date).getTime() || 0;
       const dateB = new Date(b.date).getTime() || 0;
       return dateB - dateA;
@@ -176,8 +177,8 @@
   }
 
   // ── Funding Edit Helpers ──────────────────────────────────────────────────────
-  /** 
-   * @param {any} fund 
+  /**
+   * @param {any} fund
    */
   function openEditFund(fund) {
     editingFund = fund;
@@ -187,7 +188,7 @@
       Recipient: fund.Recipient || "",
       Notes: fund.Notes || "",
       Type: fund.Type || "Part Order",
-      Date: fund.Date || new Date().toISOString().split('T')[0]
+      Date: fund.Date || new Date().toISOString().split("T")[0],
     };
     actionMsg = "";
     actionErr = "";
@@ -208,11 +209,12 @@
         Recipient: String(editFundFields.Recipient),
         Notes: String(editFundFields.Notes),
         Type: String(editFundFields.Type),
-        Date: String(editFundFields.Date)
+        Date: String(editFundFields.Date),
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
       const result = await res.json();
-      if (!res.ok || result?.error) throw new Error(result?.error || "Update failed");
+      if (!res.ok || result?.error)
+        throw new Error(result?.error || "Update failed");
 
       actionMsg = `✓ Funding entry updated!`;
       editingFund = null;
@@ -233,8 +235,15 @@
   <!-- ── Lock Screen ──────────────────────────────────────────────────────── -->
   <div class="lock-screen">
     <div class="lock-card card">
-      <div class="lock-logo" style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;">
-        <img src="/logo.png" alt="Westwood Logo" style="width: 100%; height: 100%; object-fit: cover;" />
+      <div
+        class="lock-logo"
+        style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;"
+      >
+        <img
+          src="/logo.png"
+          alt="Westwood Logo"
+          style="width: 100%; height: 100%; object-fit: cover;"
+        />
       </div>
       <h1>Admin Console Access</h1>
       <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
@@ -329,39 +338,47 @@
     <div class="header-content">
       <div class="header-top">
         <h1>Admin <span class="accent-color">Console</span></h1>
-        
+
         <div class="header-actions">
           <button
             class="btn btn-ghost btn-sm"
             onclick={sync}
             disabled={syncing}
           >
-            <span class:spinning={syncing}>↻</span> {syncing ? "Syncing..." : "Refresh Data"}
+            <span class:spinning={syncing}>↻</span>
+            {syncing ? "Syncing..." : "Refresh Data"}
           </button>
         </div>
       </div>
 
       <div class="tabs-container">
         <div class="segmented-control">
-          <div class="segment-highlight" style="transform: translateX(calc({activeView === 'orders' ? 0 : activeView === 'funding' ? 1 : 2} * 100%)); width: calc((100% - 8px) / 3);"></div>
-          <button 
-            class="segment" 
-            class:active={activeView === 'orders'} 
-            onclick={() => activeView = 'orders'}
+          <div
+            class="segment-highlight"
+            style="transform: translateX(calc({activeView === 'orders'
+              ? 0
+              : activeView === 'funding'
+                ? 1
+                : 2} * 100%)); width: calc((100% - 8px) / 3);"
+          ></div>
+          <button
+            class="segment"
+            class:active={activeView === "orders"}
+            onclick={() => (activeView = "orders")}
           >
             Orders
           </button>
-          <button 
-            class="segment" 
-            class:active={activeView === 'funding'} 
-            onclick={() => activeView = 'funding'}
+          <button
+            class="segment"
+            class:active={activeView === "funding"}
+            onclick={() => (activeView = "funding")}
           >
             Funding
           </button>
-          <button 
-            class="segment" 
-            class:active={activeView === 'master'} 
-            onclick={() => activeView = 'master'}
+          <button
+            class="segment"
+            class:active={activeView === "master"}
+            onclick={() => (activeView = "master")}
           >
             Master Finance
           </button>
@@ -377,13 +394,14 @@
     <div class="error-bar">{actionErr}</div>
   {/if}
 
-  {#if activeView === 'orders'}
+  {#if activeView === "orders"}
     <section class="fade-in">
       <div class="section-title" style="margin-bottom:12px">
         Manage All Orders ({orders.length})
       </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-        Manage order statuses, UUIDs, and tracking links. Updates sync directly to Google Sheets.
+        Manage order statuses, UUIDs, and tracking links. Updates sync directly
+        to Google Sheets.
       </p>
 
       <div class="card orders-card" style="padding:0;overflow:hidden">
@@ -415,38 +433,59 @@
               <tbody>
                 {#each orders as order (order.id)}
                   {@const orderColor = getOrderColor(order.orderUUID)}
-                  <tr class="fade-in group-row" style="--group-color: {orderColor}">
+                  <tr
+                    class="fade-in group-row"
+                    style="--group-color: {orderColor}"
+                  >
                     <td>
                       <div style="font-weight:500">
                         {#if order.link}
-                          <a href={order.link} target="_blank" rel="noopener">{order.item}</a>
+                          <a href={order.link} target="_blank" rel="noopener"
+                            >{order.item}</a
+                          >
                         {:else}
                           {order.item}
                         {/if}
                       </div>
                       {#if order.notes}
-                        <div style="font-size:0.78rem;color:var(--text-muted)">{order.notes}</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted)">
+                          {order.notes}
+                        </div>
                       {/if}
                     </td>
                     <td>{order.company || "—"}</td>
                     <td>
-                      <span class="badge badge-{(order.category || '').toLowerCase()}">
+                      <span
+                        class="badge badge-{(
+                          order.category || ''
+                        ).toLowerCase()}"
+                      >
                         {order.category || "—"}
                       </span>
                     </td>
                     <td>{order.team || "—"}</td>
-                    <td class="text-muted">{(order.timestamp || "").slice(0, 10) || "—"}</td>
-                    <td class="text-right monospace">{formatCurrency(order.price)}</td>
+                    <td class="text-muted"
+                      >{(order.timestamp || "").slice(0, 10) || "—"}</td
+                    >
+                    <td class="text-right monospace"
+                      >{formatCurrency(order.price)}</td
+                    >
                     <td class="text-right">{order.quantity || "—"}</td>
                     <td class="text-right monospace" style="font-weight:600">
                       {formatCurrency(order.total)}
                     </td>
                     <td><OrderStatusBadge status={order.status} /></td>
-                    <td class="text-right monospace" style="font-size:0.72rem;color:var(--text-muted)">
+                    <td
+                      class="text-right monospace"
+                      style="font-size:0.72rem;color:var(--text-muted)"
+                    >
                       {order.orderUUID || "—"}
                     </td>
                     <td>
-                      <button class="btn btn-primary btn-edit" onclick={() => openEdit(order)}>
+                      <button
+                        class="btn btn-primary btn-edit"
+                        onclick={() => openEdit(order)}
+                      >
                         Manage
                       </button>
                     </td>
@@ -458,14 +497,15 @@
         {/if}
       </div>
     </section>
-  {:else if activeView === 'funding'}
+  {:else if activeView === "funding"}
     <!-- ── Funding Management ────────────────────────────────────────────────── -->
     <section class="fade-in">
       <div class="section-title" style="margin-bottom:12px">
         Manage Funding & Grants ({dataService.funds.length})
       </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-        Edit funding sources, amounts, and recipients. These changes sync to the Fundraising sheet.
+        Edit funding sources, amounts, and recipients. These changes sync to the
+        Fundraising sheet.
       </p>
 
       <div class="card" style="padding:0;overflow:hidden">
@@ -497,10 +537,19 @@
                     <td style="font-weight:500">{fund.Source || "—"}</td>
                     <td>{fund.Recipient || "—"}</td>
                     <td class="text-muted">{fund.Date || "—"}</td>
-                    <td class="text-right monospace" style="font-weight:600;color:#6bcb77">{formatCurrency(fund.Amount)}</td>
-                    <td class="text-muted" style="font-size:0.8rem">{fund.Notes || "—"}</td>
+                    <td
+                      class="text-right monospace"
+                      style="font-weight:600;color:#6bcb77"
+                      >{formatCurrency(fund.Amount)}</td
+                    >
+                    <td class="text-muted" style="font-size:0.8rem"
+                      >{fund.Notes || "—"}</td
+                    >
                     <td>
-                      <button class="btn btn-primary btn-edit" onclick={() => openEditFund(fund)}>
+                      <button
+                        class="btn btn-primary btn-edit"
+                        onclick={() => openEditFund(fund)}
+                      >
                         Manage
                       </button>
                     </td>
@@ -512,14 +561,15 @@
         {/if}
       </div>
     </section>
-  {:else if activeView === 'master'}
+  {:else if activeView === "master"}
     <!-- ── Master Finance Management ─────────────────────────────────────────── -->
     <section class="fade-in">
       <div class="section-title" style="margin-bottom:12px">
         Master Finance Ledger ({masterTransactions.length})
       </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-        Combined view of all finalized inbound (Funding) and outbound (Approved/Ordered/Received) transactions.
+        Combined view of all finalized inbound (Funding) and outbound
+        (Approved/Ordered/Received) transactions.
       </p>
 
       <div class="card orders-card" style="padding:0;overflow:hidden">
@@ -549,14 +599,23 @@
                     <td class="text-muted">{tx.date}</td>
                     <td style="font-weight:500">{tx.source || "—"}</td>
                     <td>
-                      <span class="badge {tx.type === 'Income' ? 'badge-hardware' : 'badge-software'}">
+                      <span
+                        class="badge {tx.type === 'Income'
+                          ? 'badge-hardware'
+                          : 'badge-software'}"
+                      >
                         {tx.type}
                       </span>
                     </td>
                     <td>{tx.category || "—"}</td>
                     <td><OrderStatusBadge status={tx.status} /></td>
-                    <td class="text-right monospace" style="font-weight:600; color: {tx.amount > 0 ? '#6bcb77' : '#f16a4e'}">
-                      {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
+                    <td
+                      class="text-right monospace"
+                      style="font-weight:600; color: {tx.amount > 0
+                        ? '#6bcb77'
+                        : '#f16a4e'}"
+                    >
+                      {tx.amount > 0 ? "+" : ""}{formatCurrency(tx.amount)}
                     </td>
                   </tr>
                 {/each}
@@ -573,25 +632,40 @@
 {#if editingFund}
   {@const currentFund = /** @type {any} */ (editingFund)}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-  <div 
-    class="modal-backdrop" 
-    onclick={() => editingFund = null} 
-    onkeydown={(e) => e.key === 'Escape' && (editingFund = null)}
-    role="button" 
+  <div
+    class="modal-backdrop"
+    onclick={() => (editingFund = null)}
+    onkeydown={(e) => e.key === "Escape" && (editingFund = null)}
+    role="button"
     tabindex="0"
   >
-    <div class="modal-card card" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+    <div
+      class="modal-card card"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
       <div class="modal-header">
         <div>
           <h2 style="margin:0">Edit Funding Entry</h2>
-          <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">{currentFund.Source}</p>
+          <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">
+            {currentFund.Source}
+          </p>
         </div>
-        <button class="modal-close" onclick={() => editingFund = null}>✕</button>
+        <button class="modal-close" onclick={() => (editingFund = null)}
+          >✕</button
+        >
       </div>
 
       {#if actionErr}<div class="error-bar">{actionErr}</div>{/if}
 
-      <form onsubmit={(e) => { e.preventDefault(); saveFundEdit(); }}>
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          saveFundEdit();
+        }}
+      >
         <div class="modal-fields">
           <div class="form-group">
             <label for="fund-source">Source</label>
@@ -599,7 +673,12 @@
           </div>
           <div class="form-group">
             <label for="fund-amount">Amount</label>
-            <input id="fund-amount" type="number" step="0.01" bind:value={editFundFields.Amount} />
+            <input
+              id="fund-amount"
+              type="number"
+              step="0.01"
+              bind:value={editFundFields.Amount}
+            />
           </div>
           <div class="form-group">
             <label for="fund-recipient">Recipient / Team</label>
@@ -607,11 +686,16 @@
           </div>
           <div class="form-group">
             <label for="fund-date">Date</label>
-            <input id="fund-date" type="date" bind:value={editFundFields.Date} />
+            <input
+              id="fund-date"
+              type="date"
+              bind:value={editFundFields.Date}
+            />
           </div>
           <div class="form-group" style="grid-column: 1 / -1">
             <label for="fund-notes">Notes</label>
-            <textarea id="fund-notes" bind:value={editFundFields.Notes}></textarea>
+            <textarea id="fund-notes" bind:value={editFundFields.Notes}
+            ></textarea>
           </div>
         </div>
 
@@ -619,7 +703,11 @@
           <button type="submit" class="btn btn-primary" disabled={editSaving}>
             {editSaving ? "Saving…" : "Save Entry"}
           </button>
-          <button type="button" class="btn btn-ghost" onclick={() => editingFund = null}>Cancel</button>
+          <button
+            type="button"
+            class="btn btn-ghost"
+            onclick={() => (editingFund = null)}>Cancel</button
+          >
         </div>
       </form>
     </div>
@@ -653,14 +741,22 @@
             {editingOrder.item}
           </p>
         </div>
-        <button class="modal-close" onclick={closeEdit} aria-label="Close">✕</button>
+        <button class="modal-close" onclick={closeEdit} aria-label="Close"
+          >✕</button
+        >
       </div>
 
       {#if actionErr}
         <div class="error-bar" style="margin-bottom:16px">{actionErr}</div>
       {/if}
 
-      <form onsubmit={(e) => { e.preventDefault(); saveEdit(); }} id="edit-order-form">
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          saveEdit();
+        }}
+        id="edit-order-form"
+      >
         <div class="modal-fields">
           <div class="form-group">
             <label for="edit-status">Status</label>
@@ -669,27 +765,60 @@
 
           <div class="form-group">
             <label for="edit-uuid">Order UUID</label>
-            <input id="edit-uuid" type="text" bind:value={editUUID} placeholder="e.g. ORD-2026-001" />
+            <input
+              id="edit-uuid"
+              type="text"
+              bind:value={editUUID}
+              placeholder="e.g. ORD-2026-001"
+            />
           </div>
 
           <div class="form-group" style="grid-column: 1 / -1">
             <label for="edit-tracking">Tracking Link / Number</label>
-            <input id="edit-tracking" type="text" bind:value={editTracking} placeholder="e.g. UPS/Status..." />
+            <input
+              id="edit-tracking"
+              type="text"
+              bind:value={editTracking}
+              placeholder="e.g. UPS/Status..."
+            />
           </div>
         </div>
 
         <div class="order-summary">
-          <div class="summary-row"><span class="text-muted">Company</span><span>{editingOrder.company || "—"}</span></div>
-          <div class="summary-row"><span class="text-muted">Team</span><span>{editingOrder.team || "—"}</span></div>
-          <div class="summary-row"><span class="text-muted">Category</span><span>{editingOrder.category || "—"}</span></div>
-          <div class="summary-row"><span class="text-muted">Total</span><span class="monospace" style="font-weight:700;color:#6bcb77">{formatCurrency(editingOrder.total)}</span></div>
+          <div class="summary-row">
+            <span class="text-muted">Company</span><span
+              >{editingOrder.company || "—"}</span
+            >
+          </div>
+          <div class="summary-row">
+            <span class="text-muted">Team</span><span
+              >{editingOrder.team || "—"}</span
+            >
+          </div>
+          <div class="summary-row">
+            <span class="text-muted">Category</span><span
+              >{editingOrder.category || "—"}</span
+            >
+          </div>
+          <div class="summary-row">
+            <span class="text-muted">Total</span><span
+              class="monospace"
+              style="font-weight:700;color:#6bcb77"
+              >{formatCurrency(editingOrder.total)}</span
+            >
+          </div>
         </div>
 
         <div class="modal-actions">
           <button type="submit" class="btn btn-primary" disabled={editSaving}>
             {editSaving ? "Saving…" : "Save Changes"}
           </button>
-          <button type="button" class="btn btn-ghost" onclick={closeEdit} disabled={editSaving}>
+          <button
+            type="button"
+            class="btn btn-ghost"
+            onclick={closeEdit}
+            disabled={editSaving}
+          >
             Cancel
           </button>
         </div>
@@ -783,7 +912,7 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-sm);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
     background: var(--surface);
     border: 1px solid var(--border);
   }
@@ -839,7 +968,9 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 20px rgba(var(--primary-rgb), 0.1);
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.3),
+      0 0 20px rgba(var(--primary-rgb), 0.1);
     display: flex;
     flex-direction: column;
     justify-content: center;

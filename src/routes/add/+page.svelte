@@ -9,7 +9,7 @@
   }));
 
   const API_URL =
-    "https://script.google.com/macros/s/AKfycbxc8jeXwQ9FyFWIdhGmPZ7I674wt8wyjFkG1fdp0CP_AwLEJYXMdJcVgxAwu0YRQl3adA/exec";
+    "https://script.google.com/macros/s/AKfycbw5haNqtdJJfP1iS5myexglJ7qpr-HRi7n9zTF2FCESQ97_j_mQjQipfsCRN6-xMFjK7A/exec";
 
   let form = $state({
     destination: "sheets",
@@ -213,10 +213,10 @@
 
         <div class="form-group">
           <label for="ae-team">Team *</label>
-          <CustomDropdown 
-            options={teamOptions} 
-            bind:value={form.team} 
-            placeholder="Select your team" 
+          <CustomDropdown
+            options={teamOptions}
+            bind:value={form.team}
+            placeholder="Select your team"
           />
         </div>
 
