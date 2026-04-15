@@ -1,9 +1,9 @@
 <script>
-  import { formatCurrency, formatDate, truncate, capitalize, getTeamBadgeClass } from '../utils.js';
+  import { formatCurrency, formatFullDate, truncate, capitalize, getTeamBadgeClass } from '../utils.js';
   import OrderStatusBadge from './OrderStatusBadge.svelte';
 
-  /** @type {{ orders: any[], limit?: number }} */
-  let { orders = [], limit = 0 } = $props();
+  /** @type {{ orders: any[], limit?: number, hideTeamColumn?: boolean }} */
+  let { orders = [], limit = 0, hideTeamColumn = false } = $props();
 
   let sortCol = $state("status");
   let sortDir = $state("asc");
@@ -17,8 +17,9 @@
     }
   }
 
+  /** @type {Record<string, number>} */
   const STATUS_PRIORITY = {
-    "submitted, in review": 0,
+    "pending review": 0,
     "approved": 1,
     "ordered": 2,
     "received": 3,
@@ -73,7 +74,9 @@
         <th class="sortable" onclick={() => toggleSort("item")}>Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="sortable" onclick={() => toggleSort("company")}>Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="sortable" onclick={() => toggleSort("category")}>Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="sortable" onclick={() => toggleSort("team")}>Team {sortCol === "team" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        {#if !hideTeamColumn}
+          <th class="sortable" onclick={() => toggleSort("team")}>Team {sortCol === "team" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        {/if}
         <th class="sortable" onclick={() => toggleSort("status")}>Status {sortCol === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="sortable" onclick={() => toggleSort("timestamp")}>Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
         <th class="text-right sortable" onclick={() => toggleSort("total")}>Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
@@ -103,19 +106,21 @@
               {capitalize(order.category)}
             </span>
           </td>
-          <td>
-            {#if order.team}
-              <span class="badge {getTeamBadgeClass(order.team)}">{order.team}</span>
-            {:else if order.user}
-              <span class="badge {getTeamBadgeClass(order.user)}">{order.user}</span>
-            {:else}
-              —
-            {/if}
-          </td>
+          {#if !hideTeamColumn}
+            <td>
+              {#if order.team}
+                <span>{order.team}</span>
+              {:else if order.user}
+                <span>{order.user}</span>
+              {:else}
+                —
+              {/if}
+            </td>
+          {/if}
           <td>
             <OrderStatusBadge status={order.status} />
           </td>
-          <td class="text-muted">{formatDate(order.timestamp)}</td>
+          <td class="text-muted">{formatFullDate(order.timestamp)}</td>
           <td class="text-right monospace" style="font-weight:600">
             {formatCurrency(order.total)}
           </td>
@@ -123,7 +128,7 @@
       {/each}
       {#if orders.length === 0}
         <tr>
-          <td colspan="7">
+          <td colspan={hideTeamColumn ? 6 : 7}>
             <div class="empty-state">
               <div class="icon">📦</div>
               No orders found

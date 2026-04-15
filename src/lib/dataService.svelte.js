@@ -1,4 +1,4 @@
-const BASE_URL = "https://script.google.com/macros/s/AKfycbw5haNqtdJJfP1iS5myexglJ7qpr-HRi7n9zTF2FCESQ97_j_mQjQipfsCRN6-xMFjK7A/exec";
+const BASE_URL = "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
 const SECRET_KEY = "YOUR_SECRET_KEY";
 
 /**
@@ -38,6 +38,10 @@ class DataStore {
   error = $state(/** @type {string|null} */ (null));
   /** @type {number | null} */
   lastFetched = $state(/** @type {number|null} */ (null));
+  /** @type {boolean} */
+  isSilentLoading = $state(false);
+  /** @type {boolean} */
+  hasLoadedOnce = $state(false);
 
   constructor() {
     // 🏠 Initialize from localStorage for instant boot
@@ -103,7 +107,10 @@ class DataStore {
       team: o.Team ?? o.team ?? o.user ?? "",
       timestamp: o.Timestamp ?? o.timestamp ?? "",
       total: Number(o.Total ?? o.total) || (Number(o.Price ?? o.price) * Number(o.Quantity ?? o.quantity)) || 0,
-      status: (o.Status ?? o.status ?? "Submitted, in review").toString().trim(),
+      status: (() => {
+        const s = (o.Status ?? o.status ?? "Pending Review").toString().trim();
+        return (s.toLowerCase() === "submitted, in review" || s.toLowerCase() === "submitted") ? "Pending Review" : s;
+      })(),
       tracking: o.Tracking ?? o.tracking ?? "",
       id: o["List UUID"] || o.orderUUID || o.id || `order-${index}-${Date.now()}`,
       orderUUID: o["Order UUID"] || o.orderUUID || "",
@@ -129,16 +136,18 @@ class DataStore {
    * Performance-optimized loader.
    * Uses getAllData to fetch everything in ONE request.
    */
-  async load(force = false) {
+  async load(force = false, silent = false) {
     // If not forced and we have data less than 2 minutes old, skip background refresh
     if (!force && this.orders.length > 0 && this.lastFetched && (Date.now() - this.lastFetched < 120000)) {
       return;
     }
 
     // Only show loading indicator if we have NO data at all
-    if (this.orders.length === 0) {
+    if (this.orders.length === 0 && !silent) {
       this.loading = true;
     }
+    
+    if (silent) this.isSilentLoading = true;
     
     this.error = null;
     console.log("DataStore: Syncing with Google Sheets...");
@@ -178,6 +187,8 @@ class DataStore {
       console.error("DataStore Load Error:", e);
     } finally {
       this.loading = false;
+      this.isSilentLoading = false;
+      this.hasLoadedOnce = true;
     }
   }
 }

@@ -19,6 +19,29 @@ export function formatDate(ts) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+/**
+ * Format timestamp to "MM/DD/YYYY HH:MM AM/PM"
+ * @param {string | number | Date} ts 
+ */
+export function formatFullDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return String(ts);
+  
+  const MM = String(d.getMonth() + 1).padStart(2, '0');
+  const DD = String(d.getDate()).padStart(2, '0');
+  const YYYY = d.getFullYear();
+  
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; 
+  const hh = String(hours).padStart(2, '0');
+  
+  return `${MM}/${DD}/${YYYY} ${hh}:${minutes} ${ampm}`;
+}
+
 /** 
  * Turn "2025-04" into "Apr 2025" 
  * @param {string} key 

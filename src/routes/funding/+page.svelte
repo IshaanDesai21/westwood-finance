@@ -1,13 +1,14 @@
 <script>
   import { onMount } from "svelte";
-  import { formatCurrency, getTeamBadgeClass } from "$lib/utils.js";
+  import { formatCurrency, formatFullDate, getTeamBadgeClass } from "$lib/utils.js";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
+  import OrderTable from "$lib/components/OrderTable.svelte";
   import { dataService } from "$lib/dataService.svelte.js";
 
   // ── API Config ──────────────────────────────────────────────────────────────
   const BASE_URL =
-    "https://script.google.com/macros/s/AKfycbw5haNqtdJJfP1iS5myexglJ7qpr-HRi7n9zTF2FCESQ97_j_mQjQipfsCRN6-xMFjK7A/exec";
+    "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
   const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const FUND_TYPES = ["Fundraiser", "Grant", "Dues", "Sponsor", "Other"];
@@ -40,6 +41,18 @@
   let submitting = $state(false);
   let formMsg = $state("");
   let formErr = $state("");
+ 
+  let selectedBudgetTeam = $state("FRC");
+
+  let teamSpecificBudgetOrders = $derived(
+    dataService.orders.filter((/** @type {any} */ o) => {
+      // Westwood Overall shows all teams (aggregate)
+      if (selectedBudgetTeam === "Westwood Overall") return true;
+      const t = (o.team || "").toLowerCase().trim();
+      const s = selectedBudgetTeam.toLowerCase().trim();
+      return t === s || t.includes(s);
+    })
+  );
 
   // ── Lock ─────────────────────────────────────────────────────────────────────
   let unlocked = $state(false);
@@ -70,7 +83,7 @@
 
   // ── Derived totals ──────────────────────────────────────────────────────────
   let totalRaised = $derived(
-    funds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0),
+    funds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
   );
 
   let byType = $derived(() => {
@@ -97,7 +110,7 @@
   let budgetTotal = $derived(/** @type {any} */ (budget)?.Total ?? null);
 
   let sortedFunds = $derived(
-    funds.slice().sort((a, b) => {
+    funds.slice().sort((/** @type {any} */ a, /** @type {any} */ b) => {
       let valA = a[sortCol] || "";
       let valB = b[sortCol] || "";
       if (sortCol === "Amount") {
@@ -205,7 +218,7 @@
 </div>
 
 <!-- ── Tab Nav ──────────────────────────────────────────────────────────────── -->
-<div class="tabs-container">
+<div class="tabs-container" style="display:flex; justify-content:space-between; align-items:center; gap:20px;">
   <div class="segmented-control" style="position:relative; z-index:0;">
     <div
       class="segment-highlight"
@@ -225,12 +238,22 @@
       >
     {/each}
   </div>
+
+  {#if activeTab === "budget"}
+    <div class={!dataService.hasLoadedOnce ? "fade-in" : ""} style="width: 240px;">
+      <CustomDropdown 
+        options={["FRC", "Slingshot", "Atlatl", "Kunai", "Hunga Munga"]} 
+        bind:value={selectedBudgetTeam} 
+        placeholder="Select Team"
+      />
+    </div>
+  {/if}
 </div>
 
 <!-- ══ OVERVIEW ══════════════════════════════════════════════════════════════ -->
 {#if activeTab === "overview"}
   <!-- Summary strip -->
-  <div class="stat-grid fade-in">
+  <div class="stat-grid" class:fade-in={!dataService.hasLoadedOnce}>
     <div class="card">
       <div class="card-title">Total Raised</div>
       <div class="stat-value" style="color:#6bcb77">
@@ -309,7 +332,7 @@
       No funding entries yet.
     </div>
   {:else}
-    <div class="card fade-in" style="padding:0;overflow:hidden">
+    <div class="card history-card" class:fade-in={!dataService.hasLoadedOnce} style="padding:0; overflow:hidden; width:100%">
       <table>
         <thead>
           <tr>
@@ -370,17 +393,11 @@
               </td>
               <td style="font-weight:500">{entry.Source || "—"}</td>
               <td>
-                {#if entry.Recipient && entry.Recipient !== "All"}
-                  <span class="badge {getTeamBadgeClass(entry.Recipient)}"
-                    >{entry.Recipient}</span
-                  >
-                {:else}
-                  <span class="recipient-chip">{entry.Recipient || "—"}</span>
-                {/if}
+                <span class="recipient-chip">{entry.Recipient || "—"}</span>
               </td>
               <td class="text-muted">
                 <span class="date-chip">
-                  {formatDate(entry.Date)}
+                  {formatFullDate(entry.Date)}
                 </span>
               </td>
               <td class="text-muted" style="font-size:0.82rem"
@@ -423,99 +440,63 @@
       No budget data available.
     </div>
   {:else}
-    <div class="budget-grid fade-in">
+    <div class="budget-single-view" class:fade-in={!dataService.hasLoadedOnce} style="width:100%">
       {#each budgetTeams as [team, data]}
-        {@const final = data["Final"] ?? 0}
-        {@const clubFunds = data["Club Funds"] ?? 0}
-        {@const expenses = data["Expenses"] ?? 0}
-        {@const personal = data["Personal Funds"] ?? 0}
-        {@const pct =
-          budgetTotal && budgetTotal["Final"] > 0
-            ? Math.min(100, (final / budgetTotal["Final"]) * 100)
-            : 0}
-        <div class="budget-card card">
-          <div class="budget-team-name">{team}</div>
-          <div
-            class="budget-final"
-            style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}"
-          >
-            {formatCurrency(final)}
-          </div>
-          <div class="budget-details">
-            <div class="budget-detail-row">
-              <span class="text-muted">Team Budget</span>
-              <span class="monospace">{formatCurrency(clubFunds)}</span>
-            </div>
-            <div class="budget-detail-row">
-              <span class="text-muted">Personal</span>
-              <span class="monospace" style="color:#4e9af1"
-                >{formatCurrency(personal)}</span
-              >
-            </div>
-            <div class="budget-detail-row">
-              <span class="text-muted">Expenses</span>
-              <span class="monospace" style="color:#f16a4e"
-                >{formatCurrency(Math.abs(expenses))}</span
-              >
-            </div>
-          </div>
-          <div class="budget-bar-track" style="margin-top:12px">
+        {#if team === (selectedBudgetTeam === "Westwood Overall" ? "Westwood Overall" : selectedBudgetTeam)}
+          {@const final = data["Final"] ?? 0}
+          {@const clubFunds = data["Club Funds"] ?? 0}
+          {@const expenses = data["Expenses"] ?? 0}
+          {@const personal = data["Personal Funds"] ?? 0}
+          {@const pct = budgetTotal && budgetTotal["Final"] > 0 ? Math.min(100, (final / budgetTotal["Final"]) * 100) : 0}
+          
+          <div class="budget-card card selected" style="max-width: 500px; margin: 0 auto 32px;">
+            <div class="budget-team-name" style="font-size: 1.4rem; color: var(--primary);">{team}</div>
             <div
-              class="budget-bar-fill"
-              style="width:{pct}%;background:var(--primary)"
-            ></div>
+              class="budget-final"
+              style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}; font-size: 2.2rem;"
+            >
+              {formatCurrency(final)}
+            </div>
+            <div class="budget-details" style="gap: 12px; margin-top: 20px;">
+              <div class="budget-detail-row" style="font-size: 0.95rem;">
+                <span class="text-muted">Team Budget</span>
+                <span class="monospace">{formatCurrency(clubFunds)}</span>
+              </div>
+              <div class="budget-detail-row" style="font-size: 0.95rem;">
+                <span class="text-muted">Personal</span>
+                <span class="monospace" style="color:#4e9af1"
+                  >{formatCurrency(personal)}</span
+                >
+              </div>
+              <div class="budget-detail-row" style="font-size: 0.95rem;">
+                <span class="text-muted">Expenses</span>
+                <span class="monospace" style="color:#f16a4e"
+                  >{formatCurrency(Math.abs(expenses))}</span
+                >
+              </div>
+            </div>
+            <div class="budget-bar-track" style="margin-top:24px; height: 8px;">
+              <div
+                class="budget-bar-fill"
+                style="width:{pct}%;background:var(--primary)"
+              ></div>
+            </div>
           </div>
-        </div>
+        {/if}
       {/each}
     </div>
 
-    <!-- Totals summary -->
-    {#if budgetTotal}
-      <div class="card totals-card fade-in">
-        <div class="card-title" style="font-size:1rem;margin-bottom:16px">
-          Overall Totals
-        </div>
-        <div class="totals-grid">
-          <div>
-            <div class="text-muted" style="font-size:0.8rem">Club Funds</div>
-            <div class="monospace" style="font-size:1.2rem;font-weight:700">
-              {formatCurrency(budgetTotal["Club Funds"] || 0)}
-            </div>
-          </div>
-          <div>
-            <div class="text-muted" style="font-size:0.8rem">Personal</div>
-            <div
-              class="monospace"
-              style="font-size:1.2rem;font-weight:700;color:#4e9af1"
-            >
-              {formatCurrency(budgetTotal["Personal Funds"] || 0)}
-            </div>
-          </div>
-          <div>
-            <div class="text-muted" style="font-size:0.8rem">Expenses</div>
-            <div
-              class="monospace"
-              style="font-size:1.2rem;font-weight:700;color:#f16a4e"
-            >
-              {formatCurrency(Math.abs(budgetTotal["Expenses"] || 0))}
-            </div>
-          </div>
-          <div>
-            <div class="text-muted" style="font-size:0.8rem">Net Final</div>
-            <div
-              class="monospace"
-              style="font-size:1.4rem;font-weight:700;color:{budgetTotal[
-                'Final'
-              ] >= 0
-                ? '#6bcb77'
-                : '#f16a4e'}"
-            >
-              {formatCurrency(budgetTotal["Final"] || 0)}
-            </div>
-          </div>
-        </div>
+    <!-- Team Specific Orders View -->
+    <div class="team-budget-orders fade-in" style="margin-top: 40px;">
+      <div class="section-title" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span>{selectedBudgetTeam} — Activity</span>
       </div>
-    {/if}
+      
+      <OrderTable 
+        orders={teamSpecificBudgetOrders} 
+        hideTeamColumn={selectedBudgetTeam !== "Westwood Overall"} 
+      />
+    </div>
   {/if}
 
   <!-- ══ ADD FUNDS ════════════════════════════════════════════════════════════ -->
@@ -526,7 +507,7 @@
       <div class="lock-card card">
         <div
           class="lock-logo"
-          style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;"
+          style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
         >
           <img
             src="/logo.png"
@@ -712,10 +693,6 @@
     text-align: center;
     box-shadow: var(--shadow-lg);
   }
-  .lock-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-  }
   .lock-card h2 {
     margin-bottom: 8px;
   }
@@ -846,13 +823,6 @@
     background: var(--surface-2);
   }
 
-  /* ── Budget Grid ──────────────────────────────────────────────────────────── */
-  .budget-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-  }
   .budget-card {
     padding: 24px;
   }
@@ -887,15 +857,6 @@
     transition: width 0.6s ease;
   }
 
-  .totals-card {
-    padding: 30px;
-    border: 1px solid var(--border);
-  }
-  .totals-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 30px;
-  }
 
   /* ── Add Layout ───────────────────────────────────────────────────────────── */
   .lock-screen {
@@ -1001,5 +962,11 @@
     font-weight: 500;
     white-space: nowrap;
     border: 1px solid var(--border);
+  }
+
+  /* ── Enhanced Budget View Styles ────────────────────── */
+  .team-budget-orders {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
   }
 </style>

@@ -82,6 +82,8 @@
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
   }
 
   .brand-text {

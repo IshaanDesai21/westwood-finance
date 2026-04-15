@@ -3,18 +3,18 @@
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
-  import { formatCurrency, formatDate } from "$lib/utils.js";
+  import { formatCurrency, formatFullDate } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
   // ── API Config ──────────────────────────────────────────────────────────────
   const BASE_URL =
-    "https://script.google.com/macros/s/AKfycbw5haNqtdJJfP1iS5myexglJ7qpr-HRi7n9zTF2FCESQ97_j_mQjQipfsCRN6-xMFjK7A/exec";
+    "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
   const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const ORDER_STATUSES = [
-    "Submitted, in review",
+    "Pending Review",
     "Approved",
     "Ordered",
     "Received",
@@ -29,7 +29,7 @@
 
   /** @type {Record<string, number>} */
   const STATUS_PRIORITY = {
-    "submitted, in review": 0,
+    "pending review": 0,
     "approved": 1,
     "ordered": 2,
     "received": 3,
@@ -145,7 +145,7 @@
   // ── Modal helpers ─────────────────────────────────────────────────────────────
   function openEdit(/** @type {Order} */ order) {
     editingOrder = order;
-    editStatus = order.status || "Submitted, in review";
+    editStatus = order.status || "Pending Review";
     editTracking = order.tracking || "";
     editUUID = order.orderUUID || "";
     editSaving = false;
@@ -191,24 +191,37 @@
     if (!editingOrder) return;
     if (!confirm("Are you sure you want to permanently delete this order? This cannot be undone.")) return;
     
-    editSaving = true;
-    actionErr = "";
-    actionMsg = "";
     try {
       const params = new URLSearchParams({
-        action: "deleteOrder",
+        action: "deleteOrder", // Matches GAS_Fix.js
         key: SECRET_KEY,
         rowIndex: editingOrder.rowIndex.toString()
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
-      const result = await res.json();
-      if (!res.ok || result?.error) throw new Error(result?.error || "Delete failed");
       
-      actionMsg = "✓ Order deleted successfully!";
+      // If we get an error response, try to parse it
+      let result;
+      const text = await res.text();
+      try {
+        result = JSON.parse(text);
+      } catch (parseErr) {
+        throw new Error(`Server returned invalid response: ${text.slice(0, 100)}`);
+      }
+
+      if (!res.ok || result?.error) {
+        let msg = result?.error || "Delete failed";
+        if (msg.toLowerCase().includes("invalid action")) {
+          msg = "Backend Error: 'deleteOrder' action not found. Please ensure the GAS script has been updated and redeployed with the delete handler.";
+        }
+        throw new Error(msg);
+      }
+      
+      actionMsg = "✓ Order completely removed from Spreadsheet!";
       editingOrder = null;
       await dataService.load(true);
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Delete failed";
+      console.error("Delete Order Error:", e);
     } finally {
       editSaving = false;
     }
@@ -307,7 +320,7 @@
     <div class="lock-card card">
       <div
         class="lock-logo"
-        style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;"
+        style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
       >
         <img
           src="/logo.png"
@@ -317,7 +330,7 @@
       </div>
       <h1>Admin Console Access</h1>
       <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
-        Enter the admin password to access advanced modules.
+        Enter the admin password to access restricted areas.
       </p>
       {#if authError}
         <div class="error-bar" style="margin-bottom:16px">{authError}</div>
@@ -534,8 +547,8 @@
                       </span>
                     </td>
                     <td>{order.team || "—"}</td>
-                    <td class="text-muted"
-                      >{(order.timestamp || "").slice(0, 10) || "—"}</td
+                    <td class="text-muted" style="font-size:0.875rem"
+                      >{formatFullDate(order.timestamp)}</td
                     >
                     <td class="text-right monospace"
                       >{formatCurrency(order.price)}</td
@@ -606,7 +619,7 @@
                     <td><span class="type-tag">{fund.Type || "—"}</span></td>
                     <td style="font-weight:500">{fund.Source || "—"}</td>
                     <td>{fund.Recipient || "—"}</td>
-                    <td class="text-muted">{fund.Date || "—"}</td>
+                    <td class="text-muted" style="font-size:0.875rem">{formatFullDate(fund.Date)}</td>
                     <td
                       class="text-right monospace"
                       style="font-weight:600;color:#6bcb77"

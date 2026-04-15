@@ -10,7 +10,7 @@
   }));
 
   const API_URL =
-    "https://script.google.com/macros/s/AKfycbw5haNqtdJJfP1iS5myexglJ7qpr-HRi7n9zTF2FCESQ97_j_mQjQipfsCRN6-xMFjK7A/exec";
+    "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
 
   let form = $state({
     destination: "sheets",
@@ -23,11 +23,13 @@
     team: "",
     category: "hardware",
     uuid: "",
+    isExpense: false, // Tracks if adding as immediate expense
   });
 
   let submitting = $state(false);
   let submitError = $state("");
   let submitSuccess = $state("");
+  let expenseUnlocked = $state(false);
 
   let computedTotal = $derived(
     (parseFloat(form.price) || 0) * (parseInt(form.quantity) || 1),
@@ -50,20 +52,27 @@
     submitting = true;
 
     try {
+      // ✅ Link Auto-Fix: Prepend https:// if missing
+      let finalLink = form.link.trim();
+      if (finalLink && !finalLink.startsWith("http") && finalLink.includes(".")) {
+        finalLink = "https://" + finalLink;
+      }
+
       // ✅ FIX: force all values to strings for URLSearchParams
       const params = new URLSearchParams({
         action: "addOrder",
         key: "YOUR_SECRET_KEY",
         item: form.item,
         company: form.company,
-        link: form.link,
+        link: finalLink,
         price: String(form.price),
         quantity: String(form.quantity),
         notes: form.notes,
         category: form.category,
         team: form.team,
-        total: String(computedTotal),
-        status: "Submitted, in review",
+        // ✅ Spreadsheet Formula for Total: =Dx*Ex
+        total: "=INDIRECT(\"D\"&ROW())*INDIRECT(\"E\"&ROW())",
+        status: form.isExpense ? "Received" : "Pending Review",
         tracking: "",
         uuid: form.uuid,
       });
@@ -96,6 +105,7 @@
         team: "",
         category: "hardware",
         uuid: "",
+        isExpense: false,
       };
 
       setTimeout(() => goto("/orders"), 1500);
@@ -110,6 +120,28 @@
       submitting = false;
     }
   }
+  function toggleExpenseMode() {
+    if (form.isExpense) {
+      form.isExpense = false;
+      expenseUnlocked = false;
+      return;
+    }
+    showExpenseModal = true;
+  }
+
+  let showExpenseModal = $state(false);
+  let adminCodeInput = $state("");
+
+  function confirmExpenseMode() {
+    if (adminCodeInput === "/dev3432") {
+      form.isExpense = true;
+      expenseUnlocked = true;
+      showExpenseModal = false;
+      adminCodeInput = "";
+    } else {
+      alert("Incorrect admin code.");
+    }
+  }
 </script>
 
 <svelte:head>
@@ -117,14 +149,50 @@
 </svelte:head>
 
 <div class="page-header">
-  <h1>
-    Add <span>Order</span>
-  </h1>
-  <a href="/orders" class="btn btn-ghost btn-sm">← Back</a>
+  <div style="display:flex; flex-direction:column; gap:4px">
+    <h1>
+      Add <span>{form.isExpense ? "Expense" : "Order"}</span>
+    </h1>
+    {#if form.isExpense}
+      <span class="badge badge-received" style="width:fit-content; font-size:0.7rem">ADMIN MODE: IMMEDIATE EXPENSE</span>
+    {/if}
+  </div>
+  <div style="display:flex; gap:10px; align-items:center">
+    <button 
+      class="btn btn-sm {form.isExpense ? 'btn-primary' : 'btn-ghost'}" 
+      onclick={toggleExpenseMode}
+    >
+      {form.isExpense ? "✓ Expense Mode" : "Submit as Expense"}
+    </button>
+    <a href="/orders" class="btn btn-ghost btn-sm">← Back</a>
+  </div>
 </div>
 
-<div class="add-layout">
-  <div class="card add-card fade-in">
+  <div class="add-layout-wide">
+    {#if showExpenseModal}
+      <div class="modal-backdrop fade-in" style="z-index: 1000;">
+        <div class="card modal-card" style="width: 320px; padding: 32px; text-align: center;">
+          <div class="icon" style="font-size: 2.5rem; margin-bottom: 20px;">🛡️</div>
+          <h3 style="margin-bottom: 12px;">Admin Access</h3>
+          <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 24px;">Enter the code to unlock immediate expense mode.</p>
+          <div class="form-group" style="margin-bottom: 24px;">
+            <input 
+              type="password" 
+              bind:value={adminCodeInput} 
+              placeholder="Enter code" 
+              style="text-align: center; font-size: 1.1rem; letter-spacing: 0.2em;"
+              onkeydown={(e) => e.key === 'Enter' && confirmExpenseMode()}
+            />
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <button class="btn btn-primary" style="flex: 1;" onclick={confirmExpenseMode}>Unlock</button>
+            <button class="btn btn-ghost" style="flex: 1;" onclick={() => { showExpenseModal = false; adminCodeInput = ""; }}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <div class="card add-card" class:fade-in={!dataService.hasLoadedOnce}>
     {#if submitError}
       <div class="error-bar">{submitError}</div>
     {/if}
@@ -139,8 +207,6 @@
       }}
       id="add-expense-form"
     >
-      <div style="margin-bottom:20px"></div>
-
       <div class="form-grid">
         <div class="form-group" style="grid-column:1/-1">
           <label for="ae-item">Item Name *</label>
@@ -259,61 +325,20 @@
         >
           {submitting
             ? "Saving…"
-            : form.destination === "sheets"
-              ? "+ Add Order"
-              : "+ Add Expense"}
+            : form.isExpense
+              ? "+ Add Immediate Expense"
+              : "+ Submit Order Request"}
         </button>
-        <a
-          href={form.destination === "sheets" ? "/orders" : "/expenses"}
-          class="btn btn-ghost">Cancel</a
-        >
+        <a href="/orders" class="btn btn-ghost">Cancel</a>
       </div>
     </form>
   </div>
-
-  <aside class="tips-card card">
-    <div class="card-title">Tips</div>
-    <ul class="tips-list">
-      <li>Category is strictly enforced — pick the closest match.</li>
-      <li>Links to order pages help the team track shipments.</li>
-      <li>Total is computed automatically (price × qty).</li>
-      {#if form.destination === "local"}
-        <li>
-          <strong>Local Expense:</strong> Saves securely to the internal database
-          (visible offline & instantly).
-        </li>
-      {:else}
-        <li>
-          <strong>Order:</strong> Pushes a live entry to the external Google Sheet
-          (FinanceBot access).
-        </li>
-      {/if}
-    </ul>
-
-    <div style="margin-top:20px">
-      <div class="card-title">Categories</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
-        {#each CATEGORIES as cat}
-          <span class="badge badge-{cat}">
-            {cat.charAt(0).toUpperCase() + cat.slice(1)}
-          </span>
-        {/each}
-      </div>
-    </div>
-  </aside>
 </div>
 
 <style>
-  .add-layout {
-    display: grid;
-    grid-template-columns: 1fr 260px;
-    gap: 24px;
-    align-items: start;
-  }
-  @media (max-width: 900px) {
-    .add-layout {
-      grid-template-columns: 1fr;
-    }
+  .add-layout-wide {
+    max-width: 800px;
+    margin: 0 auto;
   }
 
   .total-preview {
@@ -350,18 +375,6 @@
     flex-direction: column;
     gap: 10px;
     margin-top: 10px;
-  }
-  .tips-list li {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    padding-left: 16px;
-    position: relative;
-  }
-  .tips-list li::before {
-    content: "›";
-    position: absolute;
-    left: 0;
-    color: var(--primary);
   }
 
   .category-pills {

@@ -125,7 +125,7 @@
         // Define priority for statuses: "Submitted and in review" gets priority 0
         /** @type {Record<string, number>} */
         const STATUS_PRIORITY = {
-          "Submitted, in review": 0,
+          "Pending Review": 0,
           Approved: 1,
           Ordered: 2,
           Received: 3,
@@ -174,7 +174,7 @@
 {#if loading && !orders.length}
   <LoadingIndicator text="Syncing with Google Sheets…" />
 {:else if orders.length > 0}
-  <div class="fade-in">
+  <div class={!dataService.hasLoadedOnce ? "fade-in" : ""}>
     <OrderTable orders={filtered} />
   </div>
 {:else}

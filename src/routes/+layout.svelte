@@ -27,7 +27,8 @@
       if (inactiveTime > 10000 && (!dataService.lastFetched || (now - dataService.lastFetched) > 10000)) {
         // Trigger a background sync
         // force=true to bypass regular 2-minute cache rule in dataService
-        dataService.load(true);
+        // silent=true to prevent UI loading indicators/animations
+        dataService.load(true, true);
       }
     }, 5000); // Check every 5 seconds
 

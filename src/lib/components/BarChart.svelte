@@ -10,16 +10,22 @@
   Chart.register(BarElement, LinearScale, CategoryScale, Tooltip, Legend, BarController);
 
   let { data = {} }: { data: Record<string, number> } = $props();
-
+  
   let canvas: HTMLCanvasElement;
+  
+  // Explicitly track keys and values for reactivity
+  let labels = $derived(Object.keys(data));
+  let values = $derived(labels.map(l => data[l]));
   let chart: Chart | null = null;
 
   $effect(() => {
-    if (chart && data) {
-      const labels = Object.keys(data);
-      chart.data.labels = labels;
-      chart.data.datasets[0].data = labels.map(l => data[l]);
-      chart.data.datasets[0].backgroundColor = labels.map(l => (CATEGORY_COLORS as Record<string, string>)[l] || '#888');
+    // Explicitly track dependencies for Svelte 5
+    const l = labels;
+    const v = values;
+    if (chart && l && v) {
+      chart.data.labels = l;
+      chart.data.datasets[0].data = v;
+      chart.data.datasets[0].backgroundColor = l.map(lbl => (CATEGORY_COLORS as Record<string, string>)[lbl] || '#888');
       chart.update();
     }
   });

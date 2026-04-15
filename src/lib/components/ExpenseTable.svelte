@@ -77,7 +77,7 @@
           {#if !hideTeam}
             <td>
               {#if expense.user}
-                <span class="badge {getTeamBadgeClass(expense.user)}">{expense.user}</span>
+                <span>{expense.user}</span>
               {:else}
                 —
               {/if}

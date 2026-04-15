@@ -5,7 +5,7 @@
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
-  import { formatCurrency, formatDate } from "$lib/utils.js";
+  import { formatCurrency, formatDate, CATEGORIES } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
   import appInfo from "$lib/app-info.json";
 
@@ -66,8 +66,9 @@
   // Category breakdown
   let spentByCategory = $derived.by(() => {
     const map = /** @type {Record<string,number>} */ ({});
+    CATEGORIES.forEach(c => map[c] = 0);
     for (const e of expenses) {
-      const cat = e.category || "miscellaneous";
+      const cat = (e.category || "miscellaneous").toLowerCase().trim();
       map[cat] = (map[cat] || 0) + (e.total || 0);
     }
     return map;

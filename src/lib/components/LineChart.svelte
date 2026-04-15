@@ -8,8 +8,11 @@
 
   Chart.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend, LineController, Filler);
 
-  /** @type {{ data: Array<{ month: string, amount: number }> }} */
   let { data = [] } = $props();
+  
+  // Explicitly track derived data for reactivity
+  let labels = $derived(data.map(d => formatMonth(d.month)));
+  let values = $derived(data.map(d => d.amount));
 
   /** @type {any} */
   let canvas;
@@ -17,9 +20,12 @@
   let chart;
 
   $effect(() => {
-    if (chart && data) {
-      chart.data.labels = data.map(d => formatMonth(d.month));
-      chart.data.datasets[0].data = data.map(d => d.amount);
+    // Force tracking of dependencies
+    const l = labels;
+    const v = values;
+    if (chart && l && v) {
+      chart.data.labels = l;
+      chart.data.datasets[0].data = v;
       chart.update();
     }
   });

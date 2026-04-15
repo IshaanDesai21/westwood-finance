@@ -5,8 +5,11 @@
 
   Chart.register(ArcElement, Tooltip, Legend, PieController);
 
-  /** @type {{ data: { [category: string]: number } }} */
   let { data = {} } = $props();
+  
+  // Explicitly track keys and values for reactivity
+  let labels = $derived(Object.keys(data));
+  let values = $derived(labels.map(l => data[l]));
 
   /** @type {any} */
   let canvas;
@@ -14,12 +17,13 @@
   let chart;
 
   $effect(() => {
-    if (chart && data) {
-      const labels = Object.keys(data);
-      const values = Object.values(data);
-      chart.data.labels = labels;
-      chart.data.datasets[0].data = values;
-      chart.data.datasets[0].backgroundColor = labels.map(l => (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[l] || '#888');
+    // Force tracking of labels and values
+    const l = labels;
+    const v = values;
+    if (chart && l && v) {
+      chart.data.labels = l;
+      chart.data.datasets[0].data = v;
+      chart.data.datasets[0].backgroundColor = l.map(lbl => (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[lbl] || '#888');
       chart.update();
     }
   });
