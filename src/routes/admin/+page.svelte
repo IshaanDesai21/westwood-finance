@@ -682,6 +682,7 @@
     border-radius: var(--radius-sm);
     box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
     background: var(--surface);
+    border: 1px solid var(--border);
   }
 
   .card {

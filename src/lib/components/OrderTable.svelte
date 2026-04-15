@@ -121,20 +121,20 @@
   .item-notes { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
   a { color: var(--primary); }
   a:hover { text-decoration: underline; }
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { 
+    overflow-x: auto; 
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+  }
   
   /* Optimize widths to prevent clipping */
-  table { table-layout: fixed; min-width: 900px; }
-  th:nth-child(1), td:nth-child(1) { width: 30%; } /* Item */
-  th:nth-child(2), td:nth-child(2) { width: 14%; } /* Company */
-  th:nth-child(3), td:nth-child(3) { width: 12%; } /* Category */
-  th:nth-child(4), td:nth-child(4) { width: 10%; } /* Team */
-  th:nth-child(5), td:nth-child(5) { width: 14%; } /* Status */
-  th:nth-child(6), td:nth-child(6) { width: 10%; } /* Date */
-  th:nth-child(7), td:nth-child(7) { width: 10%; } /* Total */
-
+  table { width: 100%; border-collapse: collapse; min-width: 900px; table-layout: auto; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+  
   td { 
-    padding: 10px 8px !important; 
+    padding: 12px 16px !important; 
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
