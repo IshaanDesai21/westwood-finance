@@ -41,6 +41,18 @@
   let editTracking = $state("");
   let editUUID = $state("");
   let editSaving = $state(false);
+  
+  // ── Funding Edit State ──────────────────────────────────────────────────────
+  let editingFund = $state(null);
+  let editFundFields = $state({
+    Source: "",
+    Amount: 0,
+    Recipient: "",
+    Notes: "",
+    Type: "",
+    Date: ""
+  });
+  let activeView = $state("orders"); // "orders" | "funding"
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
   onMount(() => {
@@ -112,13 +124,62 @@
 
   // Generate a stable hue from an order UUID
   function getOrderColor(/** @type {string|undefined} */ uuid) {
-    if (!uuid) return "transparent";
+    if (!uuid) return "var(--border)";
     let hash = 0;
     for (let i = 0; i < uuid.length; i++) {
       hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
     }
     const h = Math.abs(hash % 360);
     return `hsl(${h}, 65%, 45%)`;
+  }
+
+  // ── Funding Edit Helpers ──────────────────────────────────────────────────────
+  /** 
+   * @param {any} fund 
+   */
+  function openEditFund(fund) {
+    editingFund = fund;
+    editFundFields = {
+      Source: fund.Source || "",
+      Amount: fund.Amount || 0,
+      Recipient: fund.Recipient || "",
+      Notes: fund.Notes || "",
+      Type: fund.Type || "Part Order",
+      Date: fund.Date || new Date().toISOString().split('T')[0]
+    };
+    actionMsg = "";
+    actionErr = "";
+  }
+
+  async function saveFundEdit() {
+    if (!editingFund) return;
+    const currentFund = /** @type {any} */ (editingFund);
+    editSaving = true;
+    actionErr = "";
+    try {
+      const params = new URLSearchParams({
+        action: "updateFunding",
+        key: SECRET_KEY,
+        rowIndex: String(currentFund.rowIndex),
+        Source: String(editFundFields.Source),
+        Amount: String(editFundFields.Amount),
+        Recipient: String(editFundFields.Recipient),
+        Notes: String(editFundFields.Notes),
+        Type: String(editFundFields.Type),
+        Date: String(editFundFields.Date)
+      });
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || result?.error) throw new Error(result?.error || "Update failed");
+
+      actionMsg = `✓ Funding entry updated!`;
+      editingFund = null;
+      await dataService.load(true);
+    } catch (e) {
+      actionErr = e instanceof Error ? e.message : "Update failed";
+    } finally {
+      editSaving = false;
+    }
   }
 </script>
 
@@ -130,6 +191,9 @@
   <!-- ── Lock Screen ──────────────────────────────────────────────────────── -->
   <div class="lock-screen">
     <div class="lock-card card">
+      <div class="lock-logo" style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;">
+        <img src="/logo.png" alt="Westwood Logo" style="width: 100%; height: 100%; object-fit: cover;" />
+      </div>
       <h1>Admin Console Access</h1>
       <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
         Enter the admin password to access advanced modules.
@@ -219,16 +283,41 @@
   </div>
 {:else}
   <!-- ── Admin Panel ──────────────────────────────────────────────────────── -->
-  <div class="page-header">
-    <h1>Admin <span>Console</span></h1>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button
-        class="btn btn-ghost btn-sm"
-        onclick={sync}
-        disabled={syncing}
-      >
-        <span class:spinning={syncing}>↻</span> {syncing ? "Syncing..." : "Refresh Data"}
-      </button>
+  <div class="admin-header">
+    <div class="header-content">
+      <div class="header-top">
+        <h1>Admin <span class="accent-color">Console</span></h1>
+        
+        <div class="header-actions">
+          <button
+            class="btn btn-ghost btn-sm"
+            onclick={sync}
+            disabled={syncing}
+          >
+            <span class:spinning={syncing}>↻</span> {syncing ? "Syncing..." : "Refresh Data"}
+          </button>
+        </div>
+      </div>
+
+      <div class="tabs-container">
+        <div class="segmented-control">
+          <div class="segment-highlight" style="transform: translateX(calc({activeView === 'orders' ? 0 : 1} * 100%));"></div>
+          <button 
+            class="segment" 
+            class:active={activeView === 'orders'} 
+            onclick={() => activeView = 'orders'}
+          >
+            Orders
+          </button>
+          <button 
+            class="segment" 
+            class:active={activeView === 'funding'} 
+            onclick={() => activeView = 'funding'}
+          >
+            Funding
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -239,86 +328,199 @@
     <div class="error-bar">{actionErr}</div>
   {/if}
 
-  <section>
-    <div class="section-title" style="margin-bottom:12px">
-      Manage All Orders ({orders.length})
-    </div>
-    <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-      Manage order statuses, UUIDs, and tracking links. All updates sync directly to Google Sheets.
-    </p>
+  {#if activeView === 'orders'}
+    <section class="fade-in">
+      <div class="section-title" style="margin-bottom:12px">
+        Manage All Orders ({orders.length})
+      </div>
+      <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
+        Manage order statuses, UUIDs, and tracking links. Updates sync directly to Google Sheets.
+      </p>
 
-    <div class="card" style="padding:0;overflow:hidden">
-      {#if loading && !orders.length}
-        <LoadingIndicator text="Loading orders from cache..." />
-      {:else if orders.length === 0}
-        <div class="empty-state">
-          <div class="icon">📦</div>
-          No orders found in the database.
-        </div>
-      {:else}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Company</th>
-                <th>Category</th>
-                <th>Team</th>
-                <th>Date</th>
-                <th class="text-right">Price</th>
-                <th class="text-right">Qty</th>
-                <th class="text-right">Total</th>
-                <th>Status</th>
-                <th class="text-right">Order UUID</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each orders as order (order.id)}
-                {@const orderColor = getOrderColor(order.orderUUID)}
-                <tr class="fade-in group-row" style="--group-color: {orderColor}">
-                  <td>
-                    <div style="font-weight:500">
-                      {#if order.link}
-                        <a href={order.link} target="_blank" rel="noopener">{order.item}</a>
-                      {:else}
-                        {order.item}
-                      {/if}
-                    </div>
-                    {#if order.notes}
-                      <div style="font-size:0.78rem;color:var(--text-muted)">{order.notes}</div>
-                    {/if}
-                  </td>
-                  <td>{order.company || "—"}</td>
-                  <td>
-                    <span class="badge badge-{(order.category || '').toLowerCase()}">
-                      {order.category || "—"}
-                    </span>
-                  </td>
-                  <td>{order.team || "—"}</td>
-                  <td class="text-muted">{(order.timestamp || "").slice(0, 10) || "—"}</td>
-                  <td class="text-right monospace">{formatCurrency(order.price)}</td>
-                  <td class="text-right">{order.quantity || "—"}</td>
-                  <td class="text-right monospace" style="font-weight:600">
-                    {formatCurrency(order.total)}
-                  </td>
-                  <td><OrderStatusBadge status={order.status} /></td>
-                  <td class="text-right monospace" style="font-size:0.72rem;color:var(--text-muted)">
-                    {order.orderUUID || "—"}
-                  </td>
-                  <td>
-                    <button class="btn btn-primary btn-edit" onclick={() => openEdit(order)}>
-                      Manage
-                    </button>
-                  </td>
+      <div class="card" style="padding:0;overflow:hidden">
+        {#if loading && !orders.length}
+          <LoadingIndicator text="Loading orders..." />
+        {:else if orders.length === 0}
+          <div class="empty-state">
+            <div class="icon">📦</div>
+            No orders found in the database.
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Company</th>
+                  <th>Category</th>
+                  <th>Team</th>
+                  <th>Date</th>
+                  <th class="text-right">Price</th>
+                  <th class="text-right">Qty</th>
+                  <th class="text-right">Total</th>
+                  <th>Status</th>
+                  <th class="text-right">Order UUID</th>
+                  <th></th>
                 </tr>
-              {/each}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {#each orders as order (order.id)}
+                  {@const orderColor = getOrderColor(order.orderUUID)}
+                  <tr class="fade-in group-row" style="--group-color: {orderColor}">
+                    <td>
+                      <div style="font-weight:500">
+                        {#if order.link}
+                          <a href={order.link} target="_blank" rel="noopener">{order.item}</a>
+                        {:else}
+                          {order.item}
+                        {/if}
+                      </div>
+                      {#if order.notes}
+                        <div style="font-size:0.78rem;color:var(--text-muted)">{order.notes}</div>
+                      {/if}
+                    </td>
+                    <td>{order.company || "—"}</td>
+                    <td>
+                      <span class="badge badge-{(order.category || '').toLowerCase()}">
+                        {order.category || "—"}
+                      </span>
+                    </td>
+                    <td>{order.team || "—"}</td>
+                    <td class="text-muted">{(order.timestamp || "").slice(0, 10) || "—"}</td>
+                    <td class="text-right monospace">{formatCurrency(order.price)}</td>
+                    <td class="text-right">{order.quantity || "—"}</td>
+                    <td class="text-right monospace" style="font-weight:600">
+                      {formatCurrency(order.total)}
+                    </td>
+                    <td><OrderStatusBadge status={order.status} /></td>
+                    <td class="text-right monospace" style="font-size:0.72rem;color:var(--text-muted)">
+                      {order.orderUUID || "—"}
+                    </td>
+                    <td>
+                      <button class="btn btn-primary btn-edit" onclick={() => openEdit(order)}>
+                        Manage
+                      </button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
+    </section>
+  {:else}
+    <!-- ── Funding Management ────────────────────────────────────────────────── -->
+    <section class="fade-in">
+      <div class="section-title" style="margin-bottom:12px">
+        Manage Funding & Grants ({dataService.funds.length})
+      </div>
+      <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
+        Edit funding sources, amounts, and recipients. These changes sync to the Fundraising sheet.
+      </p>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        {#if loading && !dataService.funds.length}
+          <LoadingIndicator text="Loading funds..." />
+        {:else if dataService.funds.length === 0}
+          <div class="empty-state">
+            <div class="icon">💰</div>
+            No funding entries found.
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Source</th>
+                  <th>Recipient</th>
+                  <th>Date</th>
+                  <th class="text-right">Amount</th>
+                  <th>Notes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each dataService.funds as fund (fund.id)}
+                  <tr class="fade-in">
+                    <td><span class="type-tag">{fund.Type || "—"}</span></td>
+                    <td style="font-weight:500">{fund.Source || "—"}</td>
+                    <td>{fund.Recipient || "—"}</td>
+                    <td class="text-muted">{fund.Date || "—"}</td>
+                    <td class="text-right monospace" style="font-weight:600;color:#6bcb77">{formatCurrency(fund.Amount)}</td>
+                    <td class="text-muted" style="font-size:0.8rem">{fund.Notes || "—"}</td>
+                    <td>
+                      <button class="btn btn-primary btn-edit" onclick={() => openEditFund(fund)}>
+                        Manage
+                      </button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
+    </section>
+  {/if}
+{/if}
+
+<!-- ── Funding Edit Modal ──────────────────────────────────────────────────────── -->
+{#if editingFund}
+  {@const currentFund = /** @type {any} */ (editingFund)}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+  <div 
+    class="modal-backdrop" 
+    onclick={() => editingFund = null} 
+    onkeydown={(e) => e.key === 'Escape' && (editingFund = null)}
+    role="button" 
+    tabindex="0"
+  >
+    <div class="modal-card card" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+      <div class="modal-header">
+        <div>
+          <h2 style="margin:0">Edit Funding Entry</h2>
+          <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">{currentFund.Source}</p>
         </div>
-      {/if}
+        <button class="modal-close" onclick={() => editingFund = null}>✕</button>
+      </div>
+
+      {#if actionErr}<div class="error-bar">{actionErr}</div>{/if}
+
+      <form onsubmit={(e) => { e.preventDefault(); saveFundEdit(); }}>
+        <div class="modal-fields">
+          <div class="form-group">
+            <label for="fund-source">Source</label>
+            <input id="fund-source" bind:value={editFundFields.Source} />
+          </div>
+          <div class="form-group">
+            <label for="fund-amount">Amount</label>
+            <input id="fund-amount" type="number" step="0.01" bind:value={editFundFields.Amount} />
+          </div>
+          <div class="form-group">
+            <label for="fund-recipient">Recipient / Team</label>
+            <input id="fund-recipient" bind:value={editFundFields.Recipient} />
+          </div>
+          <div class="form-group">
+            <label for="fund-date">Date</label>
+            <input id="fund-date" type="date" bind:value={editFundFields.Date} />
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1">
+            <label for="fund-notes">Notes</label>
+            <textarea id="fund-notes" bind:value={editFundFields.Notes}></textarea>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary" disabled={editSaving}>
+            {editSaving ? "Saving…" : "Save Entry"}
+          </button>
+          <button type="button" class="btn btn-ghost" onclick={() => editingFund = null}>Cancel</button>
+        </div>
+      </form>
     </div>
-  </section>
+  </div>
 {/if}
 
 <!-- ── Edit Modal ────────────────────────────────────────────────────────────── -->
@@ -394,38 +596,99 @@
 {/if}
 
 <style>
-  /* ── Lock Screen ──────────────────────────────────────────────────────────── */
-  .lock-screen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 70vh;
-  }
-  .lock-card {
+  /* ── Admin Header Layout ────────────────────────────────────────────────── */
+  .admin-header {
+    margin-bottom: 32px;
     width: 100%;
-    max-width: 400px;
-    padding: 40px;
+  }
+
+  .header-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .accent-color {
+    color: #e07b30;
+  }
+
+  /* ── Segmented Control (Exact Match of Funding Style) ────────────────────── */
+  .tabs-container {
+    display: flex;
+    justify-content: flex-start; /* Move tabs to the left/under the title */
+  }
+
+  .segmented-control {
+    display: flex;
+    background: var(--surface-2);
+    border-radius: 99px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    position: relative;
+    gap: 0;
+    width: 300px; /* Fixed width for symmetry */
+  }
+
+  .segment-highlight {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 8px) / 2); /* 2 options */
+    background: var(--surface);
+    border-radius: 99px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
+  }
+
+  .segment {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 8px 18px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.2s;
     text-align: center;
   }
 
-  /* Group Indicator Line */
-  .group-row td:first-child {
-    position: relative;
-    padding-left: 20px;
-  }
-  .group-row td:first-child::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: var(--group-color);
-    box-shadow: none;
-    opacity: 0.9;
+  .segment:hover {
+    color: var(--text);
   }
 
-  /* ── Table ────────────────────────────────────────────────────────────────── */
+  .segment.active {
+    color: var(--primary);
+  }
+
+  /* ── Table & Layout Fixes ────────────────────────────────────────────────── */
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px; /* Ensure columns have enough room to not clip */
+    table-layout: auto;
+  }
+
   .btn-edit {
     padding: 6px 16px;
     font-size: 0.8rem;
@@ -441,7 +704,32 @@
     filter: brightness(1.1);
   }
 
+  /* ── Add Layout ───────────────────────────────────────────────────────────── */
+  .lock-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 85vh;
+    padding: 20px;
+  }
+  .lock-card {
+    width: 100%;
+    max-width: 380px;
+    min-height: 520px;
+    padding: 60px 40px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 20px rgba(var(--primary-rgb), 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+  }
+
   /* ── Modal ────────────────────────────────────────────────────────────────── */
+
   .modal-backdrop {
     position: fixed;
     inset: 0;

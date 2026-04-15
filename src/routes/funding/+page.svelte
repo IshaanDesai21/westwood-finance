@@ -83,7 +83,13 @@
   });
 
   let budgetTeams = $derived(
-    budget ? Object.entries(budget).filter(([key]) => key !== "Total") : [],
+    budget ? Object.entries(budget)
+      .filter(([key]) => key !== "Total")
+      .sort(([a], [b]) => {
+        if (a === "FRC") return -1;
+        if (b === "FRC") return 1;
+        return a.localeCompare(b);
+      }) : [],
   );
   let budgetTotal = $derived(/** @type {any} */ (budget)?.Total ?? null);
 
@@ -326,7 +332,11 @@
                   <span class="recipient-chip">{entry.Recipient || "—"}</span>
                 {/if}
               </td>
-              <td class="text-muted">{formatDate(entry.Date)}</td>
+              <td class="text-muted">
+                <span class="date-chip">
+                  {formatDate(entry.Date)}
+                </span>
+              </td>
               <td class="text-muted" style="font-size:0.82rem"
                 >{entry.Notes || "—"}</td
               >
@@ -339,12 +349,13 @@
             </tr>
           {/each}
         </tbody>
-        <tfoot>
+        <tfoot class="total-row-container">
           <tr>
-            <td colspan="5" style="padding-top:20px; padding-bottom:20px; font-size:1rem;"><strong>Total</strong></td>
-            <td class="text-right monospace" style="color:#6bcb77; padding-top:20px; padding-bottom:20px; font-size:1.1rem;"
-              ><strong>{formatCurrency(totalRaised)}</strong></td
-            >
+            <td></td>
+            <td colspan="4" style="font-weight:700; color:var(--text-muted)">Total Raised</td>
+            <td class="text-right monospace amount-total" style="font-weight:700">
+              {formatCurrency(totalRaised)}
+            </td>
           </tr>
         </tfoot>
       </table>
@@ -381,7 +392,7 @@
           </div>
           <div class="budget-details">
             <div class="budget-detail-row">
-              <span class="text-muted">Club Funds</span>
+              <span class="text-muted">Team Budget</span>
               <span class="monospace">{formatCurrency(clubFunds)}</span>
             </div>
             <div class="budget-detail-row">
@@ -462,7 +473,9 @@
     <!-- Lock Screen -->
     <div class="lock-screen">
       <div class="lock-card card">
-        <div class="lock-icon"></div>
+        <div class="lock-logo" style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); background: #000;">
+          <img src="/logo.png" alt="Westwood Logo" style="width: 100%; height: 100%; object-fit: cover;" />
+        </div>
         <h2>Add Funds Access</h2>
         <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
           Enter the password to add a funding entry.
@@ -825,6 +838,28 @@
   }
 
   /* ── Add Layout ───────────────────────────────────────────────────────────── */
+  .lock-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 20px;
+  }
+  .lock-card {
+    width: 100%;
+    max-width: 380px; /* Narrower for vertical silhouette */
+    min-height: 520px; /* Taller */
+    padding: 60px 40px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+  }
   .add-layout {
     display: grid;
     grid-template-columns: 1fr 280px;
@@ -874,5 +909,37 @@
     padding: 2px 8px;
     border-radius: 99px;
     color: var(--text-muted);
+  }
+
+  .total-row-container td {
+    border-top: 1px solid var(--border);
+    padding: 18px 14px !important;
+    vertical-align: middle;
+  }
+  .total-row-container tr {
+    position: relative;
+  }
+  .total-row-container tr::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #e07b30;
+    z-index: 1;
+  }
+  .amount-total {
+    color: #6bcb77;
+    font-size: 1rem;
+  }
+  .date-chip {
+    background: var(--surface-2);
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1px solid var(--border);
   }
 </style>

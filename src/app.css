@@ -269,6 +269,23 @@ tbody td {
   vertical-align: middle;
 }
 
+/* Group Indicator Line */
+.group-row td:first-child {
+  position: relative;
+  padding-left: 20px !important;
+}
+
+.group-row td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--group-color, var(--primary));
+  opacity: 0.9;
+}
+
 /* ── Stat Grids ──────────────────────────────────────────────────────────────── */
 .stat-grid {
   display: grid;

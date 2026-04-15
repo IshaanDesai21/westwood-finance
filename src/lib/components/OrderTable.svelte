@@ -34,6 +34,17 @@
   );
 
   let display = $derived(limit > 0 ? sortedOrders.slice(0, limit) : sortedOrders);
+  
+  // Generate a stable hue from an order UUID
+  function getOrderColor(/** @type {string|undefined} */ uuid) {
+    if (!uuid) return "transparent";
+    let hash = 0;
+    for (let i = 0; i < uuid.length; i++) {
+        hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash % 360);
+    return `hsl(${h}, 65%, 45%)`;
+  }
 </script>
 
 <div class="table-wrap">
@@ -51,7 +62,8 @@
     </thead>
     <tbody>
       {#each display as order (order.id)}
-        <tr class="fade-in">
+        {@const orderColor = getOrderColor(order.orderUUID)}
+        <tr class="fade-in group-row" style="--group-color: {orderColor}">
           <td>
             <div class="item-name">
               {#if order.link}
@@ -110,4 +122,21 @@
   a { color: var(--primary); }
   a:hover { text-decoration: underline; }
   .table-wrap { overflow-x: auto; }
+  
+  /* Optimize widths to prevent clipping */
+  table { table-layout: fixed; min-width: 900px; }
+  th:nth-child(1), td:nth-child(1) { width: 30%; } /* Item */
+  th:nth-child(2), td:nth-child(2) { width: 14%; } /* Company */
+  th:nth-child(3), td:nth-child(3) { width: 12%; } /* Category */
+  th:nth-child(4), td:nth-child(4) { width: 10%; } /* Team */
+  th:nth-child(5), td:nth-child(5) { width: 14%; } /* Status */
+  th:nth-child(6), td:nth-child(6) { width: 10%; } /* Date */
+  th:nth-child(7), td:nth-child(7) { width: 10%; } /* Total */
+
+  td { 
+    padding: 10px 8px !important; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 </style>

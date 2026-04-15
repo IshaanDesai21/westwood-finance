@@ -203,7 +203,7 @@
 
       <section class="dashboard-section card promo-card">
         <h3>Need to <span>Order?</span></h3>
-        <p>Submit a request to the team for approval.</p>
+        <p>Submit a request for approval.</p>
         <a href="/add" class="btn btn-primary btn-sm" style="margin-top:10px"
           >+ New Request</a
         >

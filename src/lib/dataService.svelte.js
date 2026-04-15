@@ -103,6 +103,20 @@ class DataStore {
   }
 
   /**
+   * Normalizes funding data
+   * @param {any[]} data 
+   */
+  normalizeFunds(data) {
+    if (!Array.isArray(data)) return [];
+    return data.map((f, index) => ({
+      ...f,
+      id: f.id || `fund-${index}-${Date.now()}`,
+      rowIndex: f.rowIndex ?? (index + 2), // Header is row 1
+      Amount: Number(f.Amount) || 0
+    }));
+  }
+
+  /**
    * Performance-optimized loader.
    * Uses getAllData to fetch everything in ONE request.
    */
@@ -140,7 +154,7 @@ class DataStore {
       }
 
       this.orders = this.normalizeOrders(data.orders || []);
-      this.funds = Array.isArray(data.funds) ? data.funds : []; 
+      this.funds = this.normalizeFunds(data.funds || []); 
       this.budget = data.budget || null;
       this.lastFetched = Date.now();
       

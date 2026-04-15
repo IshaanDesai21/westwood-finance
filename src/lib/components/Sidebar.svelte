@@ -14,8 +14,7 @@
 <aside class="sidebar">
   <div class="sidebar-brand">
     <div class="logo-wrapper">
-      <div class="logo-placeholder">W</div>
-      <!-- <img src="/logo.png" alt="Logo" class="logo-actual" /> -->
+      <img src="/logo.png" alt="Westwood Logo" class="logo-actual" />
     </div>
     <div class="brand-text">
        <span class="brand-title">WESTWOOD</span>
@@ -69,21 +68,20 @@
 
   .logo-wrapper {
     position: relative;
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, var(--primary) 0%, #b97cf3 100%);
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    background: transparent;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(78, 154, 241, 0.3);
   }
 
-  .logo-placeholder {
-    font-weight: 900;
-    font-size: 1.4rem;
-    color: #fff;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  .logo-actual {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
   }
 
   .brand-text {
