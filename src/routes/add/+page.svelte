@@ -62,7 +62,7 @@
         category: form.category,
         team: form.team,
         total: String(computedTotal),
-        status: "Submitted and in review",
+        status: "Submitted, in review",
         tracking: "",
         uuid: form.uuid,
       });

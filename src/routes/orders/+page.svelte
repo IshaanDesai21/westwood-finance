@@ -71,7 +71,7 @@
         // Define priority for statuses: "Submitted and in review" gets priority 0
         /** @type {Record<string, number>} */
         const STATUS_PRIORITY = {
-          "Submitted and in review": 0,
+          "Submitted, in review": 0,
           "Approved": 1,
           "Ordered": 2,
           "Received": 3,

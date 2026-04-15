@@ -13,7 +13,7 @@
   const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const ORDER_STATUSES = [
-    "Submitted and in review",
+    "Submitted, in review",
     "Approved",
     "Ordered",
     "Received",
@@ -80,7 +80,7 @@
   // ── Modal helpers ─────────────────────────────────────────────────────────────
   function openEdit(/** @type {Order} */ order) {
     editingOrder = order;
-    editStatus = order.status || "Submitted and in review";
+    editStatus = order.status || "Submitted, in review";
     editTracking = order.tracking || "";
     editUUID = order.orderUUID || "";
     editSaving = false;

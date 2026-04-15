@@ -14,7 +14,7 @@
 
   const statusOptions = [
     { label: 'All Statuses', value: '' },
-    { label: 'Submitted and in review', value: 'Submitted and in review' },
+    { label: 'Submitted, in review', value: 'Submitted, in review' },
     { label: 'Ordered', value: 'Ordered' },
     { label: 'Received', value: 'Received' },
     { label: 'Approved', value: 'Approved' },
@@ -123,13 +123,23 @@
 
 <style>
   .filter-bar {
-    margin-bottom: 16px;
-    padding: 16px;
+    margin-bottom: 24px;
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(to right, var(--surface), var(--surface-2));
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
   }
   .filter-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
     align-items: flex-end;
+  }
+  .filter-bar :global(.form-group) {
+    margin-bottom: 0;
+  }
+  .search-input {
+    grid-column: 1 / -1;
   }
 </style>

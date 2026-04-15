@@ -26,10 +26,13 @@
 
   // ── Stats Calculations ──────────────────────────────────────────────────────
   
-  // Only "Received" orders count towards spending analytics
+  // Only "Received" and "Ordered" orders count towards spending analytics
   let expenses = $derived(
     orders
-      .filter((/** @type {Order} */ o) => o.status?.toLowerCase().trim() === 'received')
+      .filter((/** @type {Order} */ o) => {
+        const s = o.status?.toLowerCase().trim();
+        return s === 'received' || s === 'ordered';
+      })
       .map((/** @type {Order} */ o) => ({
         ...o,
         month: (o.timestamp || "").toString().slice(0, 7), // "YYYY-MM"
@@ -109,7 +112,7 @@
         <StatCard label="Most Expensive" value={stats.mostExpensive.total.toString()} isCurrency icon="↑" accentColor="#b97cf3" sub={stats.mostExpensive.item} />
       {/if}
       {#if stats.topVendor}
-        <StatCard label="Top Vendor" value={stats.topVendor.company} icon="🏢" accentColor="#f1c84e" sub="{stats.topVendor.count} orders" />
+        <StatCard label="Top Vendor" value={stats.topVendor.company} icon="" accentColor="#f1c84e" sub="{stats.topVendor.count} orders" />
       {/if}
     </div>
 

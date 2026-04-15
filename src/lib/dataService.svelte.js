@@ -94,7 +94,7 @@ class DataStore {
       team: o.Team ?? o.team ?? o.user ?? "",
       timestamp: o.Timestamp ?? o.timestamp ?? "",
       total: Number(o.Total ?? o.total) || (Number(o.Price ?? o.price) * Number(o.Quantity ?? o.quantity)) || 0,
-      status: (o.Status ?? o.status ?? "Submitted and in review").toString().trim(),
+      status: (o.Status ?? o.status ?? "Submitted, in review").toString().trim(),
       tracking: o.Tracking ?? o.tracking ?? "",
       id: o["List UUID"] || o.orderUUID || o.id || `order-${index}-${Date.now()}`,
       orderUUID: o["Order UUID"] || o.orderUUID || "",

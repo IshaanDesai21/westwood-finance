@@ -4,7 +4,7 @@
 
   /** @type {Record<string, { color: string, bg: string, icon: string }>} */
   const config = {
-    'Submitted and in review': { color: '#4e9af1', bg: 'rgba(78,154,241,0.12)', icon: '' },
+    'Submitted, in review':     { color: '#4e9af1', bg: 'rgba(78,154,241,0.12)', icon: '' },
     'Pending Review':          { color: '#f1c84e', bg: 'rgba(241,200,78,0.12)',  icon: '⏳' },
     'Ordered':                  { color: '#f19a4e', bg: 'rgba(241,154,78,0.12)',  icon: '' },
     'Received':                 { color: '#6bcb77', bg: 'rgba(107,203,119,0.12)', icon: '✓' },

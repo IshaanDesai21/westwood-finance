@@ -25,10 +25,13 @@
   });
 
   // ── Derived Stats ───────────────────────────────────────────────────────────
-  // "Expenses" are orders that have been received
+  // "Expenses" are orders that have been received or ordered
   let expenses = $derived(
     orders
-      .filter((/** @type {Order} */ o) => (o.status || "").toLowerCase().trim() === "received")
+      .filter((/** @type {Order} */ o) => {
+        const s = (o.status || "").toLowerCase().trim();
+        return s === "received" || s === "ordered";
+      })
   );
 
   let totalRaised = $derived(
