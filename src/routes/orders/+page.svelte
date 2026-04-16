@@ -93,8 +93,8 @@
     URL.revokeObjectURL(url);
   }
 
-  let filtered = $derived(
-    dataService.orders
+  let filtered = $derived.by(() => {
+    return dataService.orders
       .filter((/** @type {Order} */ e) => {
         if (filters.category && e.category !== filters.category) return false;
         if (
@@ -120,7 +120,6 @@
         return true;
       })
       .sort((/** @type {Order} */ a, /** @type {Order} */ b) => {
-        // Define priority for statuses: "Submitted and in review" gets priority 0
         /** @type {Record<string, number>} */
         const STATUS_PRIORITY = {
           "Pending Review": 0,
@@ -138,12 +137,11 @@
           return priorityA - priorityB;
         }
 
-        // Secondary sort: Newest first
         return (
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-      }),
-  );
+      });
+  });
 </script>
 
 <svelte:head>

@@ -32,12 +32,11 @@
     "cancelled": 5,
   };
 
-  let sortedAdminOrders = $derived(() => {
+  let sortedAdminOrders = $derived.by(() => {
     return dataService.orders.slice().sort((a, b) => {
       let pA = STATUS_PRIORITY[(a.status || "").toLowerCase().trim()] ?? 99;
       let pB = STATUS_PRIORITY[(b.status || "").toLowerCase().trim()] ?? 99;
       if (pA !== pB) return pA - pB;
-      // Secondary sort: timestamp newest first
       let tA = new Date(a.timestamp || 0).getTime();
       let tB = new Date(b.timestamp || 0).getTime();
       return tB - tA;
@@ -129,7 +128,7 @@
 
   function tryUnlock() {
     const cleanPass = adminPassInput.trim();
-    if (cleanPass === "/dev3432") {
+    if (cleanPass === "/dev3432" || cleanPass === "dev3432") {
       unlocked = true;
       authError = "";
       adminPassInput = "";
@@ -530,7 +529,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each sortedAdminOrders() as order (order.id)}
+                {#each sortedAdminOrders as order (order.id)}
                   {@const orderColor = getOrderColor(order.orderUUID)}
                   <tr
                     class="fade-in group-row"

@@ -107,7 +107,8 @@ class DataStore {
       timestamp: o.Timestamp ?? o.timestamp ?? "",
       total: Number(o.Total ?? o.total) || (Number(o.Price ?? o.price) * Number(o.Quantity ?? o.quantity)) || 0,
       status: (() => {
-        const s = (o.Status ?? o.status ?? "Pending Review").toString().trim();
+        const val = o.Status ?? o.status ?? "Pending Review";
+        const s = String(val).trim();
         const low = s.toLowerCase();
         if (low === "submitted, in review" || low === "submitted" || low === "pending review") return "Pending Review";
         if (low === "ordered") return "Ordered";

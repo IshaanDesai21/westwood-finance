@@ -56,7 +56,7 @@
   let authError = $state("");
 
   function tryUnlock() {
-    if (passwordInput === "/dev3432") {
+    if (passwordInput === "/dev3432" || passwordInput === "dev3432") {
       unlocked = true;
       authError = "";
       passwordInput = "";
