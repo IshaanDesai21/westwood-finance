@@ -1,12 +1,15 @@
 <script>
   import { onMount } from "svelte";
-  import { formatCurrency, formatFullDate, getTeamBadgeClass } from "$lib/utils.js";
+  import {
+    formatCurrency,
+    formatFullDate,
+    getTeamBadgeClass,
+  } from "$lib/utils.js";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import OrderTable from "$lib/components/OrderTable.svelte";
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
-
 
   const FUND_TYPES = ["Fundraiser", "Grant", "Dues", "Sponsor", "Other"];
   const RECIPIENTS = [
@@ -37,17 +40,21 @@
   let submitting = $state(false);
   let formMsg = $state("");
   let formErr = $state("");
- 
+
   let selectedBudgetTeam = $state("FRC");
 
   let teamSpecificBudgetOrders = $derived(
     dataService.orders.filter((/** @type {any} */ o) => {
       // Westwood Overall shows all teams (aggregate)
-      if (selectedBudgetTeam === "Westwood Overall") return true;
+      if (
+        selectedBudgetTeam === "Westwood Overall" ||
+        selectedBudgetTeam === "All"
+      )
+        return true;
       const t = (o.team || "").toLowerCase().trim();
       const s = selectedBudgetTeam.toLowerCase().trim();
       return t === s || t.includes(s);
-    })
+    }),
   );
 
   // ── Lock ─────────────────────────────────────────────────────────────────────
@@ -79,7 +86,11 @@
 
   // ── Derived totals ──────────────────────────────────────────────────────────
   let totalRaised = $derived(
-    dataService.funds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
+    dataService.funds.reduce(
+      (/** @type {number} */ sum, /** @type {any} */ f) =>
+        sum + (Number(f.Amount) || 0),
+      0,
+    ),
   );
 
   let byType = $derived(() => {
@@ -103,28 +114,38 @@
           })
       : [],
   );
-  let budgetTotal = $derived(/** @type {any} */ (dataService.budget)?.Total ?? null);
+  let budgetTotal = $derived(
+    /** @type {any} */ (dataService.budget)?.Total ?? null,
+  );
   let sortedFunds = $derived(
-    dataService.funds.slice().sort((/** @type {any} */ a, /** @type {any} */ b) => {
-      let valA = a[sortCol] || "";
-      let valB = b[sortCol] || "";
-      if (sortCol === "Amount") {
-        valA = Number(valA) || 0;
-        valB = Number(valB) || 0;
-      }
-      if (valA < valB) return sortDir === "asc" ? -1 : 1;
-      if (valA > valB) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    }),
+    dataService.funds
+      .slice()
+      .sort((/** @type {any} */ a, /** @type {any} */ b) => {
+        let valA = a[sortCol] || "";
+        let valB = b[sortCol] || "";
+        if (sortCol === "Amount") {
+          valA = Number(valA) || 0;
+          valB = Number(valB) || 0;
+        }
+        if (valA < valB) return sortDir === "asc" ? -1 : 1;
+        if (valA > valB) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      }),
   );
 
   let teamSpecificFunds = $derived(
     dataService.funds.filter((/** @type {any} */ f) => {
-      if (selectedBudgetTeam === "Westwood Overall") return true;
-      const r = (f.Recipient || "").toLowerCase().trim();
+      if (
+        selectedBudgetTeam === "Westwood Overall" ||
+        selectedBudgetTeam === "All"
+      )
+        return true;
+      const r = String(f.Recipient || "")
+        .toLowerCase()
+        .trim();
       const s = selectedBudgetTeam.toLowerCase().trim();
       return r === s || r === "all";
-    })
+    }),
   );
 
   function toggleSort(/** @type {string} */ col) {
@@ -205,14 +226,16 @@
 </script>
 
 <svelte:head>
-  <title>Team Dashboard — Westwood Finance</title>
+  <title>Club Funding — Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">
-  <h1>Team <span>Dashboard</span></h1>
+  <h1>Club <span>Funding</span></h1>
   <div style="display:flex;gap:8px;">
     {#if dataService.error}
-      <span class="error-text" style="font-size:0.85rem">⚠ {dataService.error}</span>
+      <span class="error-text" style="font-size:0.85rem"
+        >⚠ {dataService.error}</span
+      >
     {/if}
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
@@ -222,15 +245,16 @@
 </div>
 
 <!-- ── Tab Nav ──────────────────────────────────────────────────────────────── -->
-<div class="tabs-container" style="display:flex; justify-content:space-between; align-items:center; gap:20px;">
+<div
+  class="tabs-container"
+  style="display:flex; justify-content:space-between; align-items:center; gap:20px;"
+>
   <div class="segmented-control" style="position:relative; z-index:0;">
     <div
       class="segment-highlight"
-      style="transform: translateX(calc({[
-        'history',
-        'budget',
-        'add',
-      ].indexOf(activeTab)} * 100%));"
+      style="transform: translateX(calc({['history', 'budget', 'add'].indexOf(
+        activeTab,
+      )} * 100%));"
     ></div>
     {#each [["history", "Funding History"], ["budget", "Team Dashboard"], ["add", "+ Add Funds"]] as [key, label]}
       <button
@@ -243,10 +267,21 @@
   </div>
 
   {#if activeTab === "budget"}
-    <div class={!dataService.hasLoadedOnce ? "fade-in" : ""} style="width: 240px;">
-      <CustomDropdown 
-        options={["FRC", "Slingshot", "Atlatl", "Kunai", "Hunga Munga"]} 
-        bind:value={selectedBudgetTeam} 
+    <div
+      class={!dataService.hasLoadedOnce ? "fade-in" : ""}
+      style="width: 240px;"
+    >
+      <CustomDropdown
+        options={[
+          "All",
+          "FRC",
+          "Slingshot",
+          "Atlatl",
+          "Kunai",
+          "Hunga Munga",
+          "WWROBO",
+        ]}
+        bind:value={selectedBudgetTeam}
         placeholder="Select Team"
       />
     </div>
@@ -335,7 +370,11 @@
       No funding entries yet.
     </div>
   {:else}
-    <div class="card history-card" class:fade-in={!dataService.hasLoadedOnce} style="padding:0; overflow:hidden; width:100%">
+    <div
+      class="card history-card"
+      class:fade-in={!dataService.hasLoadedOnce}
+      style="padding:0; overflow:hidden; width:100%"
+    >
       <table>
         <thead>
           <tr>
@@ -388,7 +427,9 @@
             <tr class="fade-in">
               <td>
                 <span
-                  style="font-size: 1.05rem; font-weight: 500; color:{TYPE_COLORS[entry.Type] || 'var(--text-muted)'}"
+                  style="font-size: 1.05rem; font-weight: 500; color:{TYPE_COLORS[
+                    entry.Type
+                  ] || 'var(--text-muted)'}"
                 >
                   {entry.Type || "—"}
                 </span>
@@ -442,24 +483,55 @@
       No budget data available.
     </div>
   {:else}
-    <div class="budget-single-view" class:fade-in={!dataService.hasLoadedOnce} style="width:100%">
+    <div
+      class="budget-single-view"
+      class:fade-in={!dataService.hasLoadedOnce}
+      class:is-grid={selectedBudgetTeam === "All"}
+      style="width:100%"
+    >
       {#each budgetTeams as [team, data]}
-        {#if team === (selectedBudgetTeam === "Westwood Overall" ? "Westwood Overall" : selectedBudgetTeam)}
-          {@const final = data["Final"] ?? 0}
+        {#if selectedBudgetTeam === "All" || selectedBudgetTeam === "Westwood Overall" || team === selectedBudgetTeam}
+          {@const teamFundsRaised = dataService.funds.reduce((sum, f) => {
+            const r = String(f.Recipient || "").toLowerCase().trim();
+            const s = team.toLowerCase().trim();
+            if (r === s || r === "all") {
+               return sum + (Number(f.Amount) || 0);
+            }
+            return sum;
+          }, 0)}
+          {@const baseFinal = data["Final"] ?? 0}
+          {@const final = baseFinal + teamFundsRaised}
           {@const clubFunds = data["Club Funds"] ?? 0}
           {@const expenses = data["Expenses"] ?? 0}
           {@const personal = data["Personal Funds"] ?? 0}
-          {@const pct = budgetTotal && budgetTotal["Final"] > 0 ? Math.min(100, (final / budgetTotal["Final"]) * 100) : 0}
-          
-          <div class="budget-card card selected" style="max-width: 500px; margin: 0 auto 32px;">
-            <div class="budget-team-name" style="font-size: 1.4rem; color: var(--primary);">{team}</div>
+          {@const pct =
+            budgetTotal && budgetTotal["Final"] > 0
+              ? Math.min(100, (final / budgetTotal["Final"]) * 100)
+              : 0}
+
+          <div
+            class="budget-card card selected"
+            style={selectedBudgetTeam === "All" ? "margin-bottom: 0;" : "max-width: 500px; margin: 0 auto 32px;"}
+          >
+            <div
+              class="budget-team-name"
+              style="font-size: 1.4rem; color: var(--primary);"
+            >
+              {team}
+            </div>
             <div
               class="budget-final"
-              style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}; font-size: 2.2rem;"
+              style="color:{final >= 0
+                ? '#6bcb77'
+                : '#f16a4e'}; font-size: 2.2rem;"
             >
               {formatCurrency(final)}
             </div>
             <div class="budget-details" style="gap: 12px; margin-top: 20px;">
+              <div class="budget-detail-row" style="font-size: 0.95rem;">
+                <span class="text-muted">Raised</span>
+                <span class="monospace" style="color:#6bcb77">+{formatCurrency(teamFundsRaised)}</span>
+              </div>
               <div class="budget-detail-row" style="font-size: 0.95rem;">
                 <span class="text-muted">Team Budget</span>
                 <span class="monospace">{formatCurrency(clubFunds)}</span>
@@ -490,27 +562,37 @@
 
     <!-- Team Dashboard View -->
     <div class="team-dashboard-content fade-in" style="margin-top: 40px;">
-      <div class="dashboard-stack" style="display: flex; flex-direction: column; gap: 40px;">
-        
+      <div
+        class="dashboard-stack"
+        style="display: flex; flex-direction: column; gap: 40px;"
+      >
         <!-- Section 1: Team Activity (Orders) -->
         <div class="activity-section">
-          <div class="section-title" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);">
+          <div
+            class="section-title"
+            style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);"
+          >
             {selectedBudgetTeam} Activity
           </div>
-          <OrderTable 
-            orders={teamSpecificBudgetOrders} 
-            hideTeamColumn={selectedBudgetTeam !== "Westwood Overall"} 
+          <OrderTable
+            orders={teamSpecificBudgetOrders}
+            hideTeamColumn={selectedBudgetTeam !== "Westwood Overall"}
           />
         </div>
 
         <!-- Section 2: Team Funding (Grants/Sponsors) -->
         <div class="funding-section">
-          <div class="section-title" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);">
+          <div
+            class="section-title"
+            style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);"
+          >
             {selectedBudgetTeam} Funding
           </div>
           <div class="card" style="padding:0; overflow:hidden">
             {#if teamSpecificFunds.length === 0}
-              <div class="empty-state" style="padding: 40px;">No funding entries for this team.</div>
+              <div class="empty-state" style="padding: 40px;">
+                No funding entries for this team.
+              </div>
             {:else}
               <table style="font-size: 0.85rem;">
                 <thead>
@@ -524,8 +606,16 @@
                   {#each teamSpecificFunds as f}
                     <tr>
                       <td style="font-weight:500">{f.Source || "—"}</td>
-                      <td><span style="font-size: 1.05rem; font-weight: 500; border-left: 2px solid {TYPE_COLORS[f.Type] || '#ccc'}; padding-left: 8px;">{f.Type}</span></td>
-                      <td class="text-right monospace" style="color:#6bcb77">{formatCurrency(f.Amount)}</td>
+                      <td
+                        ><span
+                          style="font-size: 1.05rem; font-weight: 500; border-left: 2px solid {TYPE_COLORS[
+                            f.Type
+                          ] || '#ccc'}; padding-left: 8px;">{f.Type}</span
+                        ></td
+                      >
+                      <td class="text-right monospace" style="color:#6bcb77"
+                        >{formatCurrency(f.Amount)}</td
+                      >
                     </tr>
                   {/each}
                 </tbody>
@@ -533,7 +623,6 @@
             {/if}
           </div>
         </div>
-
       </div>
     </div>
   {/if}
@@ -896,7 +985,6 @@
     transition: width 0.6s ease;
   }
 
-
   /* ── Add Layout ───────────────────────────────────────────────────────────── */
   .lock-screen {
     display: flex;
@@ -1004,4 +1092,10 @@
   }
 
   /* ── Enhanced Budget View Styles ────────────────────── */
+  .budget-single-view.is-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 32px;
+    align-items: start;
+  }
 </style>

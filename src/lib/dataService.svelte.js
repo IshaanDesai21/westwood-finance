@@ -86,6 +86,7 @@ class DataStore {
    */
   normalizeOrders(data) {
     if (!Array.isArray(data)) return [];
+    const seenIds = new Set();
     return data
       .filter(o => {
           const hasItem = !!(o.Item || o.item);
@@ -95,7 +96,17 @@ class DataStore {
           // Only keep rows that have some actual data
           return hasItem || hasCompany || hasTracking || hasUUID;
       })
-      .map((o, index) => ({
+      .map((o, index) => {
+      let baseId = String(o["List UUID"] || o.orderUUID || o.id || `order-${index}-${Date.now()}`);
+      let finalId = baseId;
+      let counter = 1;
+      while (seenIds.has(finalId)) {
+        finalId = `${baseId}-dup${counter}`;
+        counter++;
+      }
+      seenIds.add(finalId);
+      
+      return {
       item: o.Item ?? o.item ?? "Unknown",
       company: o.Company ?? o.company ?? "",
       link: o.Link ?? o.link ?? "",
@@ -119,10 +130,10 @@ class DataStore {
         return s; // Fallback
       })(),
       tracking: o.Tracking ?? o.tracking ?? "",
-      id: o["List UUID"] || o.orderUUID || o.id || `order-${index}-${Date.now()}`,
+      id: finalId,
       orderUUID: o["Order UUID"] || o.orderUUID || "",
       rowIndex: o.rowIndex ?? (index + 3)
-    }));
+    }});
   }
 
   /**
@@ -131,12 +142,23 @@ class DataStore {
    */
   normalizeFunds(data) {
     if (!Array.isArray(data)) return [];
-    return data.map((f, index) => ({
-      ...f,
-      id: f.id || `fund-${index}-${Date.now()}`,
-      rowIndex: f.rowIndex ?? (index + 2), // Header is row 1
-      Amount: Number(f.Amount) || 0
-    }));
+    const seenIds = new Set();
+    return data.map((f, index) => {
+      let baseId = String(f.id || `fund-${index}-${Date.now()}`);
+      let finalId = baseId;
+      let counter = 1;
+      while (seenIds.has(finalId)) {
+        finalId = `${baseId}-dup${counter}`;
+        counter++;
+      }
+      seenIds.add(finalId);
+      return {
+        ...f,
+        id: finalId,
+        rowIndex: f.rowIndex ?? (index + 2), // Header is row 1
+        Amount: Number(f.Amount) || 0
+      };
+    });
   }
 
   /**

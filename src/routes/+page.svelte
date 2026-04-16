@@ -13,20 +13,33 @@
 
   let syncing = $state(false);
 
-  const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "AtlAtl", "Kunai", "Westwood Overall"];
+  const TEAM_OPTIONS = [
+    "FRC",
+    "Slingshot",
+    "Hunga Munga",
+    "AtlAtl",
+    "Kunai",
+    "Westwood Overall",
+  ];
   let selectedTeam = $state("FRC");
 
   // ── Derived View Based on Team ─────────────────────────────────────────────
   let teamOrders = $derived(
-    selectedTeam === "Westwood Overall" 
-      ? dataService.orders 
-      : dataService.orders.filter((o) => (o.team || "").toLowerCase().includes(selectedTeam.toLowerCase()))
+    selectedTeam === "Westwood Overall"
+      ? dataService.orders
+      : dataService.orders.filter((o) =>
+          String(o.team || "").toLowerCase().includes(selectedTeam.toLowerCase()),
+        ),
   );
 
   let teamFunds = $derived(
     selectedTeam === "Westwood Overall"
       ? dataService.funds
-      : dataService.funds.filter((f) => (f.Recipient || "").toLowerCase().includes(selectedTeam.toLowerCase()))
+      : dataService.funds.filter((f) => {
+          const r = String(f.Recipient || "").toLowerCase().trim();
+          const s = selectedTeam.toLowerCase().trim();
+          return r === s || r.includes(s) || r === "all";
+        }),
   );
 
   async function sync() {
@@ -42,18 +55,26 @@
   // ── Derived Stats ───────────────────────────────────────────────────────────
   // "Expenses" are orders that have been received or ordered
   let expenses = $derived(
-    teamOrders
-      .filter((/** @type {Order} */ o) => {
-        const s = (o.status || "").toLowerCase().trim();
-        return s === "received" || s === "ordered";
-      })
+    teamOrders.filter((/** @type {Order} */ o) => {
+      const s = (o.status || "").toLowerCase().trim();
+      return s === "received" || s === "ordered";
+    }),
   );
 
   let totalRaised = $derived(
-    teamFunds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
+    teamFunds.reduce(
+      (/** @type {number} */ sum, /** @type {any} */ f) =>
+        sum + (Number(f.Amount) || 0),
+      0,
+    ),
   );
 
-  let totalSpent = $derived(expenses.reduce((/** @type {number} */ s, /** @type {Order} */ e) => s + (e.total || 0), 0));
+  let totalSpent = $derived(
+    expenses.reduce(
+      (/** @type {number} */ s, /** @type {Order} */ e) => s + (e.total || 0),
+      0,
+    ),
+  );
   let netBalance = $derived(totalRaised - totalSpent);
 
   let recentExpenses = $derived(expenses.slice(-5).reverse());
@@ -64,7 +85,7 @@
   // Category breakdown
   let spentByCategory = $derived.by(() => {
     const map = /** @type {Record<string,number>} */ ({});
-    CATEGORIES.forEach(c => map[c] = 0);
+    CATEGORIES.forEach((c) => (map[c] = 0));
     for (const e of expenses) {
       const cat = (e.category || "miscellaneous").toLowerCase().trim();
       map[cat] = (map[cat] || 0) + (e.total || 0);
@@ -84,7 +105,7 @@
     if (!uuid) return "transparent";
     let hash = 0;
     for (let i = 0; i < uuid.length; i++) {
-        hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
+      hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
     }
     const h = Math.abs(hash % 360);
     return `hsl(${h}, 65%, 45%)`;
@@ -99,13 +120,15 @@
   <h1>Dashboard <span>Overview</span></h1>
   <div style="display:flex;gap:10px;align-items:center">
     {#if dataService.error}
-      <span class="error-text" style="font-size:0.85rem">⚠ {dataService.error}</span>
+      <span class="error-text" style="font-size:0.85rem"
+        >⚠ {dataService.error}</span
+      >
     {/if}
     <div class="deploy-info">
       <span class="version-tag">v{appInfo.version}</span>
       <span class="deploy-time">{appInfo.deployedAt}</span>
     </div>
-    
+
     <div style="width: 170px;">
       <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
     </div>
@@ -158,7 +181,11 @@
           <h2>Recent <span>Expenses</span></h2>
           <a href="/orders" class="btn btn-ghost btn-xs">View All</a>
         </div>
-        <ExpenseTable expenses={recentExpenses} limit={5} hideTeam={selectedTeam !== "Westwood Overall"} />
+        <ExpenseTable
+          expenses={recentExpenses}
+          limit={5}
+          hideTeam={selectedTeam !== "Westwood Overall"}
+        />
       </section>
 
       <section class="dashboard-section card">
@@ -169,13 +196,16 @@
         <div class="recent-list">
           {#each recentOrders as order (order.id)}
             {@const orderColor = getOrderColor(order.orderUUID)}
-            <div 
-              class="recent-item group-row" 
+            <div
+              class="recent-item group-row"
               style="--group-color: {orderColor}"
-              role="button" 
-              tabindex="0" 
-              onclick={() => console.log('Recent Order Data:', order)} 
-              onkeydown={(e) => {if(e.key==='Enter' || e.key===' ') console.log('Recent Order Data:', order)}}
+              role="button"
+              tabindex="0"
+              onclick={() => console.log("Recent Order Data:", order)}
+              onkeydown={(e) => {
+                if (e.key === "Enter" || e.key === " ")
+                  console.log("Recent Order Data:", order);
+              }}
               aria-label="Order detail for {order.item}"
             >
               <div class="item-info">
@@ -306,7 +336,7 @@
 
   /* Group Indicator Line (Full Height, No Glow) */
   .recent-item::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0;
     top: 0;
@@ -440,5 +470,4 @@
       grid-template-columns: 1fr;
     }
   }
-  
 </style>
