@@ -9,7 +9,7 @@
 
   Chart.register(BarElement, LinearScale, CategoryScale, Tooltip, Legend, BarController);
 
-  let { data = {} }: { data: Record<string, number> } = $props();
+  let { data = {}, colorMap = null }: { data: Record<string, number>, colorMap?: any } = $props();
   
   let canvas: HTMLCanvasElement;
   
@@ -25,7 +25,9 @@
     if (chart && l && v) {
       chart.data.labels = l;
       chart.data.datasets[0].data = v;
-      chart.data.datasets[0].backgroundColor = l.map(lbl => (CATEGORY_COLORS as Record<string, string>)[lbl] || '#888');
+      chart.data.datasets[0].backgroundColor = l.map(lbl => 
+        (colorMap && colorMap[lbl]) || (CATEGORY_COLORS as Record<string, string>)[lbl] || '#888'
+      );
       chart.update();
     }
   });
@@ -39,7 +41,9 @@
         datasets: [{
           label: 'Spending ($)',
           data: labels.map(l => data[l]),
-          backgroundColor: labels.map(l => (CATEGORY_COLORS as Record<string, string>)[l] || '#888'),
+          backgroundColor: labels.map(l => 
+            (colorMap && colorMap[l]) || (CATEGORY_COLORS as Record<string, string>)[l] || '#888'
+          ),
           borderRadius: 6,
           borderSkipped: false,
         }],

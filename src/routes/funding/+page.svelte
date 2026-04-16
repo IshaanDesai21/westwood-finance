@@ -5,11 +5,8 @@
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import OrderTable from "$lib/components/OrderTable.svelte";
   import { dataService } from "$lib/dataService.svelte.js";
+  import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
-  // ── API Config ──────────────────────────────────────────────────────────────
-  const BASE_URL =
-    "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
-  const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const FUND_TYPES = ["Fundraiser", "Grant", "Dues", "Sponsor", "Other"];
   const RECIPIENTS = [
@@ -26,7 +23,7 @@
   let { funds, budget, loading, error } = $derived(dataService);
   let syncing = $state(false);
 
-  let activeTab = $state("overview");
+  let activeTab = $state("budget");
   let sortCol = $state("Date");
   let sortDir = $state("desc");
 
@@ -108,7 +105,6 @@
       : [],
   );
   let budgetTotal = $derived(/** @type {any} */ (budget)?.Total ?? null);
-
   let sortedFunds = $derived(
     funds.slice().sort((/** @type {any} */ a, /** @type {any} */ b) => {
       let valA = a[sortCol] || "";
@@ -121,6 +117,15 @@
       if (valA > valB) return sortDir === "asc" ? 1 : -1;
       return 0;
     }),
+  );
+
+  let teamSpecificFunds = $derived(
+    funds.filter((/** @type {any} */ f) => {
+      if (selectedBudgetTeam === "Westwood Overall") return true;
+      const r = (f.Recipient || "").toLowerCase().trim();
+      const s = selectedBudgetTeam.toLowerCase().trim();
+      return r === s || r === "all";
+    })
   );
 
   function toggleSort(/** @type {string} */ col) {
@@ -201,11 +206,11 @@
 </script>
 
 <svelte:head>
-  <title>Funding — Westwood Finance</title>
+  <title>Team Dashboard — Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">
-  <h1>Funding <span>& Budget</span></h1>
+  <h1>Team <span>Dashboard</span></h1>
   <div style="display:flex;gap:8px;">
     {#if error}
       <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
@@ -223,13 +228,12 @@
     <div
       class="segment-highlight"
       style="transform: translateX(calc({[
-        'overview',
         'history',
         'budget',
         'add',
       ].indexOf(activeTab)} * 100%));"
     ></div>
-    {#each [["overview", "Overview"], ["history", "Funding History"], ["budget", "Team Budgets"], ["add", "+ Add Funds"]] as [key, label]}
+    {#each [["history", "Funding History"], ["budget", "Team Dashboard"], ["add", "+ Add Funds"]] as [key, label]}
       <button
         class="segment"
         class:active={activeTab === key}
@@ -385,8 +389,7 @@
             <tr class="fade-in">
               <td>
                 <span
-                  class="type-badge"
-                  style="color:{TYPE_COLORS[entry.Type] || 'var(--text-muted)'}"
+                  style="font-size: 1.05rem; font-weight: 500; color:{TYPE_COLORS[entry.Type] || 'var(--text-muted)'}"
                 >
                   {entry.Type || "—"}
                 </span>
@@ -486,16 +489,53 @@
       {/each}
     </div>
 
-    <!-- Team Specific Orders View -->
-    <div class="team-budget-orders fade-in" style="margin-top: 40px;">
-      <div class="section-title" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <span>{selectedBudgetTeam} — Activity</span>
+    <!-- Team Dashboard View -->
+    <div class="team-dashboard-content fade-in" style="margin-top: 40px;">
+      <div class="dashboard-stack" style="display: flex; flex-direction: column; gap: 40px;">
+        
+        <!-- Section 1: Team Activity (Orders) -->
+        <div class="activity-section">
+          <div class="section-title" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);">
+            {selectedBudgetTeam} Activity
+          </div>
+          <OrderTable 
+            orders={teamSpecificBudgetOrders} 
+            hideTeamColumn={selectedBudgetTeam !== "Westwood Overall"} 
+          />
+        </div>
+
+        <!-- Section 2: Team Funding (Grants/Sponsors) -->
+        <div class="funding-section">
+          <div class="section-title" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);">
+            {selectedBudgetTeam} Funding
+          </div>
+          <div class="card" style="padding:0; overflow:hidden">
+            {#if teamSpecificFunds.length === 0}
+              <div class="empty-state" style="padding: 40px;">No funding entries for this team.</div>
+            {:else}
+              <table style="font-size: 0.85rem;">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Type</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each teamSpecificFunds as f}
+                    <tr>
+                      <td style="font-weight:500">{f.Source || "—"}</td>
+                      <td><span style="font-size: 1.05rem; font-weight: 500; border-left: 2px solid {TYPE_COLORS[f.Type] || '#ccc'}; padding-left: 8px;">{f.Type}</span></td>
+                      <td class="text-right monospace" style="color:#6bcb77">{formatCurrency(f.Amount)}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            {/if}
+          </div>
+        </div>
+
       </div>
-      
-      <OrderTable 
-        orders={teamSpecificBudgetOrders} 
-        hideTeamColumn={selectedBudgetTeam !== "Westwood Overall"} 
-      />
     </div>
   {/if}
 
@@ -720,7 +760,7 @@
   }
   .segmented-control {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     background: var(--surface-2);
     padding: 4px;
     border-radius: 99px;
@@ -733,7 +773,7 @@
     top: 4px;
     bottom: 4px;
     left: 4px;
-    width: calc((100% - 8px) / 4);
+    width: calc((100% - 8px) / 3);
     background: var(--surface);
     border-radius: 99px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -965,8 +1005,4 @@
   }
 
   /* ── Enhanced Budget View Styles ────────────────────── */
-  .team-budget-orders {
-    border-top: 1px solid var(--border);
-    padding-top: 24px;
-  }
 </style>

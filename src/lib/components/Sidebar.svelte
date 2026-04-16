@@ -3,10 +3,10 @@
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: "◈" },
+    { href: "/funding", label: "Team Dashboard", icon: "◆" },
     { href: "/orders", label: "Orders", icon: "☷" },
     { href: "/add", label: "Add Expense", icon: "+" },
     { href: "/stats", label: "Analytics", icon: "◎" },
-    { href: "/funding", label: "Funding", icon: "◆" },
     { href: "/admin", label: "Admin Console", icon: "⚙" },
   ];
 </script>
@@ -14,7 +14,7 @@
 <aside class="sidebar">
   <div class="sidebar-brand">
     <div class="logo-wrapper">
-      <img src="/logo.png" alt="Westwood Logo" class="logo-actual" />
+      <img src="/logo-bordered.png" alt="Westwood Logo" class="logo-actual" />
     </div>
     <div class="brand-text">
        <span class="brand-title">WESTWOOD</span>

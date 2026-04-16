@@ -5,7 +5,7 @@
 
   Chart.register(ArcElement, Tooltip, Legend, PieController);
 
-  let { data = {} } = $props();
+  let { data = {}, colorMap = null } = $props();
   
   // Explicitly track keys and values for reactivity
   let labels = $derived(Object.keys(data));
@@ -23,7 +23,9 @@
     if (chart && l && v) {
       chart.data.labels = l;
       chart.data.datasets[0].data = v;
-      chart.data.datasets[0].backgroundColor = l.map(lbl => (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[lbl] || '#888');
+      chart.data.datasets[0].backgroundColor = l.map(lbl => 
+        (colorMap && colorMap[lbl]) || (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[lbl] || '#888'
+      );
       chart.update();
     }
   });
@@ -38,7 +40,9 @@
         labels,
         datasets: [{
           data: values,
-          backgroundColor: labels.map(l => (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[l] || '#888'),
+          backgroundColor: labels.map(l => 
+            (colorMap && colorMap[l]) || (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[l] || '#888'
+          ),
           borderColor: '#161616',
           borderWidth: 3,
         }],

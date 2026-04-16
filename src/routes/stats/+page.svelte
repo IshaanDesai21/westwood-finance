@@ -6,7 +6,7 @@
   import BarChart from '$lib/components/BarChart.svelte';
   import LoadingIndicator from '$lib/components/LoadingIndicator.svelte';
   import CustomDropdown from '$lib/components/CustomDropdown.svelte';
-  import { formatCurrency, formatDate, CATEGORIES } from "$lib/utils.js";
+  import { formatCurrency, formatDate, CATEGORIES, STATUS_COLORS } from "$lib/utils.js";
   import { dataService } from '$lib/dataService.svelte.js';
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
@@ -16,7 +16,7 @@
   let syncing = $state(false);
 
   const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "Atlatl", "Kunai", "Westwood Overall"];
-  let selectedTeam = $state("Westwood Overall");
+  let selectedTeam = $state("FRC");
 
   async function sync() {
     syncing = true;
@@ -108,6 +108,31 @@
       .map(([month, amount]) => ({ month, amount }))
       .sort((a,b) => a.month.localeCompare(b.month));
   });
+  
+  let byVendorDollars = $derived.by(() => {
+    /** @type {Record<string, number>} */
+    const map = {};
+    analyticsOrders.forEach((e) => {
+      const vendor = e.company || "Unknown";
+      map[vendor] = (map[vendor] || 0) + (e.total || 0);
+    });
+    // Sort and take top 8 for clarity
+    return Object.fromEntries(
+      Object.entries(map)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 8)
+    );
+  });
+
+  let statusDistribution = $derived.by(() => {
+    /** @type {Record<string, number>} */
+    const map = {};
+    analyticsOrders.forEach((e) => {
+      const status = e.status || "Unknown";
+      map[status] = (map[status] || 0) + 1;
+    });
+    return map;
+  });
 
 </script>
 
@@ -147,6 +172,22 @@
       {/if}
     </div>
 
+    <div class="charts-grid" style="margin-top:24px">
+      <div class="card chart-card">
+        <h3 class="chart-title">Category Breakdown</h3>
+        <div class="chart-container">
+          <PieChart data={byCategory} />
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <h3 class="chart-title">Spending by Category</h3>
+        <div class="chart-container">
+          <BarChart data={byCategory} />
+        </div>
+      </div>
+    </div>
+
     <div class="card stats-table-card" style="margin-top:24px; padding:0; overflow:hidden;">
       <div style="padding: 20px 24px; border-bottom: 1px solid var(--border)">
         <h3 style="margin:0">Category Details</h3>
@@ -171,16 +212,16 @@
 
     <div class="charts-grid" style="margin-top:24px">
       <div class="card chart-card">
-        <h3 class="chart-title">Category Breakdown</h3>
+        <h3 class="chart-title">Top Vendors (By Spend)</h3>
         <div class="chart-container">
-          <PieChart data={byCategory} />
+          <BarChart data={byVendorDollars} />
         </div>
       </div>
 
       <div class="card chart-card">
-        <h3 class="chart-title">Spending by Category</h3>
+        <h3 class="chart-title">Order Status Distribution</h3>
         <div class="chart-container">
-          <BarChart data={byCategory} />
+          <PieChart data={statusDistribution} colorMap={STATUS_COLORS} />
         </div>
       </div>
 

@@ -3,14 +3,13 @@
   import { goto } from "$app/navigation";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import { dataService } from "$lib/dataService.svelte.js";
+  import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
   const teamOptions = TEAMS.map((/** @type {string} */ team) => ({
     label: team,
     value: team,
   }));
 
-  const API_URL =
-    "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
 
   let form = $state({
     destination: "sheets",
@@ -29,11 +28,33 @@
   let submitting = $state(false);
   let submitError = $state("");
   let submitSuccess = $state("");
-  let expenseUnlocked = $state(false);
-
   let computedTotal = $derived(
     (parseFloat(form.price) || 0) * (parseInt(form.quantity) || 1),
   );
+
+  let showPassword = $state(false);
+
+  /** 🤖 TEST DATA GENERATOR */
+  function fillTestOrder() {
+    const pw = prompt("Enter test password:");
+    if (pw !== "hi") {
+      alert("Incorrect password");
+      return;
+    }
+
+    const items = ["REV UltraPlanetary Motor", "Spark Max Controller", "Neo Brushless Motor", "Expansion Hub", "3D Printing Filament", "Metric Bolt Set", "Through-Bore Encoder", "Aluminum Extrusion (1x1)", "Soldering Station", "Zip Ties (Bulk)"];
+    const companies = ["REV Robotics", "Amazon", "McMaster-Carr", "VEX Robotics", "AndyMark", "DigiKey"];
+    const categories = ["hardware", "hardware", "hardware", "miscellaneous", "miscellaneous"];
+    
+    form.item = items[Math.floor(Math.random() * items.length)];
+    form.company = companies[Math.floor(Math.random() * companies.length)];
+    form.price = (Math.random() * 80 + 5).toFixed(2);
+    form.quantity = Math.floor(Math.random() * 4 + 1).toString();
+    form.team = "FRC";
+    form.category = categories[Math.floor(Math.random() * categories.length)];
+    form.notes = "Automated test entry for validation.";
+    form.link = "https://example.com/item-" + Math.floor(Math.random() * 1000);
+  }
 
   async function submit() {
     submitError = "";
@@ -54,14 +75,15 @@
     try {
       // ✅ Link Auto-Fix: Prepend https:// if missing
       let finalLink = form.link.trim();
-      if (finalLink && !finalLink.startsWith("http") && finalLink.includes(".")) {
+      if (finalLink && !finalLink.startsWith("http")) {
+        // More robust check: if it contains a dot or doesn't have a protocol, add it
         finalLink = "https://" + finalLink;
       }
 
       // ✅ FIX: force all values to strings for URLSearchParams
       const params = new URLSearchParams({
         action: "addOrder",
-        key: "YOUR_SECRET_KEY",
+        key: SECRET_KEY,
         item: form.item,
         company: form.company,
         link: finalLink,
@@ -77,7 +99,7 @@
         uuid: form.uuid,
       });
 
-      const url = `${API_URL}?${params.toString()}`;
+      const url = `${BASE_URL}?${params.toString()}`;
 
       const response = await fetch(url);
       const result = await response.json();
@@ -88,10 +110,10 @@
         throw new Error(result.error || "Request failed");
       }
 
-      submitSuccess = "✓ Order successfully sent!";
+      submitSuccess = "✓ Order successfully sent! Redirecting to dashboard...";
       
-      // Force refresh so that the cache is updated when they navigate back
-      dataService.load(true);
+      // Force refresh and AWAIT it so the cache is updated before navigating back
+      await dataService.load(true);
 
       // reset form
       form = {
@@ -108,7 +130,7 @@
         isExpense: false,
       };
 
-      setTimeout(() => goto("/orders"), 1500);
+      setTimeout(() => goto("/orders"), 2500);
     } catch (e) {
       // ✅ FIX: proper error typing
       if (e instanceof Error) {
@@ -123,7 +145,6 @@
   function toggleExpenseMode() {
     if (form.isExpense) {
       form.isExpense = false;
-      expenseUnlocked = false;
       return;
     }
     showExpenseModal = true;
@@ -135,7 +156,6 @@
   function confirmExpenseMode() {
     if (adminCodeInput === "/dev3432") {
       form.isExpense = true;
-      expenseUnlocked = true;
       showExpenseModal = false;
       adminCodeInput = "";
     } else {
@@ -159,6 +179,13 @@
   </div>
   <div style="display:flex; gap:10px; align-items:center">
     <button 
+      class="btn btn-sm btn-ghost" 
+      onclick={fillTestOrder}
+      title="Autofill with random test data (Admin Only)"
+    >
+      Test Order
+    </button>
+    <button 
       class="btn btn-sm {form.isExpense ? 'btn-primary' : 'btn-ghost'}" 
       onclick={toggleExpenseMode}
     >
@@ -170,29 +197,77 @@
 
   <div class="add-layout-wide">
     {#if showExpenseModal}
-      <div class="modal-backdrop fade-in" style="z-index: 1000;">
-        <div class="card modal-card" style="width: 320px; padding: 32px; text-align: center;">
-          <div class="icon" style="font-size: 2.5rem; margin-bottom: 20px;">🛡️</div>
-          <h3 style="margin-bottom: 12px;">Admin Access</h3>
-          <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 24px;">Enter the code to unlock immediate expense mode.</p>
-          <div class="form-group" style="margin-bottom: 24px;">
-            <input 
-              type="password" 
-              bind:value={adminCodeInput} 
-              placeholder="Enter code" 
-              style="text-align: center; font-size: 1.1rem; letter-spacing: 0.2em;"
-              onkeydown={(e) => e.key === 'Enter' && confirmExpenseMode()}
+      <div class="lock-screen fade-in">
+        <div class="lock-card card">
+          <div
+            class="lock-logo"
+            style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2.5px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
+          >
+            <img
+              src="/favicon.png"
+              alt="Westwood Logo"
+              style="width: 100%; height: 100%; object-fit: cover;"
             />
           </div>
-          <div style="display: flex; gap: 12px;">
-            <button class="btn btn-primary" style="flex: 1;" onclick={confirmExpenseMode}>Unlock</button>
-            <button class="btn btn-ghost" style="flex: 1;" onclick={() => { showExpenseModal = false; adminCodeInput = ""; }}>Cancel</button>
-          </div>
+          <h2 style="margin-bottom: 8px;">Admin Access</h2>
+          <p class="text-muted" style="margin-bottom: 24px; font-size: 0.9rem;">
+            Enter the admin password to unlock immediate expense mode.
+          </p>
+          
+          <form
+            onsubmit={(e) => {
+              e.preventDefault();
+              confirmExpenseMode();
+            }}
+            id="admin-login-form"
+          >
+            <div class="form-group" style="margin-bottom: 24px;">
+              <label for="admin-password">Password</label>
+              <div style="position:relative; display:flex; align-items:center;">
+                <input
+                  id="admin-password"
+                  type={showPassword ? "text" : "password"}
+                  bind:value={adminCodeInput}
+                  placeholder="Enter admin password"
+                  autocomplete="current-password"
+                  style="padding-right: 46px; text-align: center; font-size: 1.1rem; letter-spacing: 0.2em;"
+                />
+                <button
+                  type="button"
+                  onmousedown={() => { showPassword = true; }}
+                  onmouseup={() => { showPassword = false; }}
+                  onmouseleave={() => { showPassword = false; }}
+                  ontouchstart={(e) => { e.preventDefault(); showPassword = true; }}
+                  ontouchend={(e) => { e.preventDefault(); showPassword = false; }}
+                  style="position:absolute; right:10px; background:none; border:none; cursor:pointer; color:var(--text-muted); display:flex; padding:4px;"
+                  title="Hold to show password"
+                >
+                  {#if showPassword}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  {/if}
+                </button>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 10px;">
+              <button type="submit" class="btn btn-primary" style="flex: 1;">Unlock</button>
+              <button 
+                type="button" 
+                class="btn btn-ghost" 
+                style="flex: 1;" 
+                onclick={() => { showExpenseModal = false; adminCodeInput = ""; }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-    {/if}
-
-    <div class="card add-card" class:fade-in={!dataService.hasLoadedOnce}>
+    {:else}
+      <div class="card add-card" class:fade-in={!dataService.hasLoadedOnce}>
+      <!-- Rest of the form... -->
     {#if submitError}
       <div class="error-bar">{submitError}</div>
     {/if}
@@ -250,9 +325,9 @@
           <label for="ae-link">Purchase Link</label>
           <input
             id="ae-link"
-            type="url"
+            type="text"
             bind:value={form.link}
-            placeholder="https://…"
+            placeholder="example.com or https://…"
           />
         </div>
 
@@ -331,11 +406,31 @@
         </button>
         <a href="/orders" class="btn btn-ghost">Cancel</a>
       </div>
-    </form>
+      </form>
+    </div>
+    {/if}
   </div>
-</div>
 
 <style>
+  /* ── Lock Screen (SAME AS ADMIN) ────────────────────────────────────────── */
+  .lock-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    padding: 20px;
+  }
+  .lock-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+  }
+
   .add-layout-wide {
     max-width: 800px;
     margin: 0 auto;

@@ -5,13 +5,10 @@
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import { formatCurrency, formatFullDate } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
+  import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
-  // ── API Config ──────────────────────────────────────────────────────────────
-  const BASE_URL =
-    "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
-  const SECRET_KEY = "YOUR_SECRET_KEY";
 
   const ORDER_STATUSES = [
     "Pending Review",
@@ -64,6 +61,8 @@
   let editTracking = $state("");
   let editUUID = $state("");
   let editSaving = $state(false);
+  let showDeleteConfirm = $state(false);
+  let deleteSaving = $state(false);
 
   // ── Funding Edit State ──────────────────────────────────────────────────────
   let editingFund = $state(null);
@@ -187,15 +186,23 @@
     }
   }
   
+  function requestDelete() {
+    showDeleteConfirm = true;
+  }
+
+  function cancelDelete() {
+    showDeleteConfirm = false;
+  }
+
   async function deleteOrder() {
     if (!editingOrder) return;
-    if (!confirm("Are you sure you want to permanently delete this order? This cannot be undone.")) return;
-    
+    deleteSaving = true;
+    actionErr = "";
     try {
       const params = new URLSearchParams({
-        action: "deleteOrder", // Matches GAS_Fix.js
+        action: "deleteOrder", 
         key: SECRET_KEY,
-        rowIndex: editingOrder.rowIndex.toString()
+        uuid: editingOrder.orderUUID
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
       
@@ -217,13 +224,24 @@
       }
       
       actionMsg = "✓ Order completely removed from Spreadsheet!";
+      
+      // 🔥 Optimistic UI Update: Remove from local state immediately
+      const idToDelete = editingOrder?.orderUUID;
+      if (idToDelete) {
+        dataService.orders = dataService.orders.filter(o => o.orderUUID !== idToDelete);
+        dataService.persist(); // Sync to local storage immediately
+      }
+
       editingOrder = null;
-      await dataService.load(true);
+      
+      // Perform background re-sync to be 100% sure everything matches (silent)
+      dataService.load(true, true);
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Delete failed";
       console.error("Delete Order Error:", e);
     } finally {
-      editSaving = false;
+      deleteSaving = false;
+      showDeleteConfirm = false;
     }
   }
 
@@ -896,7 +914,7 @@
         </div>
 
         <div class="modal-actions" style="display: flex; justify-content: space-between; width: 100%;">
-          <button type="button" class="btn btn-ghost" style="color: var(--primary);" onclick={deleteOrder} disabled={editSaving}>
+          <button type="button" class="btn btn-ghost" style="color: var(--primary);" onclick={requestDelete} disabled={editSaving}>
             Delete Order
           </button>
           <div style="display: flex; gap: 8px;">
@@ -909,6 +927,41 @@
           </div>
         </div>
       </form>
+    </div>
+  </div>
+{/if}
+
+<!-- ── Delete Confirmation Modal ────────────────────────────────────────────── -->
+{#if showDeleteConfirm}
+  <div class="modal-backdrop fade-in" style="z-index: 1100;">
+    <div class="card modal-card" style="width: 100%; max-width: 360px; padding: 32px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+      <div class="icon" style="font-size: 2.5rem; margin-bottom: 20px;">⚠️</div>
+      <h3 style="margin-bottom: 12px; color: var(--text);">Delete Order?</h3>
+      <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5;">
+        Are you sure you want to permanently delete <strong>{editingOrder?.item}</strong>? This action cannot be undone.
+      </p>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button 
+          class="btn" 
+          style="background: #ef4444; color: white; border: none;" 
+          onclick={deleteOrder} 
+          disabled={deleteSaving}
+        >
+          {#if deleteSaving}
+            <span>Deleting<span class="dot-loading"></span></span>
+          {:else}
+            Yes, Delete Permanently
+          {/if}
+        </button>
+        <button 
+          class="btn btn-ghost" 
+          onclick={cancelDelete} 
+          disabled={deleteSaving}
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   </div>
 {/if}
@@ -1138,5 +1191,35 @@
   .modal-actions {
     display: flex;
     gap: 10px;
+  }
+
+  /* ── Dot Loading Animation ────────────────────────────────────────────────── */
+  .dot-loading {
+    display: inline-block;
+    width: 1.5em;
+    text-align: left;
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0%, 20% { content: ""; }
+    40% { content: "."; }
+    60% { content: ".."; }
+    80%, 100% { content: "..."; }
+  }
+
+  /* Note: The above keyframes using 'content' only works on pseudo-elements. 
+     For regular text, we use a slightly different approach or just manual dots. 
+     I'll use pseudo-elements for better effect. */
+  .dot-loading::after {
+    content: "...";
+    animation: dots-pseudo 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots-pseudo {
+    0%, 20% { content: ""; }
+    40% { content: "."; }
+    60% { content: ".."; }
+    80%, 100% { content: "..."; }
   }
 </style>

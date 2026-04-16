@@ -1,5 +1,4 @@
-const BASE_URL = "https://script.google.com/macros/s/AKfycbyRS5lB5Sf2degy9QY8mzmT9A_DEbnF-7eSLSJJvb6JkR4vu0jI_b-1IxPgiOJDvU79pw/exec";
-const SECRET_KEY = "YOUR_SECRET_KEY";
+import { BASE_URL, SECRET_KEY } from './config.js';
 
 /**
  * @typedef {Object} Order
@@ -109,7 +108,14 @@ class DataStore {
       total: Number(o.Total ?? o.total) || (Number(o.Price ?? o.price) * Number(o.Quantity ?? o.quantity)) || 0,
       status: (() => {
         const s = (o.Status ?? o.status ?? "Pending Review").toString().trim();
-        return (s.toLowerCase() === "submitted, in review" || s.toLowerCase() === "submitted") ? "Pending Review" : s;
+        const low = s.toLowerCase();
+        if (low === "submitted, in review" || low === "submitted" || low === "pending review") return "Pending Review";
+        if (low === "ordered") return "Ordered";
+        if (low === "received") return "Received";
+        if (low === "approved") return "Approved";
+        if (low === "denied") return "Denied";
+        if (low === "cancelled") return "Cancelled";
+        return s; // Fallback
       })(),
       tracking: o.Tracking ?? o.tracking ?? "",
       id: o["List UUID"] || o.orderUUID || o.id || `order-${index}-${Date.now()}`,

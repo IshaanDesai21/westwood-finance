@@ -9,21 +9,10 @@ export function formatCurrency(n) {
 }
 
 /** 
- * Format an ISO timestamp to "Jan 5, 2025" 
+ * Format a timestamp to "MM/DD/YYYY"
  * @param {string | number | Date} ts 
  */
 export function formatDate(ts) {
-  if (!ts) return '—';
-  const d = new Date(ts);
-  if (isNaN(d.getTime())) return String(ts);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-/**
- * Format timestamp to "MM/DD/YYYY HH:MM AM/PM"
- * @param {string | number | Date} ts 
- */
-export function formatFullDate(ts) {
   if (!ts) return '—';
   const d = new Date(ts);
   if (isNaN(d.getTime())) return String(ts);
@@ -32,14 +21,22 @@ export function formatFullDate(ts) {
   const DD = String(d.getDate()).padStart(2, '0');
   const YYYY = d.getFullYear();
   
-  let hours = d.getHours();
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; 
-  const hh = String(hours).padStart(2, '0');
+  // 12-hour formatting with AM/PM
+  let HH = d.getHours();
+  const ampm = HH >= 12 ? 'PM' : 'AM';
+  HH = HH % 12;
+  HH = HH ? HH : 12; // the hour '0' should be '12'
+  const min = String(d.getMinutes()).padStart(2, '0');
   
-  return `${MM}/${DD}/${YYYY} ${hh}:${minutes} ${ampm}`;
+  return `${MM}/${DD}/${YYYY} ${HH}:${min} ${ampm}`;
+}
+
+/**
+ * Format timestamp to "MM/DD/YYYY" (Standardized across site)
+ * @param {string | number | Date} ts 
+ */
+export function formatFullDate(ts) {
+  return formatDate(ts);
 }
 
 /** 
@@ -78,6 +75,16 @@ export const CATEGORY_COLORS = {
   outreach:      '#6bcb77',
   food:          '#f1a94e',
   miscellaneous: '#b97cf3',
+};
+
+/** Status color map for charts */
+export const STATUS_COLORS = {
+  'Pending Review':  '#4e9af1',
+  'Approved':        '#4eeaf1',
+  'Ordered':         '#f19a4e',
+  'Received':        '#6bcb77',
+  'Denied':          '#f16a4e',
+  'Cancelled':       '#8a8a8a',
 };
 
 /** Valid categories (mirrors backend config) */
