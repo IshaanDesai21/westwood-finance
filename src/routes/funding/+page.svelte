@@ -20,7 +20,10 @@
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
-  let { funds, budget, loading, error } = $derived(dataService);
+  let funds = $derived(dataService.funds);
+  let budget = $derived(dataService.budget);
+  let loading = $derived(dataService.loading);
+  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   let activeTab = $state("budget");

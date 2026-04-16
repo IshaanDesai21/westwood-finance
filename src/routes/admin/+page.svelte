@@ -20,8 +20,9 @@
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
-  /** @type {{ orders: Order[], loading: boolean, error: string|null }} */
-  let { orders, loading, error } = $derived(dataService);
+  let orders = $derived(dataService.orders);
+  let loading = $derived(dataService.loading);
+  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   /** @type {Record<string, number>} */

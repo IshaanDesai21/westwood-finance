@@ -11,8 +11,11 @@
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
-  /** @type {{ orders: Order[], funds: any[], budget: any, loading: boolean, error: string|null }} */
-  let { orders, funds, budget, loading, error } = $derived(dataService);
+  let orders = $derived(dataService.orders);
+  let funds = $derived(dataService.funds);
+  let budget = $derived(dataService.budget);
+  let loading = $derived(dataService.loading);
+  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "AtlAtl", "Kunai", "Westwood Overall"];
