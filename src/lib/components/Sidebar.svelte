@@ -3,11 +3,11 @@
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: "◈" },
-    { href: "/funding", label: "Team Dashboard", icon: "◆" },
-    { href: "/orders", label: "Orders", icon: "☷" },
-    { href: "/add", label: "Add Expense", icon: "+" },
-    { href: "/stats", label: "Analytics", icon: "◎" },
-    { href: "/admin", label: "Admin Console", icon: "⚙" },
+    { href: "/funding/", label: "Team Dashboard", icon: "◆" },
+    { href: "/orders/", label: "Orders", icon: "☷" },
+    { href: "/add/", label: "Add Expense", icon: "+" },
+    { href: "/stats/", label: "Analytics", icon: "◎" },
+    { href: "/admin/", label: "Admin Console", icon: "⚙" },
   ];
 </script>
 
@@ -27,8 +27,8 @@
       <a
         href={item.href}
         class="nav-link"
-        class:active={$page.url.pathname === item.href}
-        aria-current={$page.url.pathname === item.href ? "page" : undefined}
+        class:active={$page.url.pathname.replace(/\/$/, '') === item.href.replace(/\/$/, '')}
+        aria-current={$page.url.pathname.replace(/\/$/, '') === item.href.replace(/\/$/, '') ? "page" : undefined}
       >
         <span class="nav-icon">{item.icon}</span>
         <span>{item.label}</span>

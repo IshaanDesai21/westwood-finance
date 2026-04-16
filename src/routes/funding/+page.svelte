@@ -20,10 +20,6 @@
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
-  let funds = $derived(dataService.funds);
-  let budget = $derived(dataService.budget);
-  let loading = $derived(dataService.loading);
-  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   let activeTab = $state("budget");
@@ -83,13 +79,13 @@
 
   // ── Derived totals ──────────────────────────────────────────────────────────
   let totalRaised = $derived(
-    funds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
+    dataService.funds.reduce((/** @type {number} */ sum, /** @type {any} */ f) => sum + (Number(f.Amount) || 0), 0),
   );
 
   let byType = $derived(() => {
     /** @type {Record<string, number>} */
     const map = {};
-    for (const f of funds) {
+    for (const f of dataService.funds) {
       const t = f.Type || "Other";
       map[t] = (map[t] || 0) + (Number(f.Amount) || 0);
     }
@@ -97,8 +93,8 @@
   });
 
   let budgetTeams = $derived(
-    budget
-      ? Object.entries(budget)
+    dataService.budget
+      ? Object.entries(dataService.budget)
           .filter(([key]) => key !== "Total")
           .sort(([a], [b]) => {
             if (a === "FRC") return -1;
@@ -107,9 +103,9 @@
           })
       : [],
   );
-  let budgetTotal = $derived(/** @type {any} */ (budget)?.Total ?? null);
+  let budgetTotal = $derived(/** @type {any} */ (dataService.budget)?.Total ?? null);
   let sortedFunds = $derived(
-    funds.slice().sort((/** @type {any} */ a, /** @type {any} */ b) => {
+    dataService.funds.slice().sort((/** @type {any} */ a, /** @type {any} */ b) => {
       let valA = a[sortCol] || "";
       let valB = b[sortCol] || "";
       if (sortCol === "Amount") {
@@ -123,7 +119,7 @@
   );
 
   let teamSpecificFunds = $derived(
-    funds.filter((/** @type {any} */ f) => {
+    dataService.funds.filter((/** @type {any} */ f) => {
       if (selectedBudgetTeam === "Westwood Overall") return true;
       const r = (f.Recipient || "").toLowerCase().trim();
       const s = selectedBudgetTeam.toLowerCase().trim();
@@ -215,8 +211,8 @@
 <div class="page-header">
   <h1>Team <span>Dashboard</span></h1>
   <div style="display:flex;gap:8px;">
-    {#if error}
-      <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
+    {#if dataService.error}
+      <span class="error-text" style="font-size:0.85rem">⚠ {dataService.error}</span>
     {/if}
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
@@ -266,7 +262,7 @@
       <div class="stat-value" style="color:#6bcb77">
         {formatCurrency(totalRaised)}
       </div>
-      <div class="stat-sub">{funds.length} entries</div>
+      <div class="stat-sub">{dataService.funds.length} entries</div>
     </div>
 
     {#if budgetTotal}
@@ -304,7 +300,7 @@
 
   <!-- Type breakdown -->
   <div class="section-title" style="margin-top:28px">Funding by Type</div>
-  {#if loading && !funds.length}
+  {#if dataService.loading && !dataService.funds.length}
     <LoadingIndicator text="Fetching data..." />
   {:else}
     <div class="type-breakdown card">
@@ -331,9 +327,9 @@
 
   <!-- ══ HISTORY ══════════════════════════════════════════════════════════════ -->
 {:else if activeTab === "history"}
-  {#if loading && !funds.length}
+  {#if dataService.loading && !dataService.funds.length}
     <LoadingIndicator text="Loading history..." />
-  {:else if funds.length === 0}
+  {:else if dataService.funds.length === 0}
     <div class="empty-state card">
       <div class="icon">💰</div>
       No funding entries yet.
@@ -438,9 +434,9 @@
 
   <!-- ══ TEAM BUDGETS ═════════════════════════════════════════════════════════ -->
 {:else if activeTab === "budget"}
-  {#if loading && !budget}
+  {#if dataService.loading && !dataService.budget}
     <LoadingIndicator text="Loading budgets..." />
-  {:else if !budget}
+  {:else if !dataService.budget}
     <div class="empty-state card">
       <div class="icon">📊</div>
       No budget data available.

@@ -8,9 +8,6 @@
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
-  let orders = $derived(dataService.orders);
-  let loading = $derived(dataService.loading);
-  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   let filters = $state({
@@ -97,7 +94,7 @@
   }
 
   let filtered = $derived(
-    orders
+    dataService.orders
       .filter((/** @type {Order} */ e) => {
         if (filters.category && e.category !== filters.category) return false;
         if (
@@ -156,8 +153,8 @@
 <div class="page-header">
   <h1>Orders <span>Dashboard</span></h1>
   <div style="display:flex;gap:10px;align-items:center">
-    {#if error}
-      <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
+    {#if dataService.error}
+      <span class="error-text" style="font-size:0.85rem">⚠ {dataService.error}</span>
     {/if}
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
@@ -172,9 +169,9 @@
 
 <FilterBar bind:filters />
 
-{#if loading && !orders.length}
+{#if dataService.loading && !dataService.orders.length}
   <LoadingIndicator text="Syncing with Google Sheets…" />
-{:else if orders.length > 0}
+{:else if dataService.orders.length > 0}
   <div class={!dataService.hasLoadedOnce ? "fade-in" : ""}>
     <OrderTable orders={filtered} />
   </div>

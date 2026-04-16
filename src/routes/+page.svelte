@@ -11,11 +11,6 @@
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
-  let orders = $derived(dataService.orders);
-  let funds = $derived(dataService.funds);
-  let budget = $derived(dataService.budget);
-  let loading = $derived(dataService.loading);
-  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "AtlAtl", "Kunai", "Westwood Overall"];
@@ -24,14 +19,14 @@
   // ── Derived View Based on Team ─────────────────────────────────────────────
   let teamOrders = $derived(
     selectedTeam === "Westwood Overall" 
-      ? orders 
-      : orders.filter((o) => (o.team || "").toLowerCase().includes(selectedTeam.toLowerCase()))
+      ? dataService.orders 
+      : dataService.orders.filter((o) => (o.team || "").toLowerCase().includes(selectedTeam.toLowerCase()))
   );
 
   let teamFunds = $derived(
     selectedTeam === "Westwood Overall"
-      ? funds
-      : funds.filter((f) => (f.Recipient || "").toLowerCase().includes(selectedTeam.toLowerCase()))
+      ? dataService.funds
+      : dataService.funds.filter((f) => (f.Recipient || "").toLowerCase().includes(selectedTeam.toLowerCase()))
   );
 
   async function sync() {
@@ -64,7 +59,7 @@
   let recentExpenses = $derived(expenses.slice(-5).reverse());
   let recentOrders = $derived(teamOrders.slice(-5).reverse());
 
-  let budgetTotalValue = $derived(budget?.Total?.["Final"] || 0);
+  let budgetTotalValue = $derived(dataService.budget?.Total?.["Final"] || 0);
 
   // Category breakdown
   let spentByCategory = $derived.by(() => {
@@ -103,8 +98,8 @@
 <div class="page-header">
   <h1>Dashboard <span>Overview</span></h1>
   <div style="display:flex;gap:10px;align-items:center">
-    {#if error}
-      <span class="error-text" style="font-size:0.85rem">⚠ {error}</span>
+    {#if dataService.error}
+      <span class="error-text" style="font-size:0.85rem">⚠ {dataService.error}</span>
     {/if}
     <div class="deploy-info">
       <span class="version-tag">v{appInfo.version}</span>
@@ -122,7 +117,7 @@
 </div>
 
 <!-- Only show full loading screen if we have absolutely NO data (first visit ever) -->
-{#if loading && !orders.length && !funds.length}
+{#if dataService.loading && !dataService.orders.length && !dataService.funds.length}
   <LoadingIndicator text="Initial data fetch..." />
 {:else}
   <div class="stat-grid fade-in">
@@ -135,7 +130,7 @@
     <StatCard
       label="Total Raised"
       value={formatCurrency(totalRaised)}
-      sub={`${funds.length} contributions`}
+      sub={`${dataService.funds.length} contributions`}
       accentColor="var(--primary)"
     />
     <StatCard

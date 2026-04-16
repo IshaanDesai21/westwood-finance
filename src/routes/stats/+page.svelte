@@ -11,9 +11,6 @@
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
-  let orders = $derived(dataService.orders);
-  let loading = $derived(dataService.loading);
-  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "Atlatl", "Kunai", "Westwood Overall"];
@@ -34,8 +31,8 @@
   // Use all requested orders for analytics 
   let teamOrders = $derived(
     selectedTeam === "Westwood Overall" 
-      ? orders 
-      : orders.filter((o) => {
+      ? dataService.orders 
+      : dataService.orders.filter((o) => {
           const t = (o.team || "").toLowerCase().trim();
           const s = selectedTeam.toLowerCase().trim();
           // Match exact, includes, or FRC specific (e.g., FRC matches 7117)
@@ -148,16 +145,16 @@
       <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
     </div>
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-      <span class:spinning={syncing || (loading && !orders.length)}>↻</span> {syncing ? "Refreshing..." : "Refresh"}
+      <span class:spinning={syncing || (dataService.loading && !dataService.orders.length)}>↻</span> {syncing ? "Refreshing..." : "Refresh"}
     </button>
   </div>
 </div>
 
-{#if error}
-  <div class="error-bar">⚠ {error}</div>
+{#if dataService.error}
+  <div class="error-bar">⚠ {dataService.error}</div>
 {/if}
 
-{#if loading && !orders.length}
+{#if dataService.loading && !dataService.orders.length}
   <LoadingIndicator text="Analyzing financial data…" />
 {:else if analyticsOrders.length > 0}
   <div class={!dataService.hasLoadedOnce ? "fade-in" : ""}>

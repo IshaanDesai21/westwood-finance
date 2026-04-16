@@ -183,7 +183,7 @@ class DataStore {
       this.lastFetched = Date.now();
       
       this.persist();
-      console.log("✅ DataStore: Sync complete");
+      console.log(`✅ DataStore: Sync complete. Received ${this.orders.length} orders and ${this.funds.length} funding entries.`);
     } catch (e) {
       if (e instanceof Error) {
         this.error = e.name === 'AbortError' ? "Connection timed out. Trying again..." : e.message;

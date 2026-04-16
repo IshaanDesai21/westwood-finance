@@ -20,9 +20,6 @@
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
-  let orders = $derived(dataService.orders);
-  let loading = $derived(dataService.loading);
-  let error = $derived(dataService.error);
   let syncing = $state(false);
 
   /** @type {Record<string, number>} */
@@ -36,7 +33,7 @@
   };
 
   let sortedAdminOrders = $derived(() => {
-    return orders.slice().sort((a, b) => {
+    return dataService.orders.slice().sort((a, b) => {
       let pA = STATUS_PRIORITY[(a.status || "").toLowerCase().trim()] ?? 99;
       let pB = STATUS_PRIORITY[(b.status || "").toLowerCase().trim()] ?? 99;
       if (pA !== pB) return pA - pB;
@@ -82,7 +79,7 @@
     const arr = [];
 
     // Expenses (Ordered, Received, Approved)
-    const expenses = orders.filter((/** @type {Order} */ o) => {
+    const expenses = dataService.orders.filter((/** @type {Order} */ o) => {
       const s = o.status?.toLowerCase().trim();
       return s === "received" || s === "ordered" || s === "approved";
     });
@@ -499,7 +496,7 @@
   {#if activeView === "orders"}
     <section class="fade-in">
       <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
-        <span>Manage All Orders ({orders.length})</span>
+        <span>Manage All Orders ({dataService.orders.length})</span>
       </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
         Manage order statuses, UUIDs, and tracking links. Updates sync directly
@@ -507,9 +504,9 @@
       </p>
 
       <div class="card orders-card" style="padding:0;overflow:hidden">
-        {#if loading && !orders.length}
+        {#if dataService.loading && !dataService.orders.length}
           <LoadingIndicator text="Loading orders..." />
-        {:else if orders.length === 0}
+        {:else if dataService.orders.length === 0}
           <div class="empty-state">
             <div class="icon">📦</div>
             No orders found in the database.
@@ -611,7 +608,7 @@
       </p>
 
       <div class="card" style="padding:0;overflow:hidden">
-        {#if loading && !dataService.funds.length}
+        {#if dataService.loading && !dataService.funds.length}
           <LoadingIndicator text="Loading funds..." />
         {:else if dataService.funds.length === 0}
           <div class="empty-state">
@@ -678,7 +675,7 @@
       </p>
 
       <div class="card orders-card" style="padding:0;overflow:hidden">
-        {#if loading && !masterTransactions.length}
+        {#if dataService.loading && !masterTransactions.length}
           <LoadingIndicator text="Loading ledger..." />
         {:else if masterTransactions.length === 0}
           <div class="empty-state">
