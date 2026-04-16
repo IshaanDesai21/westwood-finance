@@ -11,15 +11,21 @@
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
-  const FUND_TYPES = ["Fundraiser", "Grant", "Dues", "Sponsor", "Other"];
-  const RECIPIENTS = [
-    "All",
-    "Slingshot",
-    "Atlatl",
-    "Kunai",
-    "Hunga Munga",
-    "FRC",
-    "WWROBO",
+  const typeOptions = [
+    { label: "Fundraiser", value: "Fundraiser" },
+    { label: "Grant", value: "Grant" },
+    { label: "Dues", value: "Dues" },
+    { label: "Sponsor", value: "Sponsor" },
+    { label: "Other", value: "Other" },
+  ];
+  const recipientOptions = [
+    { label: "All", value: "All" },
+    { label: "Slingshot", value: "Slingshot" },
+    { label: "Atlatl", value: "Atlatl" },
+    { label: "Kunai", value: "Kunai" },
+    { label: "Hunga Munga", value: "Hunga Munga" },
+    { label: "FRC", value: "FRC" },
+    { label: "WWROBO", value: "WWROBO" },
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -252,11 +258,11 @@
   <div class="segmented-control" style="position:relative; z-index:0;">
     <div
       class="segment-highlight"
-      style="transform: translateX(calc({['history', 'budget', 'add'].indexOf(
+      style="transform: translateX(calc({['budget', 'history', 'add'].indexOf(
         activeTab,
       )} * 100%));"
     ></div>
-    {#each [["history", "Funding History"], ["budget", "Team Dashboard"], ["add", "+ Add Funds"]] as [key, label]}
+    {#each [["budget", "Team Dashboard"], ["history", "Funding History"], ["add", "+ Add Funds"]] as [key, label]}
       <button
         class="segment"
         class:active={activeTab === key}
@@ -339,13 +345,13 @@
     <LoadingIndicator text="Fetching data..." />
   {:else}
     <div class="type-breakdown card">
-      {#each FUND_TYPES as type}
-        {@const amount = byType()[type] || 0}
+      {#each typeOptions as type}
+        {@const amount = byType()[type.value] || 0}
         {@const pct = totalRaised > 0 ? (amount / totalRaised) * 100 : 0}
-        {@const color = TYPE_COLORS[type] || "#8a8a8a"}
+        {@const color = TYPE_COLORS[type.value] || "#8a8a8a"}
         <div class="breakdown-row">
           <div class="breakdown-meta">
-            <span class="breakdown-label" style="color:{color}">{type}</span>
+            <span class="breakdown-label" style="color:{color}">{type.label}</span>
             <span class="breakdown-amount">{formatCurrency(amount)}</span>
           </div>
           <div class="breakdown-bar-track">
@@ -638,7 +644,7 @@
           style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
         >
           <img
-            src="/logo.png"
+            src="/logo-bordered.png"
             alt="Westwood Logo"
             style="width: 100%; height: 100%; object-fit: cover;"
           />
@@ -700,21 +706,19 @@
         >
           <div class="form-grid">
             <div class="form-group">
-              <label for="f-type">Type *</label>
-              <select id="f-type" bind:value={form.type} required>
-                {#each FUND_TYPES as t}
-                  <option value={t}>{t}</option>
-                {/each}
-              </select>
+              <label for="f-type">History Type *</label>
+              <CustomDropdown
+                options={typeOptions}
+                bind:value={form.type}
+              />
             </div>
 
             <div class="form-group">
-              <label for="f-recipient">Recipient *</label>
-              <select id="f-recipient" bind:value={form.recipient} required>
-                {#each RECIPIENTS as r}
-                  <option value={r}>{r}</option>
-                {/each}
-              </select>
+              <label for="f-recipient">Destination Team *</label>
+              <CustomDropdown
+                options={recipientOptions}
+                bind:value={form.recipient}
+              />
             </div>
 
             <div class="form-group" style="grid-column:1/-1">
@@ -788,12 +792,12 @@
           <div
             style="display:flex;flex-direction:column;gap:6px;margin-top:8px"
           >
-            {#each FUND_TYPES as t}
+            {#each typeOptions as t}
               <span
                 class="type-tag"
-                style="border-left:3px solid {TYPE_COLORS[t] || '#8a8a8a'}"
+                style="border-left:3px solid {TYPE_COLORS[t.value] || '#8a8a8a'}"
               >
-                {t}
+                {t.label}
               </span>
             {/each}
           </div>

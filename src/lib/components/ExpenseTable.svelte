@@ -35,58 +35,84 @@
   let display = $derived(limit > 0 ? sortedExpenses.slice(0, limit) : sortedExpenses);
 </script>
 
-<div class="table-wrap">
+<div class="table-wrap fade-in">
   <table>
     <thead>
       <tr>
-        <th class="sortable" onclick={() => toggleSort("item")}>Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="sortable" onclick={() => toggleSort("company")}>Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="sortable" onclick={() => toggleSort("category")}>Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("item")}>
+          <div class="th-content">
+            Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="sortable" onclick={() => toggleSort("company")}>
+          <div class="th-content">
+            Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="sortable" onclick={() => toggleSort("category")}>
+          <div class="th-content">
+            Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
         {#if !hideTeam}
-          <th class="sortable" onclick={() => toggleSort("user")}>User {sortCol === "user" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+          <th class="sortable" onclick={() => toggleSort("user")}>
+            <div class="th-content">
+              User {sortCol === "user" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+            </div>
+          </th>
         {/if}
-        <th class="sortable" onclick={() => toggleSort("timestamp")}>Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="text-right sortable" onclick={() => toggleSort("price")}>Price {sortCol === "price" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="text-right sortable" onclick={() => toggleSort("quantity")}>Qty {sortCol === "quantity" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="text-right sortable" onclick={() => toggleSort("total")}>Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("timestamp")}>
+          <div class="th-content">
+            Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="text-right sortable" onclick={() => toggleSort("price")}>
+          <div class="th-content text-right">
+            Price {sortCol === "price" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="text-right sortable" onclick={() => toggleSort("quantity")}>
+          <div class="th-content text-right">
+            Qty {sortCol === "quantity" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="text-right sortable" onclick={() => toggleSort("total")}>
+          <div class="th-content text-right">
+            Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
       </tr>
     </thead>
     <tbody>
       {#each display as expense (expense.id)}
-        <tr class="fade-in">
+        <tr>
           <td>
             <div class="item-name">
               {#if expense.link}
-                <a href={expense.link} target="_blank" rel="noopener" title={expense.item}>
-                  {truncate(expense.item, 36)}
+                <a href={expense.link} target="_blank" rel="noopener" class="item-link">
+                  {truncate(expense.item, 40)}
                 </a>
               {:else}
-                {truncate(expense.item, 36)}
+                <span class="item-text">{truncate(expense.item, 40)}</span>
               {/if}
             </div>
             {#if expense.notes}
               <div class="item-notes">{truncate(expense.notes, 50)}</div>
             {/if}
           </td>
-          <td>{expense.company || '—'}</td>
+          <td><span class="company-name">{expense.company || '—'}</span></td>
           <td>
             <span class="badge badge-{expense.category}">
               {capitalize(expense.category)}
             </span>
           </td>
           {#if !hideTeam}
-            <td>
-              {#if expense.user}
-                <span>{expense.user}</span>
-              {:else}
-                —
-              {/if}
-            </td>
+            <td class="text-muted font-medium">{expense.user || '—'}</td>
           {/if}
-          <td class="text-muted">{formatDate(expense.timestamp)}</td>
+          <td class="text-dim monospace">{formatDate(expense.timestamp)}</td>
           <td class="text-right monospace">{formatCurrency(expense.price)}</td>
-          <td class="text-right">{expense.quantity}</td>
-          <td class="text-right monospace" style="font-weight:600">
+          <td class="text-right font-medium">{expense.quantity}</td>
+          <td class="text-right monospace amount">
             {formatCurrency(expense.total)}
           </td>
         </tr>
@@ -106,8 +132,50 @@
 </div>
 
 <style>
-  .item-name { font-weight: 500; }
-  .item-notes { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
-  a { color: var(--primary); }
-  a:hover { text-decoration: underline; }
+  .table-wrap {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .th-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+  }
+
+  .item-name { 
+    font-weight: 600; 
+    color: var(--text);
+  }
+
+  .item-link {
+    color: var(--primary);
+    transition: color 0.2s;
+  }
+  
+  .item-link:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+  }
+
+  .item-notes { 
+    font-size: 0.72rem; 
+    color: var(--text-muted); 
+    margin-top: 1px;
+    font-weight: 400;
+  }
+
+  .company-name {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .amount {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.95rem;
+  }
+
+  .text-dim { color: var(--text-dim); }
+  .font-medium { font-weight: 500; }
 </style>

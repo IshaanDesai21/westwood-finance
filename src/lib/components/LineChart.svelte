@@ -10,7 +10,6 @@
 
   let { data = [] } = $props();
   
-  // Explicitly track derived data for reactivity
   let labels = $derived(data.map(d => formatMonth(d.month)));
   let values = $derived(data.map(d => d.amount));
 
@@ -20,7 +19,6 @@
   let chart;
 
   $effect(() => {
-    // Force tracking of dependencies
     const l = labels;
     const v = values;
     if (chart && l && v) {
@@ -36,42 +34,75 @@
       data: {
         labels: data.map(d => formatMonth(d.month)),
         datasets: [{
-          label: 'Monthly Spending',
+          label: 'Spending',
           data: data.map(d => d.amount),
-          borderColor: '#e07b30',
-          backgroundColor: 'rgba(224,123,48,0.12)',
-          borderWidth: 2.5,
-          pointRadius: 4,
-          pointBackgroundColor: '#e07b30',
-          tension: 0.35,
+          borderColor: '#f97316',
+          backgroundColor: (/** @type {any} */ context) => {
+             const chart = context.chart;
+             const {ctx, chartArea} = chart;
+             if (!chartArea) return null;
+             const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+             gradient.addColorStop(0, 'rgba(249, 115, 22, 0)');
+             gradient.addColorStop(1, 'rgba(249, 115, 22, 0.15)');
+             return gradient;
+          },
+          borderWidth: 3,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#f97316',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2,
+          tension: 0.4,
           fill: true,
         }],
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'index',
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: '#18181b',
+            titleFont: { family: 'Outfit', size: 13, weight: 700 },
+            bodyFont: { family: '"Plus Jakarta Sans"', size: 12 },
+            padding: 12,
+            cornerRadius: 8,
+            borderColor: '#27272a',
+            borderWidth: 1,
             callbacks: {
-              label: (/** @type {any} */ ctx) => ` $${ctx.parsed.y.toFixed(2)}`,
+              label: (/** @type {any} */ ctx) => ` $${ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
             },
           },
         },
         scales: {
           x: {
-            ticks: { color: '#8a8a8a', font: { family: 'Inter', size: 11 } },
-            grid: { color: '#2e2e2e' },
+            ticks: { 
+              color: '#71717a', 
+              font: { family: '"Plus Jakarta Sans"', size: 11, weight: 600 } 
+            },
+            grid: { display: false },
+            border: { display: false }
           },
           y: {
             ticks: {
-              color: '#8a8a8a',
-              font: { family: 'Inter', size: 11 },
+              color: '#71717a',
+              font: { family: '"Plus Jakarta Sans"', size: 10, weight: 500 },
+              padding: 10,
               callback: v => `$${v}`,
             },
-            grid: { color: '#2e2e2e' },
+            grid: { color: '#18181b' },
+            border: { display: false },
             beginAtZero: true,
           },
         },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart'
+        }
       },
     });
   });
@@ -79,4 +110,14 @@
   onDestroy(() => { if (chart) chart.destroy(); });
 </script>
 
-<canvas bind:this={canvas}></canvas>
+<div class="chart-wrapper">
+  <canvas bind:this={canvas}></canvas>
+</div>
+
+<style>
+  .chart-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+</style>

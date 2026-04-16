@@ -330,173 +330,113 @@
 </svelte:head>
 
 {#if !unlocked}
-  <!-- ── Lock Screen ──────────────────────────────────────────────────────── -->
-  <div class="lock-screen">
+  <div class="lock-screen fade-in">
     <div class="lock-card card">
       <div
         class="lock-logo"
         style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
       >
         <img
-          src="/logo.png"
+          src="/logo-bordered.png"
           alt="Westwood Logo"
           style="width: 100%; height: 100%; object-fit: cover;"
         />
       </div>
-      <h1>Admin Console Access</h1>
+      <h2>Admin <span>Login</span></h2>
       <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
-        Enter the admin password to access restricted areas.
+        Enter the password to manage orders and funding.
       </p>
+
       {#if authError}
-        <div class="error-bar" style="margin-bottom:16px">{authError}</div>
+        <div class="error-bar message-bar" style="margin-bottom: 24px;">
+           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+           {authError}
+        </div>
       {/if}
+
       <form
         onsubmit={(e) => {
           e.preventDefault();
           tryUnlock();
         }}
-        id="admin-login-form"
+        class="lock-form"
       >
         <div class="form-group" style="margin-bottom:16px">
-          <label for="admin-password">Password</label>
-          <div style="position:relative; display:flex; align-items:center;">
+          <label for="admin-password">Admin Password</label>
+          <div class="password-input-group">
             <input
               id="admin-password"
               type={showPassword ? "text" : "password"}
               bind:value={adminPassInput}
-              placeholder="Enter admin password"
+              placeholder="••••••••"
               autocomplete="current-password"
-              style="padding-right: 40px;"
             />
             <button
               type="button"
-              onmousedown={() => {
-                showPassword = true;
-              }}
-              onmouseup={() => {
-                showPassword = false;
-              }}
-              onmouseleave={() => {
-                showPassword = false;
-              }}
-              ontouchstart={(e) => {
-                e.preventDefault();
-                showPassword = true;
-              }}
-              ontouchend={(e) => {
-                e.preventDefault();
-                showPassword = false;
-              }}
-              style="position:absolute; right:10px; background:none; border:none; cursor:pointer; color:var(--text-muted); display:flex; padding:4px;"
-              title="Hold to show password"
-              aria-label="Hold to show password"
+              onmousedown={() => { showPassword = true; }}
+              onmouseup={() => { showPassword = false; }}
+              onmouseleave={() => { showPassword = false; }}
+              class="password-toggle"
             >
               {#if showPassword}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                  ></path><circle cx="12" cy="12" r="3"></circle></svg
-                >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               {:else}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                  ></path><line x1="1" y1="1" x2="23" y2="23"></line></svg
-                >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
               {/if}
             </button>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%"
-          >Unlock</button
-        >
+
+        <div class="lock-actions">
+          <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+        </div>
       </form>
     </div>
   </div>
 {:else}
   <!-- ── Admin Panel ──────────────────────────────────────────────────────── -->
-  <div class="admin-header">
-    <div class="header-content">
-      <div class="header-top">
-        <h1>Admin <span class="accent-color">Console</span></h1>
-
-        <div class="header-actions">
-          <button
-            class="btn btn-ghost btn-sm"
-            onclick={sync}
-            disabled={syncing}
-          >
-            <span class:spinning={syncing}>↻</span>
-            {syncing ? "Syncing..." : "Refresh Data"}
-          </button>
-        </div>
-      </div>
-
-      <div class="tabs-container">
-        <div class="segmented-control">
-          <div
-            class="segment-highlight"
-            style="transform: translateX(calc({activeView === 'orders'
-              ? 0
-              : activeView === 'funding'
-                ? 1
-                : 2} * 100%)); width: calc((100% - 8px) / 3);"
-          ></div>
-          <button
-            class="segment"
-            class:active={activeView === "orders"}
-            onclick={() => (activeView = "orders")}
-          >
-            Orders
-          </button>
-          <button
-            class="segment"
-            class:active={activeView === "funding"}
-            onclick={() => (activeView = "funding")}
-          >
-            Funding
-          </button>
-          <button
-            class="segment"
-            class:active={activeView === "master"}
-            onclick={() => (activeView = "master")}
-          >
-            Master Finance
-          </button>
-        </div>
+    <div class="tabs-wrapper">
+      <div class="segmented-control">
+        <div
+          class="segment-highlight"
+          style="transform: translateX({activeView === 'orders' ? '0' : activeView === 'funding' ? '100%' : '200%'}); width: calc(100% / 3 - 8px);"
+        ></div>
+        <button
+          class="segment"
+          class:active={activeView === "orders"}
+          onclick={() => (activeView = "orders")}
+        >
+          Orders
+        </button>
+        <button
+          class="segment"
+          class:active={activeView === "funding"}
+          onclick={() => (activeView = "funding")}
+        >
+          Funding
+        </button>
+        <button
+          class="segment"
+          class:active={activeView === "master"}
+          onclick={() => (activeView = "master")}
+        >
+          Finance History
+        </button>
       </div>
     </div>
-  </div>
 
   {#if actionMsg}
-    <div class="success-bar">{actionMsg}</div>
+    <div class="success-bar message-bar">{actionMsg}</div>
   {/if}
   {#if actionErr}
-    <div class="error-bar">{actionErr}</div>
+    <div class="error-bar message-bar">{actionErr}</div>
   {/if}
 
-  {#if activeView === "orders"}
-    <section class="fade-in">
-      <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
-        <span>Manage All Orders ({dataService.orders.length})</span>
-      </div>
+    {#if activeView === "orders"}
+      <section class="fade-in">
+        <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+          <span>Order History ({dataService.orders.length})</span>
+        </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
         Manage order statuses, UUIDs, and tracking links. Updates sync directly
         to Google Sheets.
@@ -504,86 +444,60 @@
 
       <div class="card orders-card" style="padding:0;overflow:hidden">
         {#if dataService.loading && !dataService.orders.length}
-          <LoadingIndicator text="Loading orders..." />
+          <LoadingIndicator text="Loading procurement backlog..." />
         {:else if dataService.orders.length === 0}
-          <div class="empty-state">
-            <div class="icon">📦</div>
-            No orders found in the database.
+          <div class="empty-state fade-in">
+            <div class="icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </div>
+            <h3>No requests on file</h3>
+            <p>New procurement requests will appear here for administrative action.</p>
           </div>
         {:else}
-          <div class="table-wrap">
+          <div class="table-wrap" style="border: none; border-radius: 0;">
             <table>
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Company</th>
+                  <th style="padding-left: 24px;">Provision/Item</th>
                   <th>Category</th>
-                  <th>Team</th>
-                  <th>Date</th>
-                  <th class="text-right">Price</th>
-                  <th class="text-right">Qty</th>
-                  <th class="text-right">Total</th>
+                  <th>Entity</th>
+                  <th>Submission Date</th>
+                  <th class="text-right">Investment</th>
                   <th>Status</th>
-                  <th class="text-right">Order UUID</th>
-                  <th></th>
+                  <th class="text-right" style="padding-right: 24px;"></th>
                 </tr>
               </thead>
               <tbody>
                 {#each sortedAdminOrders as order (order.id)}
                   {@const orderColor = getOrderColor(order.orderUUID)}
-                  <tr
-                    class="fade-in group-row"
-                    style="--group-color: {orderColor}"
-                  >
-                    <td>
-                      <div style="font-weight:500">
+                  <tr class="fade-in group-row" style="--group-color: {orderColor}">
+                    <td style="padding-left: 24px;">
+                      <div class="item-primary">
                         {#if order.link}
-                          <a href={order.link} target="_blank" rel="noopener"
-                            >{order.item}</a
-                          >
+                          <a href={order.link} target="_blank" rel="noopener">{order.item}</a>
                         {:else}
                           {order.item}
                         {/if}
                       </div>
-                      {#if order.notes}
-                        <div style="font-size:0.78rem;color:var(--text-muted)">
-                          {order.notes}
+                      {#if order.company || order.notes}
+                        <div class="item-secondary">
+                          {order.company || ''} {order.notes ? `· ${order.notes}` : ''}
                         </div>
                       {/if}
                     </td>
-                    <td>{order.company || "—"}</td>
                     <td>
-                      <span
-                        class="badge badge-{(
-                          order.category || ''
-                        ).toLowerCase()}"
-                      >
+                      <span class="badge badge-{(order.category || '').toLowerCase()}">
                         {order.category || "—"}
                       </span>
                     </td>
-                    <td>{order.team || "—"}</td>
-                    <td class="text-muted" style="font-size:0.875rem"
-                      >{formatFullDate(order.timestamp)}</td
-                    >
-                    <td class="text-right monospace"
-                      >{formatCurrency(order.price)}</td
-                    >
-                    <td class="text-right">{order.quantity || "—"}</td>
-                    <td class="text-right monospace" style="font-weight:600">
+                    <td><span class="team-tag">{order.team || "—"}</span></td>
+                    <td class="text-dim">{formatFullDate(order.timestamp)}</td>
+                    <td class="text-right monospace amount">
                       {formatCurrency(order.total)}
                     </td>
                     <td><OrderStatusBadge status={order.status} /></td>
-                    <td
-                      class="text-right monospace"
-                      style="font-size:0.72rem;color:var(--text-muted)"
-                    >
-                      {order.orderUUID || "—"}
-                    </td>
-                    <td>
-                      <button
-                        class="btn btn-primary btn-edit"
-                        onclick={() => openEdit(order)}
-                      >
+                    <td class="text-right" style="padding-right: 24px;">
+                      <button class="btn btn-ghost btn-sm" onclick={() => openEdit(order)}>
                         Manage
                       </button>
                     </td>
@@ -660,10 +574,9 @@
       </div>
     </section>
   {:else if activeView === "master"}
-    <!-- ── Master Finance Management ─────────────────────────────────────────── -->
     <section class="fade-in">
       <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
-        <span>Master Finance Ledger ({masterTransactions.length})</span>
+        <span>Full Finance History ({masterTransactions.length})</span>
         <button class="btn btn-ghost btn-sm" onclick={exportMasterCSV} disabled={!masterTransactions.length}>
           ↓ Export CSV
         </button>
@@ -697,13 +610,13 @@
               <tbody>
                 {#each masterTransactions as tx (tx.id + tx.type)}
                   <tr class="fade-in">
-                    <td class="text-muted">{tx.date}</td>
-                    <td style="font-weight:500">{tx.source || "—"}</td>
+                    <td class="text-dim monospace">{tx.date}</td>
+                    <td style="font-weight:600; color: #fff;">{tx.source || "—"}</td>
                     <td>
                       <span
                         class="badge {tx.type === 'Income'
-                          ? 'badge-hardware'
-                          : 'badge-software'}"
+                          ? 'badge-awarded'
+                          : 'badge-rejected'}"
                       >
                         {tx.type}
                       </span>
@@ -712,9 +625,9 @@
                     <td><OrderStatusBadge status={tx.status} /></td>
                     <td
                       class="text-right monospace"
-                      style="font-weight:600; color: {tx.amount > 0
-                        ? '#6bcb77'
-                        : '#f16a4e'}"
+                      style="font-weight:700; color: {tx.amount > 0
+                        ? 'var(--status-awarded)'
+                        : 'var(--status-rejected)'}"
                     >
                       {tx.amount > 0 ? "+" : ""}{formatCurrency(tx.amount)}
                     </td>
@@ -887,26 +800,16 @@
 
         <div class="order-summary">
           <div class="summary-row">
-            <span class="text-muted">Company</span><span
-              >{editingOrder.company || "—"}</span
-            >
+            <span>Company</span><span>{editingOrder.company || "—"}</span>
           </div>
           <div class="summary-row">
-            <span class="text-muted">Team</span><span
-              >{editingOrder.team || "—"}</span
-            >
+            <span>Team</span><span>{editingOrder.team || "—"}</span>
           </div>
           <div class="summary-row">
-            <span class="text-muted">Category</span><span
-              >{editingOrder.category || "—"}</span
-            >
+            <span>Category</span><span>{editingOrder.category || "—"}</span>
           </div>
           <div class="summary-row">
-            <span class="text-muted">Total</span><span
-              class="monospace"
-              style="font-weight:700;color:#6bcb77"
-              >{formatCurrency(editingOrder.total)}</span
-            >
+            <span>Total</span><span>{formatCurrency(editingOrder.total)}</span>
           </div>
         </div>
 
@@ -964,137 +867,14 @@
 {/if}
 
 <style>
-  /* ── Admin Header Layout ────────────────────────────────────────────────── */
-  .admin-header {
-    margin-bottom: 32px;
-    width: 100%;
-  }
-
-  .header-content {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-  }
-
-  .accent-color {
-    color: #e07b30;
-  }
-
-  /* ── Segmented Control (Exact Match of Funding Style) ────────────────────── */
-  .tabs-container {
-    display: flex;
-    justify-content: center; /* Center the tabs as requested */
-    width: 100%;
-  }
-
-  .segmented-control {
-    display: flex;
-    background: var(--surface-2);
-    border-radius: 99px;
-    padding: 4px;
-    border: 1px solid var(--border);
-    position: relative;
-    gap: 0;
-    width: 450px; /* Wider to accommodate 3 tabs */
-  }
-
-  .segment-highlight {
-    position: absolute;
-    top: 4px;
-    bottom: 4px;
-    left: 4px;
-    /* Overridden inline for the 3 tabs, but default is calc(100%/3) */
-    background: var(--surface);
-    border-radius: 99px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 1;
-  }
-
-  .segment {
-    position: relative;
-    z-index: 2;
-    flex: 1;
-    background: transparent;
-    border: none;
-    padding: 8px 18px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    border-radius: 99px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-  }
-
-  .segment:hover {
-    color: var(--text);
-  }
-
-  .segment.active {
-    color: var(--primary);
-  }
-
-  /* ── Table & Layout Fixes ────────────────────────────────────────────────── */
-  .table-wrap {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: var(--radius-sm);
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
-    background: var(--surface);
-    border: 1px solid var(--border);
-  }
-
-  .card {
-    width: 100%;
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  .orders-card {
-    max-width: 1100px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 1000px; /* Ensure columns have enough room to not clip */
-    table-layout: auto;
-  }
-
-  .btn-edit {
-    padding: 6px 16px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border-radius: 6px;
-    background: var(--primary);
-    box-shadow: 0 2px 8px rgba(78, 154, 241, 0.25);
-    transition: all 0.2s ease;
-  }
-  .btn-edit:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(78, 154, 241, 0.4);
-    filter: brightness(1.1);
-  }
-
-  /* ── Add Layout ───────────────────────────────────────────────────────────── */
   .lock-screen {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 85vh;
-    padding: 20px;
+    min-height: 80vh;
+    padding: 40px 20px;
   }
+
   .lock-card {
     width: 100%;
     max-width: 380px;
@@ -1104,23 +884,105 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow:
-      0 20px 60px rgba(0, 0, 0, 0.3),
-      0 0 20px rgba(var(--primary-rgb), 0.1);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: 12px;
   }
+  .lock-card h2 { margin-bottom: 8px; font-size: 1.5rem; }
+  .lock-form { margin-top: 32px; text-align: left; }
 
-  /* ── Modal ────────────────────────────────────────────────────────────────── */
+  .password-input-group { position: relative; }
+  .admin-input {
+    text-align: center;
+    font-size: 1.25rem;
+    letter-spacing: 0.3em;
+    height: 54px;
+    padding-right: 50px !important;
+  }
 
+  .password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    display: flex;
+  }
+
+  .lock-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
+
+  .btn-block { width: 100%; justify-content: center; height: 48px; font-size: 0.95rem; }
+
+  /* Tabs Refined */
+  .tabs-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+
+  .segmented-control {
+    display: flex;
+    background: var(--surface-2);
+    border-radius: 99px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    position: relative;
+    width: 520px;
+  }
+
+  .segment-highlight {
+    position: absolute;
+    top: 4px; bottom: 4px; left: 4px;
+    background: var(--surface-1);
+    border-radius: 99px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
+    border: 1px solid var(--border);
+  }
+
+  .segment {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 18px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .segment:hover { color: #fff; }
+  .segment.active { color: var(--primary); }
+
+  /* Table Customizations for Admin */
+  .item-primary { font-weight: 700; color: #fff; font-size: 0.9rem; }
+  .item-secondary { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+  .team-tag { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; background: var(--surface-3); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
+  .amount { font-weight: 700; color: #fff; }
+
+  .message-bar { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; margin-bottom: 24px; border: 1px solid transparent; }
+  .success-bar { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.2); color: var(--status-received); }
+  .error-bar { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); color: var(--status-rejected); }
+
+  /* Modal Refined */
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
     z-index: 1000;
     display: flex;
     align-items: center;
@@ -1130,11 +992,11 @@
 
   .modal-card {
     width: 100%;
-    max-width: 560px;
-    padding: 32px;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
-    max-height: 90vh;
-    overflow-y: auto;
+    max-width: 520px;
+    padding: 40px;
+    box-shadow: var(--shadow-2xl);
+    border: 1px solid var(--border);
+    animation: modal-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .modal-header {
@@ -1178,12 +1040,6 @@
     font-size: 0.85rem;
   }
 
-  .summary-row .text-muted {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 600;
-  }
 
   .modal-actions {
     display: flex;

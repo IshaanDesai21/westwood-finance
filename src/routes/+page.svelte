@@ -117,81 +117,102 @@
 </svelte:head>
 
 <div class="page-header">
-  <h1>Dashboard <span>Overview</span></h1>
-  <div style="display:flex;gap:10px;align-items:center">
+  <div class="header-left">
+    <h1>Dashboard</h1>
+    <p class="text-muted">Westwood Robotics Financial Overview</p>
+  </div>
+  
+  <div class="header-right">
     {#if dataService.error}
-      <span class="error-text" style="font-size:0.85rem"
-        >⚠ {dataService.error}</span
-      >
+      <span class="error-text">⚠ {dataService.error}</span>
     {/if}
     <div class="deploy-info">
       <span class="version-tag">v{appInfo.version}</span>
       <span class="deploy-time">{appInfo.deployedAt}</span>
     </div>
 
-    <div style="width: 170px;">
+    <div class="team-selector">
       <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
     </div>
+    
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-      <span class:spinning={syncing}>↻</span>
-      {syncing ? "Syncing…" : "Refresh"}
+      <span class:spinning={syncing}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+      </span>
+      {syncing ? "Syncing" : "Refresh"}
     </button>
   </div>
 </div>
 
-<!-- Only show full loading screen if we have absolutely NO data (first visit ever) -->
 {#if dataService.loading && !dataService.orders.length && !dataService.funds.length}
-  <LoadingIndicator text="Initial data fetch..." />
+  <LoadingIndicator text="Initializing workspace..." />
 {:else}
   <div class="stat-grid fade-in">
     <StatCard
       label="Net Balance"
-      value={formatCurrency(netBalance)}
-      sub="Total Raised - Spent"
-      accentColor={netBalance >= 0 ? "#6bcb77" : "#f16a4e"}
+      value={netBalance.toString()}
+      isCurrency={true}
+      sub="Total Raised - Total Spent"
+      accentColor={netBalance >= 0 ? "var(--status-awarded)" : "var(--status-rejected)"}
+      icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 2v20m-5-17h10a4 4 0 1 1 0 8H7a4 4 0 1 0 0 8h10"/></svg>'
     />
     <StatCard
       label="Total Raised"
-      value={formatCurrency(totalRaised)}
+      value={totalRaised.toString()}
+      isCurrency={true}
       sub={`${dataService.funds.length} contributions`}
-      accentColor="var(--primary)"
+      accentColor="var(--status-awarded)"
+      icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 20 20"/><path d="m8 8 4 4"/></svg>'
     />
     <StatCard
-      label="Total Expenses"
-      value={formatCurrency(totalSpent)}
-      sub={`${expenses.length} fulfilled orders`}
-      accentColor="#f16a4e"
+      label="Total Spent"
+      value={totalSpent.toString()}
+      isCurrency={true}
+      sub={`${expenses.length} fulfilled requests`}
+      accentColor="var(--status-rejected)"
+      icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>'
     />
     <StatCard
       label="Budget Progress"
-      value={budgetTotalValue > 0
-        ? Math.min(100, (totalSpent / budgetTotalValue) * 100).toFixed(1) + "%"
-        : "—"}
+      value={budgetTotalValue > 0 ? Math.round((totalSpent / budgetTotalValue) * 100).toString() : "0"}
+      progress={budgetTotalValue > 0 ? (totalSpent / budgetTotalValue) * 100 : 0}
+      progressLabel={budgetTotalValue > 0 ? `${Math.round((totalSpent / budgetTotalValue) * 100)}%` : "N/A"}
       sub={budgetTotalValue > 0
-        ? `${formatCurrency(totalSpent)} / ${formatCurrency(budgetTotalValue)}`
-        : "No budget set"}
-      accentColor="#b97cf3"
+        ? `${formatCurrency(totalSpent)} of ${formatCurrency(budgetTotalValue)}`
+        : "No active budget"}
+      accentColor="var(--cat-miscellaneous)"
+      icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>'
     />
   </div>
 
   <div class="dashboard-content fade-in">
     <div class="main-column">
-      <section class="dashboard-section card">
+      <section class="card">
         <div class="section-header">
-          <h2>Recent <span>Expenses</span></h2>
-          <a href="/orders" class="btn btn-ghost btn-xs">View All</a>
+          <div class="section-title-group">
+            <h2>Recent <span>Expenses</span></h2>
+            <p class="section-subtitle">Purchases history</p>
+          </div>
+          <a href="/orders" class="btn btn-ghost btn-xs">View History</a>
         </div>
-        <ExpenseTable
-          expenses={recentExpenses}
-          limit={5}
-          hideTeam={selectedTeam !== "Westwood Overall"}
-        />
+        <div class="table-container">
+          <ExpenseTable
+            expenses={recentExpenses}
+            limit={5}
+            hideTeam={selectedTeam !== "Westwood Overall"}
+          />
+        </div>
       </section>
+    </div>
 
-      <section class="dashboard-section card">
+    <aside class="side-column">
+      <section class="card">
         <div class="section-header">
-          <h2>Recent <span>Orders</span></h2>
-          <a href="/orders" class="btn btn-ghost btn-xs">View All</a>
+          <div class="section-title-group">
+            <h2 style="font-size: 1.1rem">Recent <span>Orders</span></h2>
+            <p class="section-subtitle">Latest purchase status</p>
+          </div>
+          <a href="/orders" class="btn btn-ghost btn-xs">Track</a>
         </div>
         <div class="recent-list">
           {#each recentOrders as order (order.id)}
@@ -199,46 +220,39 @@
             <div
               class="recent-item group-row"
               style="--group-color: {orderColor}"
-              role="button"
-              tabindex="0"
-              onclick={() => console.log("Recent Order Data:", order)}
-              onkeydown={(e) => {
-                if (e.key === "Enter" || e.key === " ")
-                  console.log("Recent Order Data:", order);
-              }}
-              aria-label="Order detail for {order.item}"
             >
               <div class="item-info">
-                <div class="item-name">{order.item}</div>
+                <div class="item-name" style="font-size: 0.85rem;">{order.item}</div>
                 <div class="item-meta">
-                  {order.company} • {formatDate(order.timestamp)}
+                  <span class="company">{order.company}</span>
+                  <span class="dot"></span>
+                  <span class="date">{formatDate(order.timestamp)}</span>
                 </div>
               </div>
               <div class="item-status">
                 <OrderStatusBadge status={order.status} />
               </div>
-              <div class="item-amount monospace">
+              <div class="item-amount monospace amount" style="font-size: 0.85rem;">
                 {formatCurrency(order.total)}
               </div>
             </div>
           {:else}
-            <div class="empty-text">No orders yet</div>
+            <div class="empty-state">No active orders</div>
           {/each}
         </div>
       </section>
-    </div>
 
-    <aside class="side-column">
-      <section class="dashboard-section card">
-        <h2>Spending <span>Breakdown</span></h2>
+      <section class="card">
+        <div class="section-title-group" style="margin-bottom: 24px;">
+           <h2 style="font-size: 1.1rem">Spending <span>Breakdown</span></h2>
+           <p class="section-subtitle">By category</p>
+        </div>
         <div class="category-list">
           {#each Object.entries(spentByCategory) as [cat, amount]}
             {@const pct = totalSpent > 0 ? (amount / totalSpent) * 100 : 0}
             <div class="cat-row">
               <div class="cat-info">
-                <span class="cat-label"
-                  >{CATEGORY_LABELS[cat] || cat.toUpperCase()}</span
-                >
+                <span class="cat-label">{CATEGORY_LABELS[cat] || cat.toUpperCase()}</span>
                 <span class="cat-amount">{formatCurrency(amount)}</span>
               </div>
               <div class="cat-bar-track">
@@ -246,43 +260,41 @@
                   class="cat-bar-fill"
                   style="width: {pct}%; background: var(--cat-{cat}, #8a8a8a)"
                 ></div>
+                <div class="cat-bar-glow" style="background: var(--cat-{cat}, #8a8a8a); width: {pct}%"></div>
               </div>
             </div>
           {:else}
-            <div class="empty-text">No expenses tracked</div>
+            <div class="empty-state small">No data yet</div>
           {/each}
         </div>
       </section>
 
-      <section class="dashboard-section card promo-card">
-        <h3>Need to <span>Order?</span></h3>
-        <p>Submit a request for approval.</p>
-        <a href="/add" class="btn btn-primary btn-sm" style="margin-top:10px"
-          >+ New Request</a
-        >
-      </section>
     </aside>
   </div>
 {/if}
 
 <style>
+  .header-left h1 { margin-bottom: 2px; }
+  .header-right { display: flex; gap: 12px; align-items: center; }
+  
+  .team-selector { width: 170px; }
+  
   .stat-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
   }
 
   .dashboard-content {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 1fr 340px;
     gap: 24px;
+    align-items: start;
   }
 
-  @media (max-width: 900px) {
-    .dashboard-content {
-      grid-template-columns: 1fr;
-    }
+  @media (max-width: 1100px) {
+    .dashboard-content { grid-template-columns: 1fr; }
   }
 
   .main-column {
@@ -294,146 +306,77 @@
   .side-column {
     display: flex;
     flex-direction: column;
-    gap: 32px;
-  }
-
-  .dashboard-section {
-    padding: 24px;
+    gap: 24px;
   }
 
   .section-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
   }
-
-  .section-header h2 {
-    margin: 0;
-  }
+  
+  .section-title-group h2 { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .section-subtitle { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
 
   /* Recent Orders List */
   .recent-list {
     display: flex;
     flex-direction: column;
-    gap: 1px; /* Minimal gap for continuous line look */
-    background: var(--border); /* Optional: creates a thin separator */
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     overflow: hidden;
   }
 
   .recent-item {
     display: grid;
-    grid-template-columns: 1fr auto 100px;
+    grid-template-columns: 1fr auto 90px;
     gap: 12px;
     align-items: center;
-    padding: 12px 16px 12px 24px;
+    padding: 12px 14px 12px 18px;
     background: var(--surface);
-    transition: background 0.2s;
-    cursor: pointer;
+    transition: all 0.2s;
     position: relative;
   }
 
-  /* Group Indicator Line (Full Height, No Glow) */
   .recent-item::before {
     content: "";
     position: absolute;
     left: 0;
-    top: 0;
-    bottom: 0;
-    width: 5px;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
     background: var(--group-color);
-    opacity: 0.9;
+    border-radius: 99px;
+    opacity: 0.8;
   }
 
   .recent-item:hover {
     background: var(--surface-2);
   }
 
-  .item-name {
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
+  .item-name { font-weight: 600; font-size: 0.95rem; color: #fff; }
+  .item-meta { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-dim); font-weight: 500; }
+  .item-meta .dot { width: 3px; height: 3px; background: var(--text-dim); border-radius: 50%; }
 
-  .item-meta {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-  }
-
-  .item-status {
-    font-size: 0.82rem;
-    font-weight: 500;
-  }
-
-  .item-amount {
-    text-align: right;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
+  .amount { text-align: right; font-weight: 700; color: #fff; font-size: 0.95rem; }
 
   /* Category List */
-  .category-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 16px;
-  }
+  .category-list { display: flex; flex-direction: column; gap: 20px; }
+  .cat-row { display: flex; flex-direction: column; gap: 8px; }
+  .cat-info { display: flex; justify-content: space-between; font-size: 0.825rem; font-weight: 700; }
+  .cat-label { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .cat-amount { color: #fff; }
 
-  .cat-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  .cat-bar-track { height: 6px; background: var(--surface-3); border-radius: 99px; overflow: hidden; position: relative; }
+  .cat-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 2; }
+  .cat-bar-glow { position: absolute; top: 0; left: 0; height: 100%; opacity: 0.15; filter: blur(4px); z-index: 1; }
 
-  .cat-info {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.82rem;
-    font-weight: 600;
-  }
+  .btn-xs { font-size: 0.7rem; padding: 4px 10px; }
+  .btn-xs { font-size: 0.7rem; padding: 4px 10px; }
 
-  .cat-bar-track {
-    height: 6px;
-    background: var(--surface-2);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-
-  .cat-bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 0.4s ease;
-  }
-
-  .promo-card {
-    background: linear-gradient(
-      135deg,
-      rgba(107, 123, 243, 0.1) 0%,
-      rgba(185, 124, 243, 0.1) 100%
-    );
-    border: 1px solid rgba(107, 123, 243, 0.2);
-    text-align: center;
-  }
-
-  .empty-text {
-    text-align: center;
-    padding: 20px;
-    background: var(--surface);
-    color: var(--text-muted);
-    font-size: 0.9rem;
-  }
-
-  .error-text {
-    color: #f16a4e;
-    font-weight: 500;
-  }
-
-  .btn-xs {
-    font-size: 0.7rem;
-    padding: 4px 8px;
-  }
-
-  /* Deploy Info Styling */
   .deploy-info {
     display: flex;
     flex-direction: column;
@@ -445,29 +388,12 @@
     line-height: 1;
   }
 
-  .version-tag {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--text);
-  }
+  .version-tag { font-size: 0.75rem; font-weight: 700; color: #fff; }
+  .deploy-time { font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
 
-  .deploy-time {
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-  }
+  .error-text { color: var(--status-rejected); font-size: 0.8rem; font-weight: 600; }
 
-  @media (max-width: 600px) {
-    .deploy-info {
-      display: none;
-    }
-  }
-
-  @media (max-width: 900px) {
-    .dashboard-content {
-      grid-template-columns: 1fr;
-    }
+  @media (max-width: 650px) {
+    .header-right .deploy-info { display: none; }
   }
 </style>

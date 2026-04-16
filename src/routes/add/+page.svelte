@@ -169,356 +169,404 @@
 </svelte:head>
 
 <div class="page-header">
-  <div style="display:flex; flex-direction:column; gap:4px">
-    <h1>
-      Add <span>{form.isExpense ? "Expense" : "Order"}</span>
-    </h1>
-    {#if form.isExpense}
-      <span class="badge badge-received" style="width:fit-content; font-size:0.7rem">ADMIN MODE: IMMEDIATE EXPENSE</span>
-    {/if}
+  <div class="header-left">
+    <h1>New <span>Order</span></h1>
+    <p class="text-muted">Fill out the form below to request a new purchase</p>
   </div>
-  <div style="display:flex; gap:10px; align-items:center">
-    <button 
-      class="btn btn-sm btn-ghost" 
-      onclick={fillTestOrder}
-      title="Autofill with random test data (Admin Only)"
-    >
-      Test Order
-    </button>
-    <button 
-      class="btn btn-sm {form.isExpense ? 'btn-primary' : 'btn-ghost'}" 
-      onclick={toggleExpenseMode}
-    >
-      {form.isExpense ? "✓ Expense Mode" : "Submit as Expense"}
-    </button>
-    <a href="/orders" class="btn btn-ghost btn-sm">← Back</a>
+  
+  <div class="header-right">
+    <div class="header-actions">
+      <button 
+        class="btn btn-ghost btn-sm" 
+        onclick={fillTestOrder}
+        title="Autofill for validation"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Test Order
+      </button>
+      
+      <button 
+        class="btn btn-sm {form.isExpense ? 'btn-primary' : 'btn-ghost'}" 
+        onclick={toggleExpenseMode}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        {form.isExpense ? "Expense Mode" : "Instant Expense"}
+      </button>
+      
+      <a href="/orders" class="btn btn-ghost btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Back
+      </a>
+    </div>
   </div>
 </div>
 
-  <div class="add-layout-wide">
-    {#if showExpenseModal}
-      <div class="lock-screen fade-in">
-        <div class="lock-card card">
-          <div
-            class="lock-logo"
-            style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2.5px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
-          >
-            <img
-              src="/favicon.png"
-              alt="Westwood Logo"
-              style="width: 100%; height: 100%; object-fit: cover;"
-            />
-          </div>
-          <h2 style="margin-bottom: 8px;">Admin Access</h2>
-          <p class="text-muted" style="margin-bottom: 24px; font-size: 0.9rem;">
-            Enter the admin password to unlock immediate expense mode.
-          </p>
-          
-          <form
-            onsubmit={(e) => {
-              e.preventDefault();
-              confirmExpenseMode();
-            }}
-            id="admin-login-form"
-          >
-            <div class="form-group" style="margin-bottom: 24px;">
-              <label for="admin-password">Password</label>
-              <div style="position:relative; display:flex; align-items:center;">
-                <input
-                  id="admin-password"
-                  type={showPassword ? "text" : "password"}
-                  bind:value={adminCodeInput}
-                  placeholder="Enter admin password"
-                  autocomplete="current-password"
-                  style="padding-right: 46px; text-align: center; font-size: 1.1rem; letter-spacing: 0.2em;"
-                />
-                <button
-                  type="button"
-                  onmousedown={() => { showPassword = true; }}
-                  onmouseup={() => { showPassword = false; }}
-                  onmouseleave={() => { showPassword = false; }}
-                  ontouchstart={(e) => { e.preventDefault(); showPassword = true; }}
-                  ontouchend={(e) => { e.preventDefault(); showPassword = false; }}
-                  style="position:absolute; right:10px; background:none; border:none; cursor:pointer; color:var(--text-muted); display:flex; padding:4px;"
-                  title="Hold to show password"
-                >
-                  {#if showPassword}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  {:else}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                  {/if}
-                </button>
-              </div>
-            </div>
-            
-            <div style="display: flex; gap: 12px; margin-top: 10px;">
-              <button type="submit" class="btn btn-primary" style="flex: 1;">Unlock</button>
-              <button 
-                type="button" 
-                class="btn btn-ghost" 
-                style="flex: 1;" 
-                onclick={() => { showExpenseModal = false; adminCodeInput = ""; }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+<div class="add-layout-wide fade-in">
+  {#if showExpenseModal}
+    <div class="lock-screen-wrapper fade-in">
+      <div class="lock-card card">
+        <div class="lock-icon-container">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
-      </div>
-    {:else}
-      <div class="card add-card" class:fade-in={!dataService.hasLoadedOnce}>
-      <!-- Rest of the form... -->
-    {#if submitError}
-      <div class="error-bar">{submitError}</div>
-    {/if}
-    {#if submitSuccess}
-      <div class="success-bar">{submitSuccess}</div>
-    {/if}
-
-    <form
-      onsubmit={(e) => {
-        e.preventDefault();
-        submit();
-      }}
-      id="add-expense-form"
-    >
-      <div class="form-grid">
-        <div class="form-group" style="grid-column:1/-1">
-          <label for="ae-item">Item Name *</label>
-          <input
-            id="ae-item"
-            type="text"
-            bind:value={form.item}
-            placeholder="e.g. REV Hub"
-            required
-          />
-        </div>
-
-        <div class="form-group" style="grid-column:1/-1">
-          <!-- svelte-ignore a11y_label_has_associated_control -->
-          <label>Category *</label>
-          <div class="category-pills">
-            {#each CATEGORIES as cat}
+        <h2>Admin <span>Access</span></h2>
+        <p class="text-muted">You need the admin password to record an immediate expense.</p>
+        
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            confirmExpenseMode();
+          }}
+          class="lock-form"
+        >
+          <div class="form-group">
+            <label for="admin-password">Admin Password</label>
+            <div class="password-input-group">
+              <input
+                id="admin-password"
+                type={showPassword ? "text" : "password"}
+                bind:value={adminCodeInput}
+                placeholder="••••••••"
+                autocomplete="current-password"
+                class="admin-input"
+              />
               <button
                 type="button"
-                class="cat-pill cat-{cat}"
-                class:active={form.category === cat}
-                onclick={() => (form.category = cat)}
+                onmousedown={() => { showPassword = true; }}
+                onmouseup={() => { showPassword = false; }}
+                onmouseleave={() => { showPassword = false; }}
+                class="password-toggle"
               >
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                {#if showPassword}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                {:else}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                {/if}
               </button>
-            {/each}
+            </div>
+          </div>
+          
+          <div class="lock-actions">
+            <button type="submit" class="btn btn-primary btn-block">Confirm Access</button>
+            <button 
+              type="button" 
+              class="btn btn-ghost btn-block" 
+              onclick={() => { showExpenseModal = false; adminCodeInput = ""; }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {:else}
+    <div class="card add-card">
+      {#if submitError}
+        <div class="error-bar message-bar">
+           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+           {submitError}
+        </div>
+      {/if}
+      {#if submitSuccess}
+        <div class="success-bar message-bar">
+           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+           {submitSuccess}
+        </div>
+      {/if}
+
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        id="add-expense-form"
+      >
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label for="ae-item">Item Name *</label>
+            <input
+              id="ae-item"
+              type="text"
+              bind:value={form.item}
+              placeholder="e.g. REV Control Hub (2024 Version)"
+              required
+            />
+          </div>
+
+          <div class="form-group span-2">
+            <div id="category-label" class="form-label" style="margin-bottom: 8px;">Category *</div>
+            <div class="category-pills" role="group" aria-labelledby="category-label">
+              {#each CATEGORIES as cat}
+                <button
+                  type="button"
+                  class="cat-pill cat-{cat}"
+                  class:active={form.category === cat}
+                  onclick={() => (form.category = cat)}
+                >
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="ae-company">Vendor / Supplier</label>
+            <input
+              id="ae-company"
+              type="text"
+              bind:value={form.company}
+              placeholder="GoBilda, REV, etc."
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="ae-team">Team *</label>
+            <CustomDropdown
+              options={teamOptions}
+              bind:value={form.team}
+            />
+          </div>
+
+          <div class="form-group span-2">
+            <label for="ae-link">Reference Link</label>
+            <div class="input-with-icon">
+               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; color: var(--text-dim)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+               <input
+                 id="ae-link"
+                 type="text"
+                 bind:value={form.link}
+                 placeholder="https://..."
+                 style="padding-left: 38px;"
+               />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="ae-price">Unit Price ($) *</label>
+            <input
+              id="ae-price"
+              type="number"
+              bind:value={form.price}
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="ae-qty">Quantity</label>
+            <input
+              id="ae-qty"
+              type="number"
+              bind:value={form.quantity}
+              min="1"
+              step="1"
+              placeholder="1"
+            />
+          </div>
+
+          <div class="form-group span-2">
+            <label for="ae-notes">Team Notes</label>
+            <textarea
+              id="ae-notes"
+              bind:value={form.notes}
+              placeholder="Promo codes, notes, etc."
+              rows="3"
+            ></textarea>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="ae-company">Company</label>
-          <input
-            id="ae-company"
-            type="text"
-            bind:value={form.company}
-            placeholder="e.g. REV Robotics"
-          />
+        <div class="summary-section">
+          <div class="total-preview">
+            <div class="total-label-group">
+              <span class="total-title">Order Total</span>
+              <span class="total-subtitle">Sum based on price and quantity</span>
+            </div>
+            <strong class="total-val amount">${computedTotal.toFixed(2)}</strong>
+          </div>
         </div>
 
-        <div class="form-group" style="grid-column:1/-1">
-          <label for="ae-link">Purchase Link</label>
-          <input
-            id="ae-link"
-            type="text"
-            bind:value={form.link}
-            placeholder="example.com or https://…"
-          />
+        <div class="form-footer">
+          <button
+            id="submit-expense-btn"
+            type="submit"
+            class="btn btn-primary btn-block"
+            disabled={submitting}
+          >
+            {#if submitting}
+              <span class="spinning" style="margin-right: 8px;">↻</span> Processing...
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              {form.isExpense ? "Confirm Immediate Expense" : "Submit Order Request"}
+            {/if}
+          </button>
+          <a href="/orders" class="btn btn-ghost btn-block">Abort Transaction</a>
         </div>
-
-        <div class="form-group">
-          <label for="ae-price">Unit Price ($) *</label>
-          <input
-            id="ae-price"
-            type="number"
-            bind:value={form.price}
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="ae-qty">Quantity</label>
-          <input
-            id="ae-qty"
-            type="number"
-            bind:value={form.quantity}
-            min="1"
-            step="1"
-            placeholder="1"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="ae-team">Team *</label>
-          <CustomDropdown
-            options={teamOptions}
-            bind:value={form.team}
-            placeholder="Select your team"
-          />
-        </div>
-
-        <div class="form-group" style="grid-column:1/-1">
-          <label for="ae-uuid">Order ID / UUID (Optional)</label>
-          <input
-            id="ae-uuid"
-            type="text"
-            bind:value={form.uuid}
-            placeholder="Leave blank to auto-generate…"
-          />
-        </div>
-
-        <div class="form-group" style="grid-column:1/-1">
-          <label for="ae-notes">Notes</label>
-          <textarea
-            id="ae-notes"
-            bind:value={form.notes}
-            placeholder="Any extra context…"
-            rows="3"
-          ></textarea>
-        </div>
-      </div>
-
-      <div class="total-preview">
-        <span class="text-muted">Computed Total</span>
-        <strong class="total-val">${computedTotal.toFixed(2)}</strong>
-      </div>
-
-      <div style="margin-top:20px;display:flex;gap:10px">
-        <button
-          id="submit-expense-btn"
-          type="submit"
-          class="btn btn-primary"
-          disabled={submitting}
-        >
-          {submitting
-            ? "Saving…"
-            : form.isExpense
-              ? "+ Add Immediate Expense"
-              : "+ Submit Order Request"}
-        </button>
-        <a href="/orders" class="btn btn-ghost">Cancel</a>
-      </div>
       </form>
     </div>
-    {/if}
-  </div>
+  {/if}
+</div>
 
 <style>
-  /* ── Lock Screen (SAME AS ADMIN) ────────────────────────────────────────── */
-  .lock-screen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 60vh;
-    padding: 20px;
-  }
-  .lock-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 48px 40px;
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-    box-shadow: var(--shadow-lg);
-  }
-
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  
   .add-layout-wide {
-    max-width: 800px;
-    margin: 0 auto;
+    max-width: 720px;
+    margin: 0 auto 80px;
   }
 
-  .total-preview {
+  .add-card {
+    padding: 40px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .span-2 { grid-column: span 2; }
+
+  .input-with-icon { position: relative; display: flex; align-items: center; }
+
+  .message-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
+    gap: 12px;
+    padding: 14px 18px;
     border-radius: var(--radius-sm);
-    padding: 12px 16px;
-    margin-top: 16px;
-  }
-  .total-val {
-    font-size: 1.4rem;
-    color: var(--primary);
-    letter-spacing: -0.5px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+    border: 1px solid transparent;
   }
 
   .success-bar {
-    background: rgba(107, 203, 119, 0.12);
-    border: 1px solid rgba(107, 203, 119, 0.3);
-    color: #6bcb77;
-    padding: 10px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 0.875rem;
-    margin-bottom: 16px;
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: var(--status-received);
   }
-  .tips-card {
-    padding: 20px;
-  }
-  .tips-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 10px;
+
+  .error-bar {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--status-rejected);
   }
 
   .category-pills {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-top: 4px;
+    margin-top: 8px;
   }
+  
   .cat-pill {
     padding: 8px 16px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 99px;
+    font-size: 0.725rem;
+    font-weight: 700;
+    border-radius: 6px;
     border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-muted);
+    background: var(--surface-2);
+    color: var(--text-dim);
     cursor: pointer;
     transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
-  .cat-pill:hover {
-    background: var(--surface-2);
-    color: var(--text);
-  }
+  
+  .cat-pill:hover { background: var(--surface-3); color: #fff; }
   .cat-pill.active {
-    border-color: transparent;
     color: #fff;
-    box-shadow: var(--shadow-sm);
+    border-color: transparent;
+    box-shadow: 0 0 12px rgba(0,0,0,0.2);
   }
-  .cat-pill.active.cat-hardware {
-    background: var(--cat-hardware);
-  }
-  .cat-pill.active.cat-software {
-    background: var(--cat-software);
-  }
-  .cat-pill.active.cat-outreach {
-    background: var(--cat-outreach);
-  }
-  .cat-pill.active.cat-food {
-    background: #f1a94e;
-  }
-  .cat-pill.active.cat-miscellaneous {
-    background: var(--cat-miscellaneous);
+  
+  .cat-pill.active.cat-hardware { background: var(--cat-hardware); }
+  .cat-pill.active.cat-software { background: var(--cat-software); }
+  .cat-pill.active.cat-outreach { background: var(--cat-outreach); }
+  .cat-pill.active.cat-food { background: #f97316; }
+  .cat-pill.active.cat-miscellaneous { background: var(--cat-miscellaneous); }
+
+  .summary-section {
+    padding: 24px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    margin-bottom: 32px;
   }
 
-  .segmented-control {
-    display: inline-flex;
-    background: var(--surface-2);
-    border-radius: 99px;
-    padding: 4px;
+  .total-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .total-title { display: block; font-size: 0.85rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
+  .total-subtitle { display: block; font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+  .total-val { font-size: 1.75rem; color: var(--primary); font-weight: 800; }
+
+  .form-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .btn-block { width: 100%; justify-content: center; height: 48px; font-size: 0.95rem; }
+
+  /* Lock Screen Refined */
+  .lock-screen-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 100px 20px;
+  }
+
+  .lock-icon-container {
+    width: 64px;
+    height: 64px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    color: var(--primary);
     border: 1px solid var(--border);
+  }
+
+  .lock-card { text-align: center; padding: 48px; max-width: 440px; width: 100%; box-shadow: var(--shadow-2xl); }
+  .lock-card h2 { margin-bottom: 8px; font-size: 1.5rem; }
+  .lock-form { margin-top: 32px; text-align: left; }
+
+  .password-input-group { position: relative; }
+  .admin-input {
+    text-align: center;
+    font-size: 1.25rem;
+    letter-spacing: 0.3em;
+    height: 54px;
+    padding-right: 50px !important;
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    display: flex;
+  }
+
+  .lock-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .span-2 { grid-column: 1; }
+    .add-card { padding: 24px; }
   }
 </style>

@@ -16,28 +16,28 @@
 
 <div class="stat-card">
   <div class="stat-header">
-    <span class="stat-label">{label}</span>
-    {#if icon}
-      <span class="stat-icon" style="color:{accentColor}">{icon}</span>
+    <div class="stat-meta">
+      {#if icon}
+        <span class="stat-icon" style="color:{accentColor}">{@html icon}</span>
+      {/if}
+      <span class="stat-label">{label}</span>
+    </div>
+  </div>
+
+  <div class="stat-main">
+    <div class="stat-value">
+      {isCurrency ? formatCurrency(value) : value}
+    </div>
+    {#if sub}
+      <div class="stat-sub">{sub}</div>
     {/if}
   </div>
 
-  <div class="stat-value" style="color:{accentColor}">
-    {isCurrency ? formatCurrency(value) : value}
-  </div>
-
-  {#if sub}
-    <div class="stat-sub">{sub}</div>
-  {/if}
-
   {#if progress !== undefined}
-    <div class="progress-container">
-      <div class="progress-header">
-        {#if progressLabel}
-          <span class="progress-pct">{progressLabel}</span>
-        {:else}
-          <span class="progress-pct">{Math.round(progress)}%</span>
-        {/if}
+    <div class="progress-section">
+      <div class="progress-info">
+        <span class="progress-label">{progressLabel || 'Completion'}</span>
+        <span class="progress-pct">{Math.round(progress)}%</span>
       </div>
       <div class="progress-track">
         <div
@@ -54,64 +54,119 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 18px 20px;
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.15s, box-shadow 0.15s;
+    padding: 24px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 16px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
   }
-  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
 
-  .stat-header {
+  .stat-card:hover { 
+    border-color: var(--border-bright);
+    background: var(--surface-2);
+  }
+  
+  .stat-card:hover::after {
+    opacity: 0.5;
+  }
+
+  .stat-meta {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 4px;
+    gap: 10px;
   }
+
   .stat-label {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     color: var(--text-muted);
   }
-  .stat-icon { font-size: 1.1rem; }
-  .stat-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    line-height: 1.2;
-  }
-  .stat-sub { font-size: 0.78rem; color: var(--text-muted); }
 
-  /* ── Progress Bar ────────────────────────────────────────────────────── */
-  .progress-container {
+  .stat-icon { 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    opacity: 0.8;
+  }
+
+  .stat-main {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-top: 12px;
+    gap: 2px;
   }
-  .progress-header {
-    display: flex;
-    justify-content: flex-end;
-  }
-  .progress-pct {
-    font-size: 1.05rem;
+
+  .stat-value {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: var(--text);
+    letter-spacing: -0.02em;
+    color: #fff;
+    line-height: 1.1;
   }
+
+  .stat-sub { 
+    font-size: 0.8rem; 
+    font-weight: 500;
+    color: var(--text-muted); 
+  }
+
+  /* ── Progress Section ────────────────────────────────────────────────── */
+  .progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .progress-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .progress-pct {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
   .progress-track {
     width: 100%;
-    height: 8px;
+    height: 6px;
     background: var(--surface-3);
     border-radius: 99px;
     overflow: hidden;
   }
+
   .progress-fill {
     height: 100%;
     border-radius: 99px;
-    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    opacity: 1;
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
   }
 </style>

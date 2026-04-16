@@ -67,61 +67,83 @@
   }
 </script>
 
-<div class="table-wrap">
+<div class="table-wrap fade-in">
   <table>
     <thead>
       <tr>
-        <th class="sortable" onclick={() => toggleSort("item")}>Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="sortable" onclick={() => toggleSort("company")}>Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="sortable" onclick={() => toggleSort("category")}>Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("item")}>
+          <div class="th-content">
+            Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="sortable" onclick={() => toggleSort("company")}>
+          <div class="th-content">
+            Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="sortable" onclick={() => toggleSort("category")}>
+          <div class="th-content">
+            Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
         {#if !hideTeamColumn}
-          <th class="sortable" onclick={() => toggleSort("team")}>Team {sortCol === "team" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+          <th class="sortable" onclick={() => toggleSort("team")}>
+            <div class="th-content">
+              Team {sortCol === "team" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+            </div>
+          </th>
         {/if}
-        <th class="sortable" onclick={() => toggleSort("status")}>Status {sortCol === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="sortable" onclick={() => toggleSort("timestamp")}>Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
-        <th class="text-right sortable" onclick={() => toggleSort("total")}>Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}</th>
+        <th class="sortable" onclick={() => toggleSort("status")}>
+          <div class="th-content">
+            Status {sortCol === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="sortable" onclick={() => toggleSort("timestamp")}>
+          <div class="th-content">
+            Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
+        <th class="text-right sortable" onclick={() => toggleSort("total")}>
+          <div class="th-content text-right">
+            Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </div>
+        </th>
       </tr>
     </thead>
     <tbody>
       {#each display as order (order.id)}
         {@const orderColor = getOrderColor(order.orderUUID)}
-        <tr class="fade-in group-row" style="--group-color: {orderColor}">
+        <tr class="group-row" style="--group-color: {orderColor}">
           <td>
             <div class="item-name">
               {#if order.link}
-                <a href={order.link} target="_blank" rel="noopener" title={order.item}>
-                  {truncate(order.item, 36)}
+                <a href={order.link} target="_blank" rel="noopener" class="item-link">
+                  {truncate(order.item, 40)}
                 </a>
               {:else}
-                {truncate(order.item, 36)}
+                <span class="item-text">{truncate(order.item, 40)}</span>
               {/if}
             </div>
             {#if order.notes}
               <div class="item-notes">{truncate(order.notes, 50)}</div>
             {/if}
           </td>
-          <td class="text-muted">{order.company || '—'}</td>
+          <td><span class="company-name">{order.company || '—'}</span></td>
           <td>
             <span class="badge badge-{order.category}">
               {capitalize(order.category)}
             </span>
           </td>
           {#if !hideTeamColumn}
-            <td>
-              {#if order.team}
-                <span>{order.team}</span>
-              {:else if order.user}
-                <span>{order.user}</span>
-              {:else}
-                —
-              {/if}
+            <td class="text-muted font-medium">
+              {order.team || order.user || '—'}
             </td>
           {/if}
           <td>
             <OrderStatusBadge status={order.status} />
           </td>
-          <td class="text-muted">{formatFullDate(order.timestamp)}</td>
-          <td class="text-right monospace" style="font-weight:600">
+          <td class="text-dim monospace">{formatFullDate(order.timestamp)}</td>
+          <td class="text-right monospace amount">
             {formatCurrency(order.total)}
           </td>
         </tr>
@@ -141,26 +163,72 @@
 </div>
 
 <style>
-  .item-name { font-weight: 500; }
-  .item-notes { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
-  a { color: var(--primary); }
-  a:hover { text-decoration: underline; }
-  .table-wrap { 
-    overflow-x: auto; 
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+  .table-wrap {
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 2rem;
   }
   
-  /* Optimize widths to prevent clipping */
-  table { width: 100%; border-collapse: collapse; min-width: 900px; table-layout: auto; }
-  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+  table { 
+    min-width: 900px;
+  }
   
-  td { 
-    padding: 12px 16px !important; 
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .th-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+  }
+
+  .item-name { 
+    font-weight: 600; 
+    color: var(--text);
+  }
+  
+  .item-link {
+    color: var(--primary);
+    transition: color 0.2s;
+  }
+  
+  .item-link:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+  }
+
+  .item-notes { 
+    font-size: 0.72rem; 
+    color: var(--text-muted); 
+    margin-top: 1px;
+    font-weight: 400;
+  }
+  
+  .company-name {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  
+  .amount {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.95rem;
+  }
+  
+  .text-dim { color: var(--text-dim); }
+  .font-medium { font-weight: 500; }
+
+  /* Group Indicator Line */
+  .group-row td:first-child {
+    position: relative;
+    padding-left: 20px !important;
+  }
+
+  .group-row td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--group-color, var(--primary));
+    opacity: 0.9;
   }
 </style>

@@ -4,7 +4,7 @@
   let { 
     options = [], 
     value = $bindable(''), 
-    placeholder = 'Select...', 
+    placeholder = 'Selection required', 
     onchange = undefined
   } = $props();
 
@@ -18,7 +18,7 @@
   function select(/** @type {string} */ optValue) {
     value = optValue;
     isOpen = false;
-    onchange?.({ target: { value: optValue } }); // Mimic native event for compatibility
+    onchange?.({ target: { value: optValue } });
   }
 
   function handleClickOutside(/** @type {MouseEvent} */ event) {
@@ -32,7 +32,6 @@
     return () => window.removeEventListener('click', handleClickOutside);
   });
 
-  // Helper to get display label
   let selectedLabel = $derived(() => {
     const opt = options.find(o => (typeof o === 'string' ? o : o.value) === value);
     if (!opt) return placeholder;
@@ -49,10 +48,10 @@
     aria-haspopup="listbox"
     aria-expanded={isOpen}
   >
-    <span class="label">{selectedLabel()}</span>
+    <span class="label" class:placeholder={!value}>{selectedLabel()}</span>
     <span class="chevron" class:open={isOpen}>
-      <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
       </svg>
     </span>
   </button>
@@ -75,6 +74,9 @@
             aria-selected={value === val}
           >
             {label}
+            {#if value === val}
+               <svg class="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17 4 12"/></svg>
+            {/if}
           </button>
         </li>
       {/each}
@@ -94,16 +96,17 @@
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 9px 12px;
+    padding: 10px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     cursor: pointer;
-    color: var(--text);
+    color: #fff;
     transition: all 0.2s ease;
     text-align: left;
     outline: none;
     font-size: 0.9rem;
+    font-weight: 600;
   }
 
   .dropdown-trigger:hover {
@@ -113,7 +116,7 @@
 
   .dropdown-trigger.active {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-glow);
+    background: var(--surface-3);
   }
 
   .label {
@@ -123,10 +126,15 @@
     margin-right: 8px;
   }
 
+  .label.placeholder {
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
   .chevron {
     flex-shrink: 0;
     transition: transform 0.2s ease;
-    color: var(--text-muted);
+    color: var(--text-dim);
   }
 
   .chevron.open {
@@ -135,25 +143,26 @@
 
   .dropdown-menu {
     position: absolute;
-    top: calc(100% + 6px);
+    top: calc(100% + 4px);
     left: 0;
     width: 100%;
-    background: var(--surface-2);
+    background: var(--surface-1);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    z-index: 100;
-    max-height: 240px;
+    z-index: 200;
+    max-height: 280px;
     overflow-y: auto;
-    box-shadow: var(--shadow-lg);
-    padding: 4px;
+    box-shadow: var(--shadow-2xl);
+    padding: 6px;
     list-style: none;
     margin: 0;
   }
 
   .dropdown-item {
-    padding: 0;
-    list-style: none;
+    margin-bottom: 2px;
   }
+  
+  .dropdown-item:last-child { margin-bottom: 0; }
 
   .dropdown-item-button {
     width: 100%;
@@ -162,35 +171,41 @@
     background: transparent;
     text-align: left;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
+    font-weight: 600;
     transition: all 0.15s ease;
-    color: var(--text-muted);
-    border-radius: 4px;
-    display: block;
+    color: var(--text-dim);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     outline: none;
   }
 
   .dropdown-item-button:hover,
   .dropdown-item-button:focus {
     background: var(--surface-3);
-    color: var(--text);
+    color: #fff;
   }
 
   .dropdown-item.selected .dropdown-item-button {
-    background: var(--primary-glow);
+    background: rgba(249, 115, 22, 0.1);
     color: var(--primary);
-    font-weight: 600;
+  }
+
+  .check-icon {
+    flex-shrink: 0;
   }
 
   /* Scrollbar styling */
   .dropdown-menu::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
   }
   .dropdown-menu::-webkit-scrollbar-track {
     background: transparent;
   }
   .dropdown-menu::-webkit-scrollbar-thumb {
-    background: var(--border);
+    background: var(--surface-3);
     border-radius: 10px;
   }
 </style>

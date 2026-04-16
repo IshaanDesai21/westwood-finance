@@ -7,7 +7,6 @@
 
   let { data = {}, colorMap = null } = $props();
   
-  // Explicitly track keys and values for reactivity
   let labels = $derived(Object.keys(data));
   let values = $derived(labels.map(l => data[l]));
 
@@ -17,14 +16,13 @@
   let chart;
 
   $effect(() => {
-    // Force tracking of labels and values
     const l = labels;
     const v = values;
     if (chart && l && v) {
       chart.data.labels = l;
       chart.data.datasets[0].data = v;
       chart.data.datasets[0].backgroundColor = l.map(lbl => 
-        (colorMap && colorMap[lbl]) || (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[lbl] || '#888'
+        (colorMap && colorMap[lbl]) || (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[lbl] || '#3f3f46'
       );
       chart.update();
     }
@@ -41,31 +39,45 @@
         datasets: [{
           data: values,
           backgroundColor: labels.map(l => 
-            (colorMap && colorMap[l]) || (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[l] || '#888'
+            (colorMap && colorMap[l]) || (/** @type {Record<string, string>} */ (CATEGORY_COLORS))[l] || '#3f3f46'
           ),
-          borderColor: '#161616',
-          borderWidth: 3,
+          borderColor: '#09090b',
+          borderWidth: 2,
+          hoverOffset: 12,
         }],
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             position: 'bottom',
             labels: {
-              color: '#f0f0f0',
-              font: { family: 'Inter', size: 12 },
-              padding: 16,
-              boxWidth: 14,
-              borderRadius: 4,
+              color: '#a1a1aa',
+              font: { family: '"Plus Jakarta Sans", sans-serif', size: 11, weight: 600 },
+              padding: 20,
+              usePointStyle: true,
+              pointStyle: 'circle',
+              boxWidth: 8,
             },
           },
           tooltip: {
+            backgroundColor: '#18181b',
+            titleFont: { family: 'Outfit', size: 13, weight: 700 },
+            bodyFont: { family: '"Plus Jakarta Sans"', size: 12 },
+            padding: 12,
+            cornerRadius: 8,
+            borderColor: '#27272a',
+            borderWidth: 1,
             callbacks: {
-              label: ctx => ` $${ctx.parsed.toFixed(2)}`,
+              label: ctx => ` ${ctx.label}: $${ctx.parsed.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
             },
           },
         },
+        animation: {
+          duration: 1000,
+          easing: 'easeOutQuart'
+        }
       },
     });
   });
@@ -73,4 +85,14 @@
   onDestroy(() => { if (chart) chart.destroy(); });
 </script>
 
-<canvas bind:this={canvas}></canvas>
+<div class="chart-wrapper">
+  <canvas bind:this={canvas}></canvas>
+</div>
+
+<style>
+  .chart-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+</style>

@@ -41,82 +41,72 @@
   }
 </script>
 
-<div class="filter-bar">
-  <div class="filter-row">
-    <div class="form-group search-input">
-      <label for="filter-search">Search</label>
-      <input
-        id="filter-search"
-        type="search"
-        placeholder="Item name, notes…"
-        bind:value={filters.search}
-        oninput={emit}
-      />
+<div class="filter-bar fade-in">
+  <div class="filter-main">
+    <div class="search-input">
+      <div class="input-wrapper">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input
+          id="filter-search"
+          type="search"
+          placeholder="Filter requests, vendors, or notes..."
+          bind:value={filters.search}
+          oninput={emit}
+        />
+      </div>
     </div>
+    
+    <button class="btn btn-ghost btn-sm reset-button" onclick={reset} title="Reset filters">
+       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+  </div>
 
-    <div class="form-group">
-      <label for="filter-category">Category</label>
+  <div class="filter-grid">
+    <div class="filter-field">
+      <span class="field-label">Category</span>
       <CustomDropdown 
         options={categoryOptions} 
         bind:value={filters.category} 
         onchange={emit} 
-        placeholder="All Categories" 
       />
     </div>
 
-    <div class="form-group">
-      <label for="filter-company">Company</label>
+    <div class="filter-field">
+      <span class="field-label">Vendor</span>
       <input
         id="filter-company"
         type="text"
-        placeholder="Any company"
+        placeholder="Any vendor"
         bind:value={filters.company}
         oninput={emit}
       />
     </div>
 
-    <div class="form-group">
-      <label for="filter-team">Team</label>
+    <div class="filter-field">
+      <span class="field-label">Team</span>
       <CustomDropdown 
         options={teamOptions} 
         bind:value={filters.team} 
         onchange={emit} 
-        placeholder="All Teams" 
       />
     </div>
 
-    <div class="form-group">
-      <label for="filter-status">Status</label>
+    <div class="filter-field">
+      <span class="field-label">Status</span>
       <CustomDropdown 
         options={statusOptions} 
         bind:value={filters.status} 
         onchange={emit} 
-        placeholder="All Statuses" 
       />
     </div>
 
-    <div class="form-group">
-      <label for="filter-from">From Date</label>
-      <input
-        id="filter-from"
-        type="date"
-        bind:value={filters.dateFrom}
-        onchange={emit}
-      />
-    </div>
-
-    <div class="form-group">
-      <label for="filter-to">To Date</label>
-      <input
-        id="filter-to"
-        type="date"
-        bind:value={filters.dateTo}
-        onchange={emit}
-      />
-    </div>
-
-    <div class="form-group reset-button" style="justify-content:flex-end;">
-      <button class="btn btn-ghost btn-sm" style="width: 100%; height: 42px;" onclick={reset}>Reset</button>
+    <div class="filter-field">
+      <span class="field-label">Timeline</span>
+      <div class="date-range">
+        <input type="date" bind:value={filters.dateFrom} onchange={emit} />
+        <span class="connector">→</span>
+        <input type="date" bind:value={filters.dateTo} onchange={emit} />
+      </div>
     </div>
   </div>
 </div>
@@ -125,21 +115,103 @@
   .filter-bar {
     margin-bottom: 24px;
     padding: 20px;
-    border-radius: var(--radius-lg);
-    background: linear-gradient(to right, var(--surface), var(--surface-2));
+    border-radius: var(--radius);
+    background: var(--surface);
     border: 1px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
-  .filter-row {
+  
+  .filter-main {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .search-input {
+    flex: 1;
+  }
+  
+  .filter-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 16px;
     align-items: flex-end;
   }
-  .filter-bar :global(.form-group) {
-    margin-bottom: 0;
+
+  /* Wide screen desktop layout */
+  @media (min-width: 1000px) {
+    .filter-grid {
+      grid-template-columns: repeat(4, 1fr) 280px;
+    }
   }
-  .search-input {
-    grid-column: 1 / -1;
+
+  .filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+  }
+  
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+  
+  .input-wrapper input {
+    padding-left: 40px;
+    height: 44px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+  }
+
+  .date-range {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 8px;
+  }
+
+  .date-range input {
+    background: transparent;
+    border: none;
+    padding: 8px 4px;
+    font-size: 0.8rem;
+    width: 100px;
+  }
+
+  .connector {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  .reset-button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
   }
 </style>
