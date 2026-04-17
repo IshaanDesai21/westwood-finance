@@ -41,17 +41,21 @@
   );
 
   let analyticsOrders = $derived(
-    teamOrders.map((/** @type {Order} */ o) => ({
-      ...o,
-      month: (o.timestamp || "").toString().slice(0, 7), // "YYYY-MM"
-    }))
+    teamOrders.map((/** @type {Order} */ o) => {
+      const d = new Date(o.timestamp || "");
+      const month = isNaN(d.getTime()) ? "" : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return {
+        ...o,
+        month,
+      };
+    })
   );
 
   // Financial orders include only definitively spent items (Received/Ordered)
   let financialOrders = $derived(
     analyticsOrders.filter((o) => {
       const s = String(o.status || "").toLowerCase().trim();
-      return s === "received" || s === "ordered";
+      return s === "received" || s === "ordered" || s === "approved";
     })
   );
 

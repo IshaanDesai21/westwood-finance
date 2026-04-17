@@ -446,16 +446,10 @@
             </tr>
           {/each}
         </tbody>
-        <tfoot class="total-row-container">
+        <tfoot class="total-row">
           <tr>
-            <td></td>
-            <td colspan="4" style="font-weight:700; color:var(--text-muted)"
-              >Total Raised</td
-            >
-            <td
-              class="text-right monospace amount-total"
-              style="font-weight:700"
-            >
+            <td colspan="5" class="total-label">Total Raised</td>
+            <td class="text-right monospace total-amount">
               {formatCurrency(totalRaised)}
             </td>
           </tr>
@@ -611,10 +605,10 @@
                   {/each}
                 </tbody>
 
-                <tfoot>
-                  <tr style="border-top: 2px solid var(--border);">
-                    <td colspan="2" style="font-weight: 700; text-align: right; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">Total Raised</td>
-                    <td class="text-right monospace" style="color:#6bcb77; font-weight: 700; font-size: 1rem;">
+                <tfoot class="total-row">
+                  <tr>
+                    <td colspan="2" class="total-label">Total Raised</td>
+                    <td class="text-right monospace total-amount">
                       {formatCurrency(teamSpecificFunds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0))}
                     </td>
                   </tr>
@@ -966,28 +960,6 @@
   }
 
 
-  .total-row-container td {
-    border-top: 1px solid var(--border);
-    padding: 18px 14px !important;
-    vertical-align: middle;
-  }
-  .total-row-container tr {
-    position: relative;
-  }
-  .total-row-container tr::before {
-    content: "";
-    position: absolute;
-    top: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: #e07b30;
-    z-index: 1;
-  }
-  .amount-total {
-    color: #6bcb77;
-    font-size: 1rem;
-  }
   .date-chip {
     background: var(--surface-2);
     padding: 3px 10px;

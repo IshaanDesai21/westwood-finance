@@ -130,6 +130,16 @@
         </tr>
       {/if}
     </tbody>
+    {#if display.length > 0}
+      <tfoot>
+        <tr class="total-row">
+          <td colspan={hideTeam ? 7 : 8} class="total-label">Subtotal</td>
+          <td class="text-right monospace total-amount">
+            {formatCurrency(display.reduce((sum, e) => sum + (e.total || 0), 0))}
+          </td>
+        </tr>
+      </tfoot>
+    {/if}
   </table>
 </div>
 

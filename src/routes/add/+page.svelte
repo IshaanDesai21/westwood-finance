@@ -53,7 +53,7 @@
     form.quantity = Math.floor(Math.random() * 4 + 1).toString();
     form.team = "FRC";
     form.category = categories[Math.floor(Math.random() * categories.length)];
-    form.notes = "Automated test entry for validation.";
+    form.notes = "Website Test";
     form.link = "https://example.com/item-" + Math.floor(Math.random() * 1000);
   }
 
@@ -235,7 +235,7 @@
               id="ae-item"
               type="text"
               bind:value={form.item}
-              placeholder="e.g. REV Control Hub (2024 Version)"
+              placeholder="e.g. REV Control Hub"
               required
             />
           </div>

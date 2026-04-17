@@ -68,7 +68,7 @@
   </nav>
 
   <div class="sidebar-footer">
-    <div class="footer-team">FTC Robotics #17576</div>
+    <div class="footer-team">Westwood Finance</div>
     <div class="footer-copyright">Westwood Robotics © 2025</div>
   </div>
 </aside>

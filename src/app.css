@@ -322,6 +322,29 @@ tbody td {
   vertical-align: middle;
 }
 
+/* ── Table Totals ───────────────────────────────────────────────────────────── */
+.total-row {
+  background: var(--surface-2);
+  border-top: 2px solid var(--border-bright);
+}
+
+.total-label {
+  text-align: right;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 14px 16px;
+}
+
+.total-amount {
+  font-weight: 700;
+  color: #fff;
+  font-size: 1rem;
+  padding: 14px 16px;
+}
+
 /* ── Stat Grids ──────────────────────────────────────────────────────────────── */
 .stat-grid {
   display: grid;

@@ -21,15 +21,17 @@
     "Kunai",
     "Westwood Overall",
   ];
-  let selectedTeam = $state("FRC");
+  let selectedTeam = $state("Westwood Overall");
 
   // ── Derived View Based on Team ─────────────────────────────────────────────
   let teamOrders = $derived(
     selectedTeam === "Westwood Overall"
       ? dataService.orders
-      : dataService.orders.filter((o) =>
-          String(o.team || "").toLowerCase().includes(selectedTeam.toLowerCase()),
-        ),
+      : dataService.orders.filter((o) => {
+          const t = String(o.team || "").toLowerCase().trim();
+          const s = selectedTeam.toLowerCase().trim();
+          return t === s || t.includes(s) || (s === "frc" && (t.includes("frc") || /^\d+$/.test(t)));
+        }),
   );
 
   let teamFunds = $derived(
@@ -58,7 +60,7 @@
     teamOrders.filter((/** @type {Order} */ o) => {
       const ts = o.timestamp || "";
       const year = new Date().getFullYear().toString();
-      return ts.startsWith(year);
+      return ts.includes(year);
     }),
   );
 
@@ -66,7 +68,7 @@
   let expenses = $derived(
     teamOrders.filter((/** @type {Order} */ o) => {
       const s = (o.status || "").toLowerCase().trim();
-      return s === "received" || s === "ordered";
+      return s === "received" || s === "ordered" || s === "approved";
     }),
   );
 
@@ -299,16 +301,19 @@
     grid-template-columns: 1fr 340px;
     gap: 24px;
     align-items: start;
+    min-width: 0;
   }
 
   @media (max-width: 1100px) {
     .dashboard-content { grid-template-columns: 1fr; }
   }
-
+  
   .main-column {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .side-column {
