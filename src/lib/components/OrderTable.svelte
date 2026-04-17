@@ -142,7 +142,7 @@
           <td>
             <OrderStatusBadge status={order.status} />
           </td>
-          <td class="text-dim monospace">{formatFullDate(order.timestamp)}</td>
+          <td class="text-dim monospace" style="color: var(--text-dim);">{formatFullDate(order.timestamp)}</td>
           <td class="text-right monospace amount">
             {formatCurrency(order.total)}
           </td>

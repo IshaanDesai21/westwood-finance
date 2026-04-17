@@ -55,9 +55,9 @@
           </div>
         </th>
         {#if !hideTeam}
-          <th class="sortable" onclick={() => toggleSort("user")}>
+          <th class="sortable" onclick={() => toggleSort("team")}>
             <div class="th-content">
-              User {sortCol === "user" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              Team {sortCol === "team" ? (sortDir === "asc" ? "↑" : "↓") : ""}
             </div>
           </th>
         {/if}
@@ -107,9 +107,9 @@
             </span>
           </td>
           {#if !hideTeam}
-            <td class="text-muted font-medium">{expense.user || '—'}</td>
+            <td class="text-muted font-medium">{expense.team || expense.user || '—'}</td>
           {/if}
-          <td class="text-dim monospace">{formatDate(expense.timestamp)}</td>
+          <td class="text-dim monospace" style="color: var(--text-dim);">{formatDate(expense.timestamp)}</td>
           <td class="text-right monospace">{formatCurrency(expense.price)}</td>
           <td class="text-right font-medium">{expense.quantity}</td>
           <td class="text-right monospace amount">
@@ -120,8 +120,10 @@
       {#if expenses.length === 0}
         <tr>
           <td colspan="8">
-            <div class="empty-state">
-              <div class="icon">📋</div>
+            <div class="empty-state" style="padding: 40px 0;">
+              <div class="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M8 11h8"/><path d="M8 16h8"/><path d="M8 6h8"/></svg>
+              </div>
               No expenses found
             </div>
           </td>

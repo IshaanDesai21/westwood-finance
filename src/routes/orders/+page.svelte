@@ -161,10 +161,8 @@
     
     <div class="header-actions">
       <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-        <span class:spinning={syncing}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-        </span>
-        {syncing ? "Syncing" : "Refresh"}
+        <span class:spinning={syncing}>↻</span>
+        {syncing ? "Syncing..." : "Refresh"}
       </button>
       
       <button class="btn btn-ghost btn-sm" onclick={exportCSV} disabled={!filtered || !filtered.length}>

@@ -37,7 +37,7 @@
     <div class="progress-section">
       <div class="progress-info">
         <span class="progress-label">{progressLabel || 'Completion'}</span>
-        <span class="progress-pct">{Math.round(progress)}%</span>
+        <span class="progress-pct">{progress.toFixed(2)}%</span>
       </div>
       <div class="progress-track">
         <div

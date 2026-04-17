@@ -10,6 +10,7 @@
   import OrderTable from "$lib/components/OrderTable.svelte";
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
+  import AdminLock from "$lib/components/AdminLock.svelte";
 
   const typeOptions = [
     { label: "Fundraiser", value: "Fundraiser" },
@@ -19,13 +20,13 @@
     { label: "Other", value: "Other" },
   ];
   const recipientOptions = [
-    { label: "All", value: "All" },
     { label: "Slingshot", value: "Slingshot" },
     { label: "Atlatl", value: "Atlatl" },
     { label: "Kunai", value: "Kunai" },
     { label: "Hunga Munga", value: "Hunga Munga" },
     { label: "FRC", value: "FRC" },
     { label: "WWROBO", value: "WWROBO" },
+    { label: "All", value: "All" },
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -65,19 +66,6 @@
 
   // ── Lock ─────────────────────────────────────────────────────────────────────
   let unlocked = $state(false);
-  let passwordInput = $state("");
-  let authError = $state("");
-
-  function tryUnlock() {
-    if (passwordInput === "/dev3432" || passwordInput === "dev3432") {
-      unlocked = true;
-      authError = "";
-      passwordInput = "";
-    } else {
-      authError = "Incorrect password. Please try again.";
-      passwordInput = "";
-    }
-  }
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
   onMount(() => {
@@ -236,31 +224,43 @@
 </svelte:head>
 
 <div class="page-header">
-  <h1>Club <span>Funding</span></h1>
-  <div style="display:flex;gap:8px;">
-    {#if dataService.error}
-      <span class="error-text" style="font-size:0.85rem"
-        >⚠ {dataService.error}</span
-      >
-    {/if}
+  <div class="header-left">
+    <h1>Club <span>Funding</span></h1>
+    <p class="text-muted">Westwood Robotics Financial Management</p>
+  </div>
+  
+  <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
       {syncing ? "Syncing..." : "Refresh"}
     </button>
+    
+    {#if activeTab === "budget"}
+      <div class="budget-team-selector {!dataService.hasLoadedOnce ? 'fade-in' : ''}" style="width: 180px;">
+        <CustomDropdown
+          options={[
+            "FRC",
+            "Slingshot",
+            "Atlatl",
+            "Kunai",
+            "Hunga Munga",
+            "WWROBO",
+            "All",
+          ]}
+          bind:value={selectedBudgetTeam}
+          placeholder="Select Team"
+        />
+      </div>
+    {/if}
   </div>
 </div>
 
 <!-- ── Tab Nav ──────────────────────────────────────────────────────────────── -->
-<div
-  class="tabs-container"
-  style="display:flex; justify-content:space-between; align-items:center; gap:20px;"
->
-  <div class="segmented-control" style="position:relative; z-index:0;">
+<div class="tabs-container">
+  <div class="segmented-control">
     <div
       class="segment-highlight"
-      style="transform: translateX(calc({['budget', 'history', 'add'].indexOf(
-        activeTab,
-      )} * 100%));"
+      style="transform: translateX(calc({['budget', 'history', 'add'].indexOf(activeTab)} * 100%));"
     ></div>
     {#each [["budget", "Team Dashboard"], ["history", "Funding History"], ["add", "+ Add Funds"]] as [key, label]}
       <button
@@ -271,28 +271,11 @@
       >
     {/each}
   </div>
-
-  {#if activeTab === "budget"}
-    <div
-      class={!dataService.hasLoadedOnce ? "fade-in" : ""}
-      style="width: 240px;"
-    >
-      <CustomDropdown
-        options={[
-          "All",
-          "FRC",
-          "Slingshot",
-          "Atlatl",
-          "Kunai",
-          "Hunga Munga",
-          "WWROBO",
-        ]}
-        bind:value={selectedBudgetTeam}
-        placeholder="Select Team"
-      />
-    </div>
-  {/if}
 </div>
+
+
+
+
 
 <!-- ══ OVERVIEW ══════════════════════════════════════════════════════════════ -->
 {#if activeTab === "overview"}
@@ -372,7 +355,9 @@
     <LoadingIndicator text="Loading history..." />
   {:else if dataService.funds.length === 0}
     <div class="empty-state card">
-      <div class="icon">💰</div>
+      <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+      </div>
       No funding entries yet.
     </div>
   {:else}
@@ -399,7 +384,7 @@
                 : ""}</th
             >
             <th class="sortable" onclick={() => toggleSort("Recipient")}
-              >Recipient {sortCol === "Recipient"
+              >Team {sortCol === "Recipient"
                 ? sortDir === "asc"
                   ? "↑"
                   : "↓"
@@ -442,10 +427,10 @@
               </td>
               <td style="font-weight:500">{entry.Source || "—"}</td>
               <td>
-                <span class="recipient-chip">{entry.Recipient || "—"}</span>
+                {entry.Recipient || "—"}
               </td>
-              <td class="text-muted">
-                <span class="date-chip">
+              <td class="text-dim">
+                <span class="date-chip" style="color: var(--text-dim);">
                   {formatFullDate(entry.Date)}
                 </span>
               </td>
@@ -616,7 +601,7 @@
                         ><span
                           style="font-size: 1.05rem; font-weight: 500; border-left: 2px solid {TYPE_COLORS[
                             f.Type
-                          ] || '#ccc'}; padding-left: 8px;">{f.Type}</span
+                           ] || '#ccc'}; padding-left: 8px;">{f.Type}</span
                         ></td
                       >
                       <td class="text-right monospace" style="color:#6bcb77"
@@ -625,6 +610,15 @@
                     </tr>
                   {/each}
                 </tbody>
+
+                <tfoot>
+                  <tr style="border-top: 2px solid var(--border);">
+                    <td colspan="2" style="font-weight: 700; text-align: right; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">Total Raised</td>
+                    <td class="text-right monospace" style="color:#6bcb77; font-weight: 700; font-size: 1rem;">
+                      {formatCurrency(teamSpecificFunds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0))}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             {/if}
           </div>
@@ -636,49 +630,11 @@
   <!-- ══ ADD FUNDS ════════════════════════════════════════════════════════════ -->
 {:else if activeTab === "add"}
   {#if !unlocked}
-    <!-- Lock Screen -->
-    <div class="lock-screen">
-      <div class="lock-card card">
-        <div
-          class="lock-logo"
-          style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
-        >
-          <img
-            src="/logo-bordered.png"
-            alt="Westwood Logo"
-            style="width: 100%; height: 100%; object-fit: cover;"
-          />
-        </div>
-        <h2>Add Funds Access</h2>
-        <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
-          Enter the password to add a funding entry.
-        </p>
-        {#if authError}
-          <div class="error-bar" style="margin-bottom:16px">{authError}</div>
-        {/if}
-        <form
-          onsubmit={(e) => {
-            e.preventDefault();
-            tryUnlock();
-          }}
-          id="fund-lock-form"
-        >
-          <div class="form-group" style="margin-bottom:16px">
-            <label for="fund-password">Password</label>
-            <input
-              id="fund-password"
-              type="password"
-              bind:value={passwordInput}
-              placeholder="Enter password"
-              autocomplete="current-password"
-            />
-          </div>
-          <button type="submit" class="btn btn-primary" style="width:100%"
-            >Unlock</button
-          >
-        </form>
-      </div>
-    </div>
+    <AdminLock 
+      onunlock={() => { unlocked = true; }} 
+      title="Admin Login" 
+      description="Enter the admin password to add a funding entry."
+    />
   {:else}
     <div class="unlocked-header">
       <span class="unlocked-badge">Unlocked</span>
@@ -808,26 +764,6 @@
 {/if}
 
 <style>
-  /* ── Lock Screen ──────────────────────────────────────────────────────────── */
-  .lock-screen {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 60vh;
-  }
-  .lock-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 48px 40px;
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-    box-shadow: var(--shadow-lg);
-  }
-  .lock-card h2 {
-    margin-bottom: 8px;
-  }
   .unlocked-header {
     display: flex;
     align-items: center;
@@ -843,13 +779,13 @@
     padding: 4px 10px;
     border-radius: 999px;
   }
-
-  /* ── Tabs ──────────────────────────────────────────────────────────────────── */
   .tabs-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 24px;
+    margin-bottom: 32px;
   }
+
+  /* ── Tabs ──────────────────────────────────────────────────────────────────── */
   .segmented-control {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -989,29 +925,6 @@
     transition: width 0.6s ease;
   }
 
-  /* ── Add Layout ───────────────────────────────────────────────────────────── */
-  .lock-screen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 80vh;
-    padding: 20px;
-  }
-  .lock-card {
-    width: 100%;
-    max-width: 380px; /* Narrower for vertical silhouette */
-    min-height: 520px; /* Taller */
-    padding: 60px 40px;
-    text-align: center;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 12px;
-  }
   .add-layout {
     display: grid;
     grid-template-columns: 1fr 280px;
@@ -1051,17 +964,7 @@
     padding: 4px 10px;
     border-radius: 4px;
   }
-  .error-text {
-    color: #f16a4e;
-    font-weight: 500;
-  }
-  .recipient-chip {
-    font-size: 0.75rem;
-    background: var(--surface-2);
-    padding: 2px 8px;
-    border-radius: 99px;
-    color: var(--text-muted);
-  }
+
 
   .total-row-container td {
     border-top: 1px solid var(--border);

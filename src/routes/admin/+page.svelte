@@ -3,7 +3,8 @@
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
-  import { formatCurrency, formatFullDate } from "$lib/utils.js";
+  import AdminLock from "$lib/components/AdminLock.svelte";
+  import { formatCurrency, formatFullDate, formatDate } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
@@ -44,9 +45,12 @@
   });
 
   let unlocked = $state(false);
-  let adminPassInput = $state("");
-  let authError = $state("");
-  let showPassword = $state(false);
+
+  async function sync() {
+    syncing = true;
+    await dataService.load(true);
+    syncing = false;
+  }
 
   let actionMsg = $state("");
   let actionErr = $state("");
@@ -120,23 +124,9 @@
     dataService.load(); // Uses persistent cache for instant load
   });
 
-  async function sync() {
-    syncing = true;
-    await dataService.load(true);
-    syncing = false;
-  }
 
-  function tryUnlock() {
-    const cleanPass = adminPassInput.trim();
-    if (cleanPass === "/dev3432" || cleanPass === "dev3432") {
-      unlocked = true;
-      authError = "";
-      adminPassInput = "";
-    } else {
-      authError = "Incorrect password. Please try again.";
-      adminPassInput = "";
-    }
-  }
+
+
 
   // ── Modal helpers ─────────────────────────────────────────────────────────────
   function openEdit(/** @type {Order} */ order) {
@@ -307,7 +297,7 @@
         Recipient: String(editFundFields.Recipient),
         Notes: String(editFundFields.Notes),
         Type: String(editFundFields.Type),
-        Date: String(editFundFields.Date),
+        Date: formatDate(editFundFields.Date),
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
       const result = await res.json();
@@ -330,100 +320,63 @@
 </svelte:head>
 
 {#if !unlocked}
-  <div class="lock-screen fade-in">
-    <div class="lock-card card">
-      <div
-        class="lock-logo"
-        style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.95); background: #000; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);"
-      >
-        <img
-          src="/logo-bordered.png"
-          alt="Westwood Logo"
-          style="width: 100%; height: 100%; object-fit: cover;"
-        />
-      </div>
-      <h2>Admin <span>Login</span></h2>
-      <p class="text-muted" style="margin-bottom:24px;font-size:0.9rem">
-        Enter the password to manage orders and funding.
-      </p>
+  <AdminLock 
+    onunlock={() => { unlocked = true; }} 
+    title="Admin Portal" 
+    description="Enter the admin password to manage orders and funding."
+  />
+{:else}
+  <div class="page-header">
+    <div class="header-left">
+      <h1>Admin <span>Portal</span></h1>
+      <p class="text-muted">Westwood Robotics Resource & Procurement Control</p>
+    </div>
 
-      {#if authError}
-        <div class="error-bar message-bar" style="margin-bottom: 24px;">
-           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-           {authError}
-        </div>
-      {/if}
+    <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
+      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
+        <span class:spinning={syncing}>↻</span>
+        {syncing ? "Syncing..." : "Refresh"}
+      </button>
+      
 
-      <form
-        onsubmit={(e) => {
-          e.preventDefault();
-          tryUnlock();
-        }}
-        class="lock-form"
-      >
-        <div class="form-group" style="margin-bottom:16px">
-          <label for="admin-password">Admin Password</label>
-          <div class="password-input-group">
-            <input
-              id="admin-password"
-              type={showPassword ? "text" : "password"}
-              bind:value={adminPassInput}
-              placeholder="••••••••"
-              autocomplete="current-password"
-            />
-            <button
-              type="button"
-              onmousedown={() => { showPassword = true; }}
-              onmouseup={() => { showPassword = false; }}
-              onmouseleave={() => { showPassword = false; }}
-              class="password-toggle"
-            >
-              {#if showPassword}
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              {:else}
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-              {/if}
-            </button>
-          </div>
-        </div>
-
-        <div class="lock-actions">
-          <button type="submit" class="btn btn-primary btn-block">Sign In</button>
-        </div>
-      </form>
+      
+      <button class="btn btn-ghost btn-sm" style="color: var(--primary);" onclick={() => unlocked = false}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Lock
+      </button>
     </div>
   </div>
-{:else}
-  <!-- ── Admin Panel ──────────────────────────────────────────────────────── -->
-    <div class="tabs-wrapper">
-      <div class="segmented-control">
-        <div
-          class="segment-highlight"
-          style="transform: translateX({activeView === 'orders' ? '0' : activeView === 'funding' ? '100%' : '200%'}); width: calc(100% / 3 - 8px);"
-        ></div>
-        <button
-          class="segment"
-          class:active={activeView === "orders"}
-          onclick={() => (activeView = "orders")}
-        >
-          Orders
-        </button>
-        <button
-          class="segment"
-          class:active={activeView === "funding"}
-          onclick={() => (activeView = "funding")}
-        >
-          Funding
-        </button>
-        <button
-          class="segment"
-          class:active={activeView === "master"}
-          onclick={() => (activeView = "master")}
-        >
-          Finance History
-        </button>
-      </div>
+
+  <!-- ── Tab Nav ──────────────────────────────────────────────────────── -->
+  <div class="tabs-wrapper" style="margin-bottom: 32px;">
+    <div class="segmented-control" style="width: auto; min-width: 360px; margin: 0 auto; position: relative;">
+      <div
+        class="segment-highlight"
+        style="transform: translateX(calc({['orders', 'funding', 'master'].indexOf(activeView)} * 100%));"
+      ></div>
+      <button
+        class="segment"
+        class:active={activeView === "orders"}
+        onclick={() => (activeView = "orders")}
+      >
+        Orders
+      </button>
+      <button
+        class="segment"
+        class:active={activeView === "funding"}
+        onclick={() => (activeView = "funding")}
+      >
+        Funding
+      </button>
+      <button
+        class="segment"
+        class:active={activeView === "master"}
+        onclick={() => (activeView = "master")}
+      >
+        Finance History
+      </button>
     </div>
+  </div>
 
   {#if actionMsg}
     <div class="success-bar message-bar">{actionMsg}</div>
@@ -460,7 +413,7 @@
                 <tr>
                   <th style="padding-left: 24px;">Provision/Item</th>
                   <th>Category</th>
-                  <th>Entity</th>
+                  <th>Team</th>
                   <th>Submission Date</th>
                   <th class="text-right">Investment</th>
                   <th>Status</th>
@@ -490,14 +443,14 @@
                         {order.category || "—"}
                       </span>
                     </td>
-                    <td><span class="team-tag">{order.team || "—"}</span></td>
+                    <td>{order.team || "—"}</td>
                     <td class="text-dim">{formatFullDate(order.timestamp)}</td>
                     <td class="text-right monospace amount">
                       {formatCurrency(order.total)}
                     </td>
                     <td><OrderStatusBadge status={order.status} /></td>
                     <td class="text-right" style="padding-right: 24px;">
-                      <button class="btn btn-ghost btn-sm" onclick={() => openEdit(order)}>
+                      <button class="btn btn-primary btn-sm" onclick={() => openEdit(order)}>
                         Manage
                       </button>
                     </td>
@@ -525,7 +478,9 @@
           <LoadingIndicator text="Loading funds..." />
         {:else if dataService.funds.length === 0}
           <div class="empty-state">
-            <div class="icon">💰</div>
+            <div class="icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+            </div>
             No funding entries found.
           </div>
         {:else}
@@ -535,7 +490,7 @@
                 <tr>
                   <th>Type</th>
                   <th>Source</th>
-                  <th>Recipient</th>
+                  <th>Team</th>
                   <th>Date</th>
                   <th class="text-right">Amount</th>
                   <th>Notes</th>
@@ -548,7 +503,7 @@
                     <td><span class="type-tag">{fund.Type || "—"}</span></td>
                     <td style="font-weight:500">{fund.Source || "—"}</td>
                     <td>{fund.Recipient || "—"}</td>
-                    <td class="text-muted" style="font-size:0.875rem">{formatFullDate(fund.Date)}</td>
+                    <td class="text-dim" style="font-size:0.875rem; color: var(--text-dim);">{formatFullDate(fund.Date)}</td>
                     <td
                       class="text-right monospace"
                       style="font-weight:600;color:#6bcb77"
@@ -559,7 +514,7 @@
                     >
                     <td>
                       <button
-                        class="btn btn-primary btn-edit"
+                        class="btn btn-primary btn-sm"
                         onclick={() => openEditFund(fund)}
                       >
                         Manage
@@ -568,6 +523,15 @@
                   </tr>
                 {/each}
               </tbody>
+              <tfoot>
+                <tr style="border-top: 2px solid var(--border);">
+                  <td colspan="4" style="font-weight: 700; text-align: right; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 12px 16px;">Total Funding</td>
+                  <td class="text-right monospace" style="color:#6bcb77; font-weight: 700; font-size: 1rem; padding: 12px 16px;">
+                    {formatCurrency(dataService.funds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0))}
+                  </td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         {/if}
@@ -591,7 +555,9 @@
           <LoadingIndicator text="Loading ledger..." />
         {:else if masterTransactions.length === 0}
           <div class="empty-state">
-            <div class="icon">🧾</div>
+            <div class="icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
+            </div>
             No transactions found.
           </div>
         {:else}
@@ -610,7 +576,7 @@
               <tbody>
                 {#each masterTransactions as tx (tx.id + tx.type)}
                   <tr class="fade-in">
-                    <td class="text-dim monospace">{tx.date}</td>
+                    <td class="text-dim monospace" style="color: var(--text-dim);">{tx.date}</td>
                     <td style="font-weight:600; color: #fff;">{tx.source || "—"}</td>
                     <td>
                       <span
@@ -890,87 +856,55 @@
     justify-content: center;
     gap: 12px;
   }
-  .lock-card h2 { margin-bottom: 8px; font-size: 1.5rem; }
-  .lock-form { margin-top: 32px; text-align: left; }
-
-  .password-input-group { position: relative; }
-  .admin-input {
-    text-align: center;
-    font-size: 1.25rem;
-    letter-spacing: 0.3em;
-    height: 54px;
-    padding-right: 50px !important;
-  }
-
-  .password-toggle {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-dim);
-    display: flex;
-  }
-
-  .lock-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
-
   .btn-block { width: 100%; justify-content: center; height: 48px; font-size: 0.95rem; }
 
-  /* Tabs Refined */
-  .tabs-wrapper {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 32px;
-  }
-
   .segmented-control {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     background: var(--surface-2);
-    border-radius: 99px;
     padding: 4px;
+    border-radius: 99px;
     border: 1px solid var(--border);
     position: relative;
-    width: 520px;
+    gap: 0;
   }
-
   .segment-highlight {
     position: absolute;
-    top: 4px; bottom: 4px; left: 4px;
-    background: var(--surface-1);
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 8px) / 3);
+    background: var(--surface);
     border-radius: 99px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     z-index: 1;
-    border: 1px solid var(--border);
   }
-
   .segment {
     position: relative;
     z-index: 2;
-    flex: 1;
     background: transparent;
     border: none;
-    padding: 10px 18px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-dim);
+    padding: 8px 18px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
     border-radius: 99px;
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
 
-  .segment:hover { color: #fff; }
-  .segment.active { color: var(--primary); }
+  .segment:hover {
+    color: var(--text);
+  }
+  .segment.active {
+    color: var(--primary);
+  }
 
   /* Table Customizations for Admin */
   .item-primary { font-weight: 700; color: #fff; font-size: 0.9rem; }
   .item-secondary { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
-  .team-tag { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; background: var(--surface-3); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
   .amount { font-weight: 700; color: #fff; }
 
   .message-bar { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; margin-bottom: 24px; border: 1px solid transparent; }

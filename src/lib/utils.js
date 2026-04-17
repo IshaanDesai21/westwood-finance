@@ -14,7 +14,14 @@ export function formatCurrency(n) {
  */
 export function formatDate(ts) {
   if (!ts) return '—';
-  const d = new Date(ts);
+  
+  // Clean up raw ISO metadata if present as a string
+  let cleanTs = ts;
+  if (typeof ts === 'string') {
+    cleanTs = ts.replace(/T00:00:00\.000Z$/, '').replace(/ 00:00:00\.000Z$/, '');
+  }
+  
+  const d = new Date(cleanTs);
   if (isNaN(d.getTime())) return String(ts);
   
   const MM = String(d.getMonth() + 1).padStart(2, '0');

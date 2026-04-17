@@ -53,6 +53,15 @@
   });
 
   // ── Derived Stats ───────────────────────────────────────────────────────────
+  // All orders for the full year expense count (regardless of status)
+  let allYearExpenses = $derived(
+    teamOrders.filter((/** @type {Order} */ o) => {
+      const ts = o.timestamp || "";
+      const year = new Date().getFullYear().toString();
+      return ts.startsWith(year);
+    }),
+  );
+
   // "Expenses" are orders that have been received or ordered
   let expenses = $derived(
     teamOrders.filter((/** @type {Order} */ o) => {
@@ -122,25 +131,24 @@
     <p class="text-muted">Westwood Robotics Financial Overview</p>
   </div>
   
-  <div class="header-right">
+  <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
     {#if dataService.error}
       <span class="error-text">⚠ {dataService.error}</span>
     {/if}
+    
     <div class="deploy-info">
       <span class="version-tag">v{appInfo.version}</span>
       <span class="deploy-time">{appInfo.deployedAt}</span>
     </div>
-
-    <div class="team-selector">
-      <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
-    </div>
     
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-      <span class:spinning={syncing}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-      </span>
-      {syncing ? "Syncing" : "Refresh"}
+      <span class:spinning={syncing}>↻</span>
+      {syncing ? "Syncing..." : "Refresh"}
     </button>
+
+    <div class="team-selector" style="width: 180px;">
+      <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
+    </div>
   </div>
 </div>
 
@@ -168,15 +176,15 @@
       label="Total Spent"
       value={totalSpent.toString()}
       isCurrency={true}
-      sub={`${expenses.length} fulfilled requests`}
+      sub={`${allYearExpenses.length} expenses this year`}
       accentColor="var(--status-rejected)"
       icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>'
     />
     <StatCard
       label="Budget Progress"
-      value={budgetTotalValue > 0 ? Math.round((totalSpent / budgetTotalValue) * 100).toString() : "0"}
+      value={budgetTotalValue > 0 ? ((totalSpent / budgetTotalValue) * 100).toFixed(2) : "0"}
       progress={budgetTotalValue > 0 ? (totalSpent / budgetTotalValue) * 100 : 0}
-      progressLabel={budgetTotalValue > 0 ? `${Math.round((totalSpent / budgetTotalValue) * 100)}%` : "N/A"}
+      progressLabel={budgetTotalValue > 0 ? `${((totalSpent / budgetTotalValue) * 100).toFixed(2)}%` : "N/A"}
       sub={budgetTotalValue > 0
         ? `${formatCurrency(totalSpent)} of ${formatCurrency(budgetTotalValue)}`
         : "No active budget"}

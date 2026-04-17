@@ -93,6 +93,7 @@
 
   .dropdown-trigger {
     width: 100%;
+    background-color: var(--surface-2) !important;
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -107,6 +108,9 @@
     outline: none;
     font-size: 0.9rem;
     font-weight: 600;
+    -webkit-appearance: none;
+    appearance: none;
+    opacity: 1 !important;
   }
 
   .dropdown-trigger:hover {
@@ -146,7 +150,8 @@
     top: calc(100% + 4px);
     left: 0;
     width: 100%;
-    background: var(--surface-1);
+    background: var(--surface);
+    background-color: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     z-index: 200;
@@ -156,6 +161,7 @@
     padding: 6px;
     list-style: none;
     margin: 0;
+    opacity: 1;
   }
 
   .dropdown-item {

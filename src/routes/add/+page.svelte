@@ -1,7 +1,8 @@
 <script>
-  import { CATEGORIES, TEAMS } from "$lib/utils.js";
+  import { CATEGORIES, TEAMS, formatDate } from "$lib/utils.js";
   import { goto } from "$app/navigation";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
+  import AdminLock from "$lib/components/AdminLock.svelte";
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
@@ -97,6 +98,7 @@
         status: form.isExpense ? "Received" : "Pending Review",
         tracking: "",
         uuid: form.uuid,
+        timestamp: formatDate(new Date()),
       });
 
       const url = `${BASE_URL}?${params.toString()}`;
@@ -111,9 +113,10 @@
       }
 
       submitSuccess = "✓ Order successfully sent! Redirecting to dashboard...";
+      submitting = false; // ← release the button immediately
       
-      // Force refresh and AWAIT it so the cache is updated before navigating back
-      await dataService.load(true);
+      // Force refresh in background
+      dataService.load(true);
 
       // reset form
       form = {
@@ -139,7 +142,8 @@
         submitError = "Unknown error occurred";
       }
     } finally {
-      submitting = false;
+      // Only set false here if we haven't already (success path sets it earlier)
+      if (submitting) submitting = false;
     }
   }
   function toggleExpenseMode() {
@@ -151,17 +155,6 @@
   }
 
   let showExpenseModal = $state(false);
-  let adminCodeInput = $state("");
-
-  function confirmExpenseMode() {
-    if (adminCodeInput === "/dev3432") {
-      form.isExpense = true;
-      showExpenseModal = false;
-      adminCodeInput = "";
-    } else {
-      alert("Incorrect admin code.");
-    }
-  }
 </script>
 
 <svelte:head>
@@ -203,59 +196,14 @@
 
 <div class="add-layout-wide fade-in">
   {#if showExpenseModal}
-    <div class="lock-screen-wrapper fade-in">
-      <div class="lock-card card">
-        <div class="lock-icon-container">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </div>
-        <h2>Admin <span>Access</span></h2>
-        <p class="text-muted">You need the admin password to record an immediate expense.</p>
-        
-        <form
-          onsubmit={(e) => {
-            e.preventDefault();
-            confirmExpenseMode();
-          }}
-          class="lock-form"
-        >
-          <div class="form-group">
-            <label for="admin-password">Admin Password</label>
-            <div class="password-input-group">
-              <input
-                id="admin-password"
-                type={showPassword ? "text" : "password"}
-                bind:value={adminCodeInput}
-                placeholder="••••••••"
-                autocomplete="current-password"
-                class="admin-input"
-              />
-              <button
-                type="button"
-                onmousedown={() => { showPassword = true; }}
-                onmouseup={() => { showPassword = false; }}
-                onmouseleave={() => { showPassword = false; }}
-                class="password-toggle"
-              >
-                {#if showPassword}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                {:else}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                {/if}
-              </button>
-            </div>
-          </div>
-          
-          <div class="lock-actions">
-            <button type="submit" class="btn btn-primary btn-block">Confirm Access</button>
-            <button 
-              type="button" 
-              class="btn btn-ghost btn-block" 
-              onclick={() => { showExpenseModal = false; adminCodeInput = ""; }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+    <div class="lock-screen-wrapper fade-in" style="position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center;">
+      <div style="position: relative; width: 100%; max-width: 380px;">
+        <AdminLock 
+          onunlock={() => { form.isExpense = true; showExpenseModal = false; }} 
+          oncancel={() => { showExpenseModal = false; }}
+          title="Admin Access" 
+          description="You need the admin password to record an immediate expense."
+        />
       </div>
     </div>
   {:else}
@@ -378,10 +326,7 @@
 
         <div class="summary-section">
           <div class="total-preview">
-            <div class="total-label-group">
-              <span class="total-title">Order Total</span>
-              <span class="total-subtitle">Sum based on price and quantity</span>
-            </div>
+            <strong class="total-title">Order Total</strong>
             <strong class="total-val amount">${computedTotal.toFixed(2)}</strong>
           </div>
         </div>
@@ -504,8 +449,7 @@
     justify-content: space-between;
   }
 
-  .total-title { display: block; font-size: 0.85rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
-  .total-subtitle { display: block; font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+  .total-title { font-size: 1.1rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
   .total-val { font-size: 1.75rem; color: var(--primary); font-weight: 800; }
 
   .form-footer {
@@ -515,54 +459,6 @@
   }
 
   .btn-block { width: 100%; justify-content: center; height: 48px; font-size: 0.95rem; }
-
-  /* Lock Screen Refined */
-  .lock-screen-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 100px 20px;
-  }
-
-  .lock-icon-container {
-    width: 64px;
-    height: 64px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 24px;
-    color: var(--primary);
-    border: 1px solid var(--border);
-  }
-
-  .lock-card { text-align: center; padding: 48px; max-width: 440px; width: 100%; box-shadow: var(--shadow-2xl); }
-  .lock-card h2 { margin-bottom: 8px; font-size: 1.5rem; }
-  .lock-form { margin-top: 32px; text-align: left; }
-
-  .password-input-group { position: relative; }
-  .admin-input {
-    text-align: center;
-    font-size: 1.25rem;
-    letter-spacing: 0.3em;
-    height: 54px;
-    padding-right: 50px !important;
-  }
-
-  .password-toggle {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-dim);
-    display: flex;
-  }
-
-  .lock-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
 
   @media (max-width: 600px) {
     .form-grid { grid-template-columns: 1fr; }
