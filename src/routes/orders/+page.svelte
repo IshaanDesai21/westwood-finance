@@ -145,7 +145,7 @@
 </script>
 
 <svelte:head>
-  <title>Orders Dashboard — Westwood Finance</title>
+  <title>Orders Dashboard | Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">

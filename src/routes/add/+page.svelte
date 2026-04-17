@@ -158,7 +158,7 @@
 </script>
 
 <svelte:head>
-  <title>Add Order — Westwood Finance</title>
+  <title>Add Order | Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">

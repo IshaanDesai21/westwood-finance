@@ -98,7 +98,7 @@ export const STATUS_COLORS = {
 export const CATEGORIES = ['hardware', 'software', 'outreach', 'food', 'miscellaneous'];
 
 /** Valid teams */
-export const TEAMS = ['FRC', 'WWROBO', 'Slingshot', 'Atlatl', 'Kunai', 'Hunga Munga'];
+export const TEAMS = ['FRC', 'Westwood Overall', 'Slingshot', 'Atlatl', 'Kunai', 'Hunga Munga'];
 
 /** 
  * Helper for team badge CSS classes 

@@ -25,7 +25,7 @@
     { label: "Kunai", value: "Kunai" },
     { label: "Hunga Munga", value: "Hunga Munga" },
     { label: "FRC", value: "FRC" },
-    { label: "WWROBO", value: "WWROBO" },
+    { label: "Westwood Overall", value: "Westwood Overall" },
     { label: "All", value: "All" },
   ];
 
@@ -36,17 +36,7 @@
   let sortCol = $state("Date");
   let sortDir = $state("desc");
 
-  let form = $state({
-    type: "Fundraiser",
-    source: "",
-    amount: "",
-    date: "",
-    notes: "",
-    recipient: "All",
-  });
-  let submitting = $state(false);
-  let formMsg = $state("");
-  let formErr = $state("");
+
 
   let selectedBudgetTeam = $state("FRC");
 
@@ -111,22 +101,6 @@
   let budgetTotal = $derived(
     /** @type {any} */ (dataService.budget)?.Total ?? null,
   );
-  let sortedFunds = $derived(
-    dataService.funds
-      .slice()
-      .sort((/** @type {any} */ a, /** @type {any} */ b) => {
-        let valA = a[sortCol] || "";
-        let valB = b[sortCol] || "";
-        if (sortCol === "Amount") {
-          valA = Number(valA) || 0;
-          valB = Number(valB) || 0;
-        }
-        if (valA < valB) return sortDir === "asc" ? -1 : 1;
-        if (valA > valB) return sortDir === "asc" ? 1 : -1;
-        return 0;
-      }),
-  );
-
   let teamSpecificFunds = $derived(
     dataService.funds.filter((/** @type {any} */ f) => {
       if (
@@ -142,6 +116,22 @@
     }),
   );
 
+  let sortedFunds = $derived(
+    teamSpecificFunds
+      .slice()
+      .sort((/** @type {any} */ a, /** @type {any} */ b) => {
+        let valA = a[sortCol] || "";
+        let valB = b[sortCol] || "";
+        if (sortCol === "Amount") {
+          valA = Number(valA) || 0;
+          valB = Number(valB) || 0;
+        }
+        if (valA < valB) return sortDir === "asc" ? -1 : 1;
+        if (valA > valB) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      }),
+  );
+
   function toggleSort(/** @type {string} */ col) {
     if (sortCol === col) {
       sortDir = sortDir === "asc" ? "desc" : "asc";
@@ -151,52 +141,7 @@
     }
   }
 
-  // ── Add Funds ───────────────────────────────────────────────────────────────
-  async function addFunds() {
-    formErr = "";
-    formMsg = "";
-    if (!form.source.trim()) {
-      formErr = "Source is required.";
-      return;
-    }
-    if (!form.amount || isNaN(Number(form.amount))) {
-      formErr = "A valid amount is required.";
-      return;
-    }
 
-    submitting = true;
-    try {
-      const params = new URLSearchParams({
-        action: "addFundraising",
-        key: SECRET_KEY,
-        type: form.type,
-        source: form.source,
-        amount: form.amount,
-        date: form.date,
-        notes: form.notes,
-        recipient: form.recipient,
-      });
-      const res = await fetch(`${BASE_URL}?${params.toString()}`);
-      const result = await res.json();
-      if (!res.ok || result?.error)
-        throw new Error(result?.error || "Request failed");
-
-      formMsg = "✓ Funding entry added!";
-      form = {
-        type: "Fundraiser",
-        source: "",
-        amount: "",
-        date: "",
-        notes: "",
-        recipient: "All",
-      };
-      await dataService.load(true); // Force refresh shared store
-    } catch (e) {
-      formErr = e instanceof Error ? e.message : "Unknown error";
-    } finally {
-      submitting = false;
-    }
-  }
 
   // ── Formatting helpers ──────────────────────────────────────────────────────
   function formatDate(/** @type {string} */ ts) {
@@ -220,12 +165,12 @@
 </script>
 
 <svelte:head>
-  <title>Club Funding — Westwood Finance</title>
+  <title>Team Dashboard | Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">
   <div class="header-left">
-    <h1>Club <span>Funding</span></h1>
+    <h1>Team <span>Dashboard</span></h1>
     <p class="text-muted">Westwood Robotics Financial Management</p>
   </div>
   
@@ -235,23 +180,21 @@
       {syncing ? "Syncing..." : "Refresh"}
     </button>
     
-    {#if activeTab === "budget"}
-      <div class="budget-team-selector {!dataService.hasLoadedOnce ? 'fade-in' : ''}" style="width: 180px;">
-        <CustomDropdown
-          options={[
-            "FRC",
-            "Slingshot",
-            "Atlatl",
-            "Kunai",
-            "Hunga Munga",
-            "WWROBO",
-            "All",
-          ]}
-          bind:value={selectedBudgetTeam}
-          placeholder="Select Team"
-        />
-      </div>
-    {/if}
+    <div class="budget-team-selector {!dataService.hasLoadedOnce ? 'fade-in' : ''}" style="width: 180px;">
+      <CustomDropdown
+        options={[
+          "FRC",
+          "Slingshot",
+          "Atlatl",
+          "Kunai",
+          "Hunga Munga",
+          "Westwood Overall",
+          "All",
+        ]}
+        bind:value={selectedBudgetTeam}
+        placeholder="Select Team"
+      />
+    </div>
   </div>
 </div>
 
@@ -260,9 +203,9 @@
   <div class="segmented-control">
     <div
       class="segment-highlight"
-      style="transform: translateX(calc({['budget', 'history', 'add'].indexOf(activeTab)} * 100%));"
+      style="transform: translateX(calc({['budget', 'history'].indexOf(activeTab)} * 100%));"
     ></div>
-    {#each [["budget", "Team Dashboard"], ["history", "Funding History"], ["add", "+ Add Funds"]] as [key, label]}
+    {#each [["budget", "Team Dashboard"], ["history", `${selectedBudgetTeam} Funding`]] as [key, label]}
       <button
         class="segment"
         class:active={activeTab === key}
@@ -551,7 +494,7 @@
         class="dashboard-stack"
         style="display: flex; flex-direction: column; gap: 40px;"
       >
-        <!-- Section 1: Team Activity (Orders) -->
+        <!-- Activity Section -->
         <div class="activity-section">
           <div
             class="section-title"
@@ -564,215 +507,75 @@
             hideTeamColumn={selectedBudgetTeam !== "Westwood Overall"}
           />
         </div>
-
-        <!-- Section 2: Team Funding (Grants/Sponsors) -->
-        <div class="funding-section">
-          <div
-            class="section-title"
-            style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);"
-          >
-            {selectedBudgetTeam} Funding
-          </div>
-          <div class="card" style="padding:0; overflow:hidden">
-            {#if teamSpecificFunds.length === 0}
-              <div class="empty-state" style="padding: 40px;">
-                No funding entries for this team.
-              </div>
-            {:else}
-              <table style="font-size: 0.85rem;">
-                <thead>
-                  <tr>
-                    <th>Source</th>
-                    <th>Type</th>
-                    <th class="text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each teamSpecificFunds as f}
-                    <tr>
-                      <td style="font-weight:500">{f.Source || "—"}</td>
-                      <td
-                        ><span
-                          style="font-size: 1.05rem; font-weight: 500; border-left: 2px solid {TYPE_COLORS[
-                            f.Type
-                           ] || '#ccc'}; padding-left: 8px;">{f.Type}</span
-                        ></td
-                      >
-                      <td class="text-right monospace" style="color:#6bcb77"
-                        >{formatCurrency(f.Amount)}</td
-                      >
-                    </tr>
-                  {/each}
-                </tbody>
-
-                <tfoot class="total-row">
-                  <tr>
-                    <td colspan="2" class="total-label">Total Raised</td>
-                    <td class="text-right monospace total-amount">
-                      {formatCurrency(teamSpecificFunds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0))}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            {/if}
-          </div>
-        </div>
       </div>
     </div>
   {/if}
 
-  <!-- ══ ADD FUNDS ════════════════════════════════════════════════════════════ -->
-{:else if activeTab === "add"}
-  {#if !unlocked}
-    <AdminLock 
-      onunlock={() => { unlocked = true; }} 
-      title="Admin Login" 
-      description="Enter the admin password to add a funding entry."
-    />
-  {:else}
-    <div class="unlocked-header">
-      <span class="unlocked-badge">Unlocked</span>
-      <button class="btn btn-ghost btn-sm" onclick={() => (unlocked = false)}
-        >Lock</button
-      >
-    </div>
-    <div class="add-layout fade-in">
-      <div class="card add-card">
-        <h3 style="margin-bottom:20px">Add Funding Entry</h3>
-
-        {#if formErr}
-          <div class="error-bar">{formErr}</div>
-        {/if}
-        {#if formMsg}
-          <div class="success-bar">{formMsg}</div>
-        {/if}
-
-        <form
-          onsubmit={(e) => {
-            e.preventDefault();
-            addFunds();
-          }}
-          id="add-funds-form"
+  <!-- ══ TEAM HISTORY ═════════════════════════════════════════════════════════ -->
+{:else if activeTab === "history"}
+  <div class="team-dashboard-content fade-in">
+    <div
+      class="dashboard-stack"
+      style="display: flex; flex-direction: column; gap: 40px;"
+    >
+      <!-- Section 2: Team Funding (Grants/Sponsors) -->
+      <div class="funding-section">
+        <div
+          class="section-title"
+          style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);"
         >
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="f-type">History Type *</label>
-              <CustomDropdown
-                options={typeOptions}
-                bind:value={form.type}
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="f-recipient">Destination Team *</label>
-              <CustomDropdown
-                options={recipientOptions}
-                bind:value={form.recipient}
-              />
-            </div>
-
-            <div class="form-group" style="grid-column:1/-1">
-              <label for="f-source">Source / Description *</label>
-              <input
-                id="f-source"
-                type="text"
-                bind:value={form.source}
-                placeholder="e.g. Bake Sale, WW Special Team Grant…"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="f-amount">Amount ($) *</label>
-              <input
-                id="f-amount"
-                type="number"
-                bind:value={form.amount}
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="f-date">Date</label>
-              <input id="f-date" type="date" bind:value={form.date} />
-            </div>
-
-            <div class="form-group" style="grid-column:1/-1">
-              <label for="f-notes">Notes</label>
-              <textarea
-                id="f-notes"
-                bind:value={form.notes}
-                rows="3"
-                placeholder="Any additional context…"
-              ></textarea>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            class="btn btn-primary"
-            style="margin-top:16px"
-            disabled={submitting}
-          >
-            {submitting ? "Saving…" : "+ Add Entry"}
-          </button>
-        </form>
-      </div>
-
-      <aside class="tips-card card">
-        <div class="card-title">Tips</div>
-        <ul class="tips-list">
-          <li>
-            Use <strong>All</strong> as recipient for club-wide income that gets
-            distributed equally.
-          </li>
-          <li>
-            <strong>Grants</strong> and <strong>Sponsors</strong> go to specific
-            teams or WWROBO.
-          </li>
-          <li>The date field is optional but recommended for tracking.</li>
-          <li>Entries appear in Funding History after submission.</li>
-        </ul>
-
-        <div style="margin-top:20px">
-          <div class="card-title">Fund Types</div>
-          <div
-            style="display:flex;flex-direction:column;gap:6px;margin-top:8px"
-          >
-            {#each typeOptions as t}
-              <span
-                class="type-tag"
-                style="border-left:3px solid {TYPE_COLORS[t.value] || '#8a8a8a'}"
-              >
-                {t.label}
-              </span>
-            {/each}
-          </div>
+          {selectedBudgetTeam} History
         </div>
-      </aside>
+        <div class="card" style="padding:0; overflow:hidden">
+          {#if teamSpecificFunds.length === 0}
+            <div class="empty-state" style="padding: 40px;">
+              No funding entries for this team.
+            </div>
+          {:else}
+            <table style="font-size: 0.85rem;">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Type</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each teamSpecificFunds as f}
+                  <tr>
+                    <td style="font-weight:500">{f.Source || "—"}</td>
+                    <td
+                      ><span
+                        style="font-size: 1.05rem; font-weight: 500; border-left: 2px solid {TYPE_COLORS[
+                          f.Type
+                         ] || '#ccc'}; padding-left: 8px;">{f.Type}</span
+                      ></td
+                    >
+                    <td class="text-right monospace" style="color:#6bcb77"
+                      >{formatCurrency(f.Amount)}</td
+                    >
+                  </tr>
+                {/each}
+              </tbody>
+
+              <tfoot class="total-row">
+                <tr>
+                  <td colspan="2" class="total-label">Total Raised</td>
+                  <td class="text-right monospace total-amount">
+                    {formatCurrency(teamSpecificFunds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0))}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          {/if}
+        </div>
+      </div>
     </div>
-  {/if}
+  </div>
 {/if}
 
 <style>
-  .unlocked-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .unlocked-badge {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #6bcb77;
-    background: rgba(107, 203, 119, 0.12);
-    border: 1px solid rgba(107, 203, 119, 0.3);
-    padding: 4px 10px;
-    border-radius: 999px;
-  }
+
   .tabs-container {
     display: flex;
     justify-content: center;
@@ -782,7 +585,7 @@
   /* ── Tabs ──────────────────────────────────────────────────────────────────── */
   .segmented-control {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     background: var(--surface-2);
     padding: 4px;
     border-radius: 99px;
@@ -795,7 +598,7 @@
     top: 4px;
     bottom: 4px;
     left: 4px;
-    width: calc((100% - 8px) / 3);
+    width: calc((100% - 8px) / 2);
     background: var(--surface);
     border-radius: 99px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -919,45 +722,7 @@
     transition: width 0.6s ease;
   }
 
-  .add-layout {
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 24px;
-    align-items: start;
-  }
-  @media (max-width: 800px) {
-    .add-layout {
-      grid-template-columns: 1fr;
-    }
-  }
-  .add-card {
-    padding: 32px;
-  }
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-  .tips-card {
-    padding: 24px;
-    background: var(--surface-2);
-  }
-  .tips-list {
-    margin: 12px 0 0 18px;
-    padding: 0;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-  .tips-list li {
-    margin-bottom: 12px;
-    line-height: 1.5;
-  }
-  .type-tag {
-    font-size: 0.78rem;
-    background: var(--surface);
-    padding: 4px 10px;
-    border-radius: 4px;
-  }
+
 
 
   .date-chip {

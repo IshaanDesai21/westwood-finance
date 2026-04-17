@@ -97,8 +97,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 80vh;
-    padding: 40px 20px;
+    width: 100%;
   }
 
   .lock-card {

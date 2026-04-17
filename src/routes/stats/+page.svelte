@@ -141,7 +141,7 @@
 </script>
 
 <svelte:head>
-  <title>Analytics — Westwood Finance</title>
+  <title>Analytics | Westwood Finance</title>
 </svelte:head>
 
 <div class="page-header">

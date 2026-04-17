@@ -265,7 +265,7 @@ textarea { resize: vertical; min-height: 100px; }
 .badge-atlatl        { background: rgba(236,72,153,0.1); color: #ec4899; border-color: rgba(236,72,153,0.2); }
 .badge-kunai         { background: rgba(234,179,8,0.1); color: #eab308; border-color: rgba(234,179,8,0.2); }
 .badge-frc           { background: rgba(249,115,22,0.1); color: #f97316; border-color: rgba(249,115,22,0.2); }
-.badge-wwrobo        { background: rgba(59,130,246,0.1); color: #3b82f6; border-color: rgba(59,130,246,0.2); }
+.badge-westwood-overall { background: rgba(59,130,246,0.1); color: #3b82f6; border-color: rgba(59,130,246,0.2); }
 
 .badge-applied  { background: rgba(59,130,246,0.1);  color: var(--status-applied); border-color: rgba(59,130,246,0.2); }
 .badge-pending  { background: rgba(234,179,8,0.1);   color: var(--status-pending); border-color: rgba(234,179,8,0.2); }

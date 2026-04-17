@@ -4,7 +4,7 @@
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import AdminLock from "$lib/components/AdminLock.svelte";
-  import { formatCurrency, formatFullDate, formatDate } from "$lib/utils.js";
+  import { formatCurrency, formatFullDate, formatDate, capitalize } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
@@ -75,7 +75,55 @@
     Type: "",
     Date: "",
   });
-  let activeView = $state("orders"); // "orders" | "funding" | "master"
+  let activeView = $state("orders"); // "orders" | "master" | "funding" | "add"
+
+  const typeOptions = [
+    { label: "Fundraiser", value: "Fundraiser" },
+    { label: "Grant", value: "Grant" },
+    { label: "Dues", value: "Dues" },
+    { label: "Sponsor", value: "Sponsor" },
+    { label: "Other", value: "Other" },
+  ];
+  const recipientOptions = [
+    { label: "Slingshot", value: "Slingshot" },
+    { label: "Atlatl", value: "Atlatl" },
+    { label: "Kunai", value: "Kunai" },
+    { label: "Hunga Munga", value: "Hunga Munga" },
+    { label: "FRC", value: "FRC" },
+    { label: "Westwood Overall", value: "Westwood Overall" },
+    { label: "All", value: "All" },
+  ];
+
+  let addFundsForm = $state({
+    type: "Fundraiser",
+    source: "",
+    amount: "",
+    date: "",
+    notes: "",
+    recipient: "All",
+  });
+  let addFundsSubmitting = $state(false);
+
+  let addOrderForm = $state({
+    item: "",
+    company: "",
+    link: "",
+    price: "",
+    quantity: "1",
+    notes: "",
+    team: "FRC",
+    category: "hardware",
+    status: "Received",
+  });
+  let addOrderSubmitting = $state(false);
+
+  const TYPE_COLORS = /** @type {Record<string,string>} */ ({
+    Fundraiser: "var(--primary)",
+    Grant: "#b97cf3",
+    Dues: "#4e9af1",
+    Sponsor: "#6bcb77",
+    Other: "#f1a94e",
+  });
 
   let masterTransactions = $derived.by(() => {
     /** @type {any[]} */
@@ -313,18 +361,127 @@
       editSaving = false;
     }
   }
+
+  async function adminAddOrder() {
+    actionErr = "";
+    actionMsg = "";
+    if (!addOrderForm.item.trim()) {
+      actionErr = "Item name is required.";
+      return;
+    }
+    if (!addOrderForm.price || isNaN(Number(addOrderForm.price))) {
+      actionErr = "Valid price is required.";
+      return;
+    }
+
+    addOrderSubmitting = true;
+    try {
+      let finalLink = addOrderForm.link.trim();
+      if (finalLink && !finalLink.startsWith("http")) {
+        finalLink = "https://" + finalLink;
+      }
+
+      const params = new URLSearchParams({
+        action: "addOrder",
+        key: SECRET_KEY,
+        item: addOrderForm.item,
+        company: addOrderForm.company,
+        link: finalLink,
+        price: String(addOrderForm.price),
+        quantity: String(addOrderForm.quantity),
+        notes: addOrderForm.notes,
+        category: addOrderForm.category,
+        team: addOrderForm.team,
+        total: "=INDIRECT(\"D\"&ROW())*INDIRECT(\"E\"&ROW())",
+        status: addOrderForm.status,
+        timestamp: formatDate(new Date()),
+      });
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || result?.error)
+        throw new Error(result?.error || "Request failed");
+
+      actionMsg = "✓ Order recorded successfully!";
+      addOrderForm = {
+        item: "",
+        company: "",
+        link: "",
+        price: "",
+        quantity: "1",
+        notes: "",
+        team: "FRC",
+        category: "hardware",
+        status: "Received",
+      };
+      await dataService.load(true);
+    } catch (e) {
+      actionErr = e instanceof Error ? e.message : "Request failed";
+    } finally {
+      addOrderSubmitting = false;
+    }
+  }
+
+  async function addFunds() {
+    actionErr = "";
+    actionMsg = "";
+    if (!addFundsForm.source.trim()) {
+      actionErr = "Source is required.";
+      return;
+    }
+    if (!addFundsForm.amount || isNaN(Number(addFundsForm.amount))) {
+      actionErr = "A valid amount is required.";
+      return;
+    }
+
+    addFundsSubmitting = true;
+    try {
+      const params = new URLSearchParams({
+        action: "addFundraising",
+        key: SECRET_KEY,
+        type: addFundsForm.type,
+        source: addFundsForm.source,
+        amount: addFundsForm.amount,
+        date: addFundsForm.date,
+        notes: addFundsForm.notes,
+        recipient: addFundsForm.recipient,
+      });
+      const res = await fetch(`${BASE_URL}?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || result?.error)
+        throw new Error(result?.error || "Request failed");
+
+      actionMsg = "✓ Funding entry added!";
+      addFundsForm = {
+        type: "Fundraiser",
+        source: "",
+        amount: "",
+        date: "",
+        notes: "",
+        recipient: "All",
+      };
+      // Force reload and wait a bit for GAS to settle
+      await dataService.load(true);
+      setTimeout(() => dataService.load(true), 1500); 
+    } catch (e) {
+      actionErr = e instanceof Error ? e.message : "Update failed";
+    } finally {
+      addFundsSubmitting = false;
+    }
+  }
 </script>
 
 <svelte:head>
-  <title>Admin Dashboard — Westwood Finance</title>
+  <title>Admin Dashboard | Westwood Finance</title>
 </svelte:head>
 
 {#if !unlocked}
-  <AdminLock 
-    onunlock={() => { unlocked = true; }} 
-    title="Admin Portal" 
-    description="Enter the admin password to manage orders and funding."
-  />
+  <div class="admin-auth-container">
+    <AdminLock 
+      onunlock={() => { unlocked = true; }} 
+      title="Admin Portal" 
+      description="Enter the admin password to manage orders and funding."
+    />
+  </div>
 {:else}
   <div class="page-header">
     <div class="header-left">
@@ -338,8 +495,6 @@
         {syncing ? "Syncing..." : "Refresh"}
       </button>
       
-
-      
       <button class="btn btn-ghost btn-sm" style="color: var(--primary);" onclick={() => unlocked = false}>
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         Lock
@@ -349,10 +504,10 @@
 
   <!-- ── Tab Nav ──────────────────────────────────────────────────────── -->
   <div class="tabs-wrapper" style="margin-bottom: 32px;">
-    <div class="segmented-control" style="width: auto; min-width: 360px; margin: 0 auto; position: relative;">
+    <div class="segmented-control" style="width: auto; min-width: 600px; margin: 0 auto; position: relative; grid-template-columns: repeat(5, 1fr);">
       <div
         class="segment-highlight"
-        style="transform: translateX(calc({['orders', 'funding', 'master'].indexOf(activeView)} * 100%));"
+        style="transform: translateX(calc({['orders', 'master', 'funding', 'add', 'addOrder'].indexOf(activeView)} * 100%)); width: calc((100% - 8px) / 5);"
       ></div>
       <button
         class="segment"
@@ -363,6 +518,13 @@
       </button>
       <button
         class="segment"
+        class:active={activeView === "master"}
+        onclick={() => (activeView = "master")}
+      >
+        Finance History
+      </button>
+      <button
+        class="segment"
         class:active={activeView === "funding"}
         onclick={() => (activeView = "funding")}
       >
@@ -370,10 +532,17 @@
       </button>
       <button
         class="segment"
-        class:active={activeView === "master"}
-        onclick={() => (activeView = "master")}
+        class:active={activeView === "add"}
+        onclick={() => (activeView = "add")}
       >
-        Finance History
+        Add Funds +
+      </button>
+      <button
+        class="segment"
+        class:active={activeView === "addOrder"}
+        onclick={() => (activeView = "addOrder")}
+      >
+        Add Expense +
       </button>
     </div>
   </div>
@@ -440,7 +609,7 @@
                     </td>
                     <td>
                       <span class="badge badge-{(order.category || '').toLowerCase()}">
-                        {order.category || "—"}
+                        {capitalize(order.category) || "—"}
                       </span>
                     </td>
                     <td>{order.team || "—"}</td>
@@ -587,7 +756,7 @@
                         {tx.type}
                       </span>
                     </td>
-                    <td>{tx.category || "—"}</td>
+                    <td>{capitalize(tx.category) || "—"}</td>
                     <td><OrderStatusBadge status={tx.status} /></td>
                     <td
                       class="text-right monospace"
@@ -605,6 +774,240 @@
         {/if}
       </div>
     </section>
+  {:else if activeView === "add"}
+    <!-- ── Add Funds ────────────────────────────────────────────────────────── -->
+    <div class="add-layout fade-in" style="display: grid; grid-template-columns: 1fr 280px; gap: 32px; align-items: start;">
+      <div class="card add-card" style="padding: 32px;">
+        <h3 style="margin-bottom:20px; color: var(--primary);">Add Funding Entry</h3>
+
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            addFunds();
+          }}
+          id="add-funds-form"
+        >
+          <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+              <label for="f-type">History Type *</label>
+              <CustomDropdown
+                options={typeOptions}
+                bind:value={addFundsForm.type}
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="f-recipient">Destination Team *</label>
+              <CustomDropdown
+                options={recipientOptions}
+                bind:value={addFundsForm.recipient}
+              />
+            </div>
+
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="f-source">Source / Description *</label>
+              <input
+                id="f-source"
+                type="text"
+                bind:value={addFundsForm.source}
+                placeholder="e.g. Bake Sale, Westwood Overall Special Team Grant…"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="f-amount">Amount ($) *</label>
+              <input
+                id="f-amount"
+                type="number"
+                bind:value={addFundsForm.amount}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="f-date">Date</label>
+              <input id="f-date" type="date" bind:value={addFundsForm.date} />
+            </div>
+
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="f-notes">Notes</label>
+              <textarea
+                id="f-notes"
+                bind:value={addFundsForm.notes}
+                rows="3"
+                placeholder="Any additional context…"
+              ></textarea>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            style="margin-top:24px; width: 100%; justify-content: center;"
+            disabled={addFundsSubmitting}
+          >
+            {addFundsSubmitting ? "Saving…" : "+ Add Entry"}
+          </button>
+        </form>
+      </div>
+
+      <aside class="tips-card card" style="padding: 24px;">
+        <div class="card-title" style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Entry Tips</div>
+        <ul class="tips-list" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+          <li style="color: var(--text-dim); line-height: 1.4;">
+            Use <strong>All</strong> for income that gets distributed equally.
+          </li>
+          <li style="color: var(--text-dim); line-height: 1.4;">
+            <strong>Grants</strong> and <strong>Sponsors</strong> go to specific teams.
+          </li>
+          <li style="color: var(--text-dim); line-height: 1.4;">Date is optional but recommended.</li>
+        </ul>
+
+        <div style="margin-top:24px">
+          <div class="card-title" style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Fund Types</div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px">
+            {#each typeOptions as t}
+              <span class="type-tag" style="font-size: 0.75rem; padding: 4px 8px; background: var(--surface-2); border-left: 3px solid {TYPE_COLORS[t.value] || '#8a8a8a'};">
+                {t.label}
+              </span>
+            {/each}
+          </div>
+        </div>
+      </aside>
+    </div>
+  {:else if activeView === "addOrder"}
+    <!-- ── Add Expense ──────────────────────────────────────────────────────── -->
+    <div class="add-layout fade-in" style="display: grid; grid-template-columns: 1fr 300px; gap: 32px; align-items: start;">
+      <div class="card add-card" style="padding: 32px;">
+        <h3 style="margin-bottom:20px; color: var(--primary);">Record Manual Expense</h3>
+
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            adminAddOrder();
+          }}
+        >
+          <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group" style="grid-column: 1 / -1">
+              <label for="ae-item">Item Name *</label>
+              <input
+                id="ae-item"
+                type="text"
+                bind:value={addOrderForm.item}
+                placeholder="e.g. REV UltraPlanetary Motor"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="ae-company">Vendor / Company</label>
+              <input
+                id="ae-company"
+                type="text"
+                bind:value={addOrderForm.company}
+                placeholder="e.g. REV Robotics"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="ae-team">Team</label>
+              <CustomDropdown
+                options={recipientOptions.filter(o => o.value !== 'All')}
+                bind:value={addOrderForm.team}
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="ae-price">Unit Price ($) *</label>
+              <input
+                id="ae-price"
+                type="number"
+                step="0.01"
+                bind:value={addOrderForm.price}
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="ae-qty">Quantity</label>
+              <input
+                id="ae-qty"
+                type="number"
+                bind:value={addOrderForm.quantity}
+                min="1"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="ae-category">Category</label>
+              <CustomDropdown
+                options={[
+                  { label: "Hardware", value: "hardware" },
+                  { label: "Software", value: "software" },
+                  { label: "Outreach", value: "outreach" },
+                  { label: "Miscellaneous", value: "miscellaneous" },
+                ]}
+                bind:value={addOrderForm.category}
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="ae-status">Initial Status</label>
+              <CustomDropdown
+                options={ORDER_STATUSES.map(s => ({ label: s, value: s }))}
+                bind:value={addOrderForm.status}
+              />
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1">
+              <label for="ae-link">Link</label>
+              <input
+                id="ae-link"
+                type="text"
+                bind:value={addOrderForm.link}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1">
+              <label for="ae-notes">Notes</label>
+              <textarea
+                id="ae-notes"
+                rows="3"
+                bind:value={addOrderForm.notes}
+                placeholder="Internal notes..."
+              ></textarea>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            style="margin-top:24px; width: 100%; justify-content: center;"
+            disabled={addOrderSubmitting}
+          >
+            {addOrderSubmitting ? "Recording..." : "Confirm Expense Entry"}
+          </button>
+        </form>
+      </div>
+
+      <aside class="tips-card card" style="padding: 24px;">
+        <div class="card-title">Expense Control</div>
+        <p class="text-muted" style="font-size: 0.85rem; line-height: 1.5;">
+          This form allows you to bypass the standard request flow and record an expense immediately with its final status.
+        </p>
+        <ul style="margin: 16px 0 0 16px; padding: 0; font-size: 0.8rem; color: var(--text-dim); display: flex; flex-direction: column; gap: 8px;">
+          <li>Use Received for items already bought and in-hand.</li>
+          <li>Use Ordered for items paid for but still in transit.</li>
+          <li>Setting status to Approved puts it in the pending orders list.</li>
+        </ul>
+      </aside>
+    </div>
   {/if}
 {/if}
 
@@ -1008,5 +1411,12 @@
     40% { content: "."; }
     60% { content: ".."; }
     80%, 100% { content: "..."; }
+  }
+  .admin-auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - 130px);
+    width: 100%;
   }
 </style>
