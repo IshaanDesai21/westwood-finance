@@ -1280,7 +1280,7 @@
     background: var(--surface);
     border-radius: 99px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1;
   }
   .segment {
