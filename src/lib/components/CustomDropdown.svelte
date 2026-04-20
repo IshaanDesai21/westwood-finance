@@ -128,6 +128,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     margin-right: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .label.placeholder {

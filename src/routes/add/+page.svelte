@@ -300,12 +300,13 @@
           </div>
 
           <div class="form-group">
-            <label for="ae-company">Vendor / Supplier</label>
+            <label for="ae-company">Vendor / Supplier *</label>
             <input
               id="ae-company"
               type="text"
               bind:value={form.company}
               placeholder="GoBilda, REV, etc."
+              required
             />
           </div>
 
@@ -318,12 +319,13 @@
           </div>
 
           <div class="form-group">
-            <label for="ae-orderedby">Ordered By</label>
+            <label for="ae-orderedby">Ordered By *</label>
             <input
               id="ae-orderedby"
               type="text"
               bind:value={form.orderedBy}
               placeholder="Your name"
+              required
             />
           </div>
 
@@ -355,7 +357,7 @@
           </div>
 
           <div class="form-group">
-            <label for="ae-qty">Quantity</label>
+            <label for="ae-qty">Quantity *</label>
             <input
               id="ae-qty"
               type="number"
@@ -363,6 +365,7 @@
               min="1"
               step="1"
               placeholder="1"
+              required
             />
           </div>
 
@@ -405,29 +408,43 @@
   {/if}
 
   {#if showTestModal}
-    <div class="modal-overlay" transition:fade={{ duration: 200 }}>
-      <div class="modal-card test-modal" transition:scale={{ duration: 300, start: 0.95 }}>
+    <div 
+      class="modal-backdrop fade-in" 
+      onclick={() => showTestModal = false}
+      onkeydown={(e) => e.key === 'Escape' && (showTestModal = false)}
+      role="button"
+      tabindex="0"
+    >
+      <div class="card modal-card test-modal" onclick={(e) => e.stopPropagation()}>
         <div class="modal-header">
-            <h3>Test Data Authentication</h3>
-            <button class="close-btn" onclick={() => showTestModal = false}>&times;</button>
+          <div>
+            <h3 style="margin: 0; color: var(--primary);">Developer Sandbox</h3>
+            <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-dim);">Authenticate to populate sample data</p>
+          </div>
+          <button class="modal-close" onclick={() => showTestModal = false} aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
         </div>
-        <div class="modal-body">
-            <p class="modal-desc">Enter the test password to populate the form with randomized drone and robotics parts.</p>
+        
+        <div class="modal-body" style="padding: 24px;">
+            {#if testModalError}
+                <div class="error-bar" style="margin-bottom: 16px; font-size: 0.8rem;">{testModalError}</div>
+            {/if}
             
-            <div class="test-input-group">
+            <div class="form-group">
+                <label for="test-pw" style="color: var(--text-dim);">Test Password</label>
                 <input 
+                    id="test-pw"
                     type="password" 
-                    placeholder="Enter password" 
+                    placeholder="••••••••" 
                     bind:value={testPasswordInput}
+                    style="width: 100%;"
                     onkeydown={(e) => e.key === 'Enter' && handleTestSubmit()}
                 />
-                {#if testModalError}
-                    <span class="test-error">{testModalError}</span>
-                {/if}
             </div>
             
-            <button class="btn btn-primary btn-block" onclick={handleTestSubmit}>
-                Authenticate & Fill
+            <button class="btn btn-primary btn-block" style="margin-top: 16px;" onclick={handleTestSubmit}>
+                Authenticate & Populate
             </button>
         </div>
       </div>
@@ -604,68 +621,10 @@
     .add-card { padding: 24px; }
   }
 
-  /* Modal Styles */
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(10, 11, 14, 0.8);
-    backdrop-filter: blur(8px);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-
-  .modal-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    width: 100%;
+  /* Handled by global styles but adding specifics for test modal */
+  .test-modal {
     max-width: 400px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   }
-
-  .modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .modal-header h3 { margin: 0; font-size: 1.1rem; color: #fff; }
-  .close-btn { 
-    background: none; 
-    border: none; 
-    color: var(--text-dim); 
-    font-size: 1.5rem; 
-    cursor: pointer; 
-    line-height: 1;
-    padding: 0 4px;
-    transition: color 0.2s;
-  }
-  .close-btn:hover { color: #fff; }
-
-  .modal-body { padding: 24px; }
-  .modal-desc { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 24px; line-height: 1.5; }
-
-  .test-input-group { margin-bottom: 24px; }
-  .test-input-group input {
-    width: 100%;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    color: #fff;
-    font-size: 1rem;
-    outline: none;
-    transition: all 0.2s;
-  }
-  .test-input-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
-  .test-error { color: #ef4444; font-size: 0.75rem; font-weight: 600; margin-top: 8px; display: block; }
 </style>

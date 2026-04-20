@@ -5,12 +5,18 @@
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import AdminLock from "$lib/components/AdminLock.svelte";
   import OrderTable from "$lib/components/OrderTable.svelte";
-  import { formatCurrency, formatFullDate, formatDate, capitalize, truncate } from "$lib/utils.js";
+  import {
+    formatCurrency,
+    formatFullDate,
+    formatDate,
+    capitalize,
+    truncate,
+    generateShortId,
+  } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
-
 
   const ORDER_STATUSES = [
     "Pending Review",
@@ -27,11 +33,11 @@
   /** @type {Record<string, number>} */
   const STATUS_PRIORITY = {
     "pending review": 0,
-    "approved": 1,
-    "ordered": 2,
-    "received": 3,
-    "denied": 4,
-    "cancelled": 5,
+    approved: 1,
+    ordered: 2,
+    received: 3,
+    denied: 4,
+    cancelled: 5,
   };
 
   let sortedAdminOrders = $derived.by(() => {
@@ -82,14 +88,54 @@
   let actionErr = $state("");
 
   // ── Modal state ─────────────────────────────────────────────────────────────
-  /** @type {Order|null} */
-  let editingOrder = $state(null);
+  let editingOrderId = $state("");
+  let currentEditingOrder = $derived(dataService.orders.find(o => o.id === editingOrderId) || null);
+  
   let editStatus = $state("");
   let editTracking = $state("");
   let editUUID = $state("");
+  let originalUUID = $state("");
   let editSaving = $state(false);
   let showDeleteConfirm = $state(false);
   let deleteSaving = $state(false);
+
+  // Derived state for the grouping dropdown targets
+  let groupingOptions = $derived.by(() => {
+    if (!currentEditingOrder) return [];
+    
+    // 1. Get all other pending orders from same company
+    const otherPending = dataService.orders.filter(o => 
+      o.company === currentEditingOrder.company && 
+      o.id !== editingOrderId && 
+      (o.status || "").toLowerCase().trim() === "pending review"
+    );
+    
+    if (otherPending.length === 0) return [];
+    
+    const isCurrentlyGrouped = otherPending.some(o => o.orderUUID && o.orderUUID === editUUID);
+    const seenUUIDs = new Set();
+    
+    // 2. Identify unique targets for grouping
+    const uniqueTargets = otherPending.filter(o => {
+      if (!o.orderUUID || seenUUIDs.has(o.orderUUID)) return false;
+      seenUUIDs.add(o.orderUUID);
+      return true;
+    });
+
+    return [
+      { 
+        label: "Make separate order", 
+        value: isCurrentlyGrouped ? "__NEW__" : editUUID 
+      },
+      ...uniqueTargets.map(t => {
+        const isMatch = t.orderUUID === editUUID;
+        return {
+          label: (isMatch ? "Keep grouped with: " : "Group with: ") + truncate(t.item, 40) + " (" + t.orderUUID + ")",
+          value: String(t.orderUUID)
+        };
+      })
+    ];
+  });
 
   // ── Funding Edit State ──────────────────────────────────────────────────────
   let editingFund = $state(null);
@@ -198,27 +244,24 @@
     dataService.load(); // Uses persistent cache for instant load
   });
 
-
-
-
-
   // ── Modal helpers ─────────────────────────────────────────────────────────────
   function openEdit(/** @type {Order} */ order) {
-    editingOrder = order;
+    editingOrderId = order.id;
     editStatus = order.status || "Pending Review";
     editTracking = order.tracking || "";
     editUUID = order.orderUUID || "";
+    originalUUID = order.orderUUID || "";
     editSaving = false;
     actionMsg = "";
     actionErr = "";
   }
 
   function closeEdit() {
-    editingOrder = null;
+    editingOrderId = "";
   }
 
   async function saveEdit() {
-    if (!editingOrder) return;
+    if (!currentEditingOrder) return;
     editSaving = true;
     actionErr = "";
     actionMsg = "";
@@ -226,8 +269,8 @@
       const params = new URLSearchParams({
         action: "updateOrderStatus",
         key: SECRET_KEY,
-        id: editingOrder.id,
-        rowIndex: editingOrder.rowIndex.toString(),
+        id: currentEditingOrder.id,
+        rowIndex: currentEditingOrder.rowIndex.toString(),
         status: editStatus,
         tracking: editTracking,
         orderUUID: editUUID,
@@ -237,15 +280,15 @@
       if (!res.ok || result?.error)
         throw new Error(result?.error || "Update failed");
 
-      actionMsg = `"${editingOrder.item}" updated!`;
-      
+      actionMsg = `"${currentEditingOrder.item}" updated!`;
+
       // ⚡ Optimistic: update local store immediately
-      dataService.updateOrderOptimistic(editingOrder.id, {
+      dataService.updateOrderOptimistic(currentEditingOrder.id, {
         status: editStatus,
         tracking: editTracking,
         orderUUID: editUUID,
       });
-      
+
       closeEdit();
       // Silent background sync for authoritative data
       dataService.load(true, true);
@@ -255,7 +298,7 @@
       editSaving = false;
     }
   }
-  
+
   function requestDelete() {
     showDeleteConfirm = true;
   }
@@ -265,45 +308,50 @@
   }
 
   async function deleteOrder() {
-    if (!editingOrder) return;
+    if (!currentEditingOrder) return;
     deleteSaving = true;
     actionErr = "";
     try {
       const params = new URLSearchParams({
-        action: "deleteOrder", 
+        action: "deleteOrder",
         key: SECRET_KEY,
-        uuid: editingOrder.orderUUID
+        uuid: currentEditingOrder.orderUUID,
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
-      
+
       // If we get an error response, try to parse it
       let result;
       const text = await res.text();
       try {
         result = JSON.parse(text);
       } catch (parseErr) {
-        throw new Error(`Server returned invalid response: ${text.slice(0, 100)}`);
+        throw new Error(
+          `Server returned invalid response: ${text.slice(0, 100)}`,
+        );
       }
 
       if (!res.ok || result?.error) {
         let msg = result?.error || "Delete failed";
         if (msg.toLowerCase().includes("invalid action")) {
-          msg = "Backend Error: 'deleteOrder' action not found. Please ensure the GAS script has been updated and redeployed with the delete handler.";
+          msg =
+            "Backend Error: 'deleteOrder' action not found. Please ensure the GAS script has been updated and redeployed with the delete handler.";
         }
         throw new Error(msg);
       }
-      
+
       actionMsg = "Order completely removed from Spreadsheet!";
-      
+
       // 🔥 Optimistic UI Update: Remove from local state immediately
-      const idToDelete = editingOrder?.orderUUID;
+      const idToDelete = currentEditingOrder?.orderUUID;
       if (idToDelete) {
-        dataService.orders = dataService.orders.filter(o => o.orderUUID !== idToDelete);
+        dataService.orders = dataService.orders.filter(
+          (o) => o.orderUUID !== idToDelete,
+        );
         dataService.persist(); // Sync to local storage immediately
       }
 
-      editingOrder = null;
-      
+      editingOrderId = "";
+
       // Perform background re-sync to be 100% sure everything matches (silent)
       dataService.load(true, true);
     } catch (e) {
@@ -317,19 +365,34 @@
 
   function exportMasterCSV() {
     if (!masterTransactions || !masterTransactions.length) return;
-    const headers = ["Date", "Type", "Source/Item", "Category", "Status", "Amount"];
-    const csvRows = [headers.join(',')];
+    const headers = [
+      "Date",
+      "Type",
+      "Source/Item",
+      "Category",
+      "Status",
+      "Amount",
+    ];
+    const csvRows = [headers.join(",")];
     for (const row of masterTransactions) {
       const values = [
-        row.date, row.type, row.source, row.category, row.status, row.amount
-      ].map(val => `"${String(val || '').replace(/"/g, '""')}"`);
-      csvRows.push(values.join(','));
+        row.date,
+        row.type,
+        row.source,
+        row.category,
+        row.status,
+        row.amount,
+      ].map((val) => `"${String(val || "").replace(/"/g, '""')}"`);
+      csvRows.push(values.join(","));
     }
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `westwood_finance_master_${new Date().toISOString().slice(0,10)}.csv`);
+    const a = document.createElement("a");
+    a.setAttribute("href", url);
+    a.setAttribute(
+      "download",
+      `westwood_finance_master_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -388,16 +451,16 @@
         throw new Error(result?.error || "Update failed");
 
       actionMsg = `Funding entry updated!`;
-      
+
       // ⚡ Optimistic: update local store immediately
-      dataService.funds = dataService.funds.map(f => {
+      dataService.funds = dataService.funds.map((f) => {
         if (f.id === currentFund.id) {
           return { ...f, ...editFundFields };
         }
         return f;
       });
       dataService.persist();
-      
+
       editingFund = null;
       // Silent background sync
       dataService.load(true, true);
@@ -438,7 +501,7 @@
         notes: addOrderForm.notes,
         category: addOrderForm.category,
         team: addOrderForm.team,
-        total: "=INDIRECT(\"D\"&ROW())*INDIRECT(\"E\"&ROW())",
+        total: '=INDIRECT("D"&ROW())*INDIRECT("E"&ROW())',
         status: addOrderForm.status,
         timestamp: formatDate(new Date()),
       });
@@ -448,7 +511,7 @@
         throw new Error(result?.error || "Request failed");
 
       actionMsg = "Order recorded successfully!";
-      
+
       // ⚡ Optimistic: inject into local store instantly
       dataService.addOrderOptimistic({
         item: addOrderForm.item,
@@ -462,7 +525,7 @@
         status: addOrderForm.status,
         timestamp: new Date().toISOString(),
       });
-      
+
       addOrderForm = {
         item: "",
         company: "",
@@ -492,6 +555,10 @@
       actionErr = "A valid amount is required.";
       return;
     }
+    if (!addFundsForm.date) {
+      actionErr = "Date is required.";
+      return;
+    }
 
     addFundsSubmitting = true;
     try {
@@ -511,7 +578,7 @@
         throw new Error(result?.error || "Request failed");
 
       actionMsg = "Funding entry added!";
-      
+
       // ⚡ Optimistic: inject into local store instantly
       dataService.addFundOptimistic({
         Type: addFundsForm.type,
@@ -521,7 +588,7 @@
         Notes: addFundsForm.notes,
         Recipient: addFundsForm.recipient,
       });
-      
+
       addFundsForm = {
         type: "Fundraiser",
         source: "",
@@ -544,9 +611,11 @@
 
 {#if !unlocked}
   <div class="admin-auth-container">
-    <AdminLock 
-      onunlock={() => { unlocked = true; }} 
-      title="Admin Portal" 
+    <AdminLock
+      onunlock={() => {
+        unlocked = true;
+      }}
+      title="Admin Portal"
       description="Enter the admin password to manage orders and funding."
     />
   </div>
@@ -557,14 +626,34 @@
       <p class="text-muted">Westwood Robotics Resource & Procurement Control</p>
     </div>
 
-    <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
+    <div
+      class="header-right"
+      style="display: flex; align-items: center; gap: 12px;"
+    >
       <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
         <span class:spinning={syncing}>↻</span>
         {syncing ? "Syncing..." : "Refresh"}
       </button>
-      
-      <button class="btn btn-ghost btn-sm" style="color: var(--primary);" onclick={() => unlocked = false}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+
+      <button
+        class="btn btn-ghost btn-sm"
+        style="color: var(--primary);"
+        onclick={() => (unlocked = false)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path
+            d="M7 11V7a5 5 0 0 1 10 0v4"
+          /></svg
+        >
         Lock
       </button>
     </div>
@@ -572,10 +661,20 @@
 
   <!-- ── Tab Nav ──────────────────────────────────────────────────────── -->
   <div class="tabs-wrapper" style="margin-bottom: 32px;">
-    <div class="segmented-control" style="width: auto; min-width: 650px; margin: 0 auto; position: relative; grid-template-columns: repeat(6, 1fr);">
+    <div
+      class="segmented-control"
+      style="width: auto; min-width: 650px; margin: 0 auto; position: relative; grid-template-columns: repeat(6, 1fr);"
+    >
       <div
         class="segment-highlight"
-        style="transform: translateX(calc({['orderHistory', 'orders', 'master', 'funding', 'add', 'addOrder'].indexOf(activeView)} * 100%)); width: calc((100% - 10px) / 6);"
+        style="transform: translateX(calc({[
+          'orderHistory',
+          'orders',
+          'master',
+          'funding',
+          'add',
+          'addOrder',
+        ].indexOf(activeView)} * 100%)); width: calc((100% - 10px) / 6);"
       ></div>
       <button
         class="segment"
@@ -624,22 +723,51 @@
 
   {#if actionMsg}
     <div class="success-bar message-bar">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
+      >
       {actionMsg}
     </div>
   {/if}
   {#if actionErr}
     <div class="error-bar message-bar">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        ><circle cx="12" cy="12" r="10" /><line
+          x1="12"
+          y1="8"
+          x2="12"
+          y2="12"
+        /><line x1="12" y1="16" x2="12.01" y2="16" /></svg
+      >
       {actionErr}
     </div>
   {/if}
 
-    {#if activeView === "orderHistory"}
-      <section class="fade-in">
-        <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
-          <span>Order History ({dataService.orders.length})</span>
-        </div>
+  {#if activeView === "orderHistory"}
+    <section class="fade-in">
+      <div
+        class="section-title"
+        style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;"
+      >
+        <span>Order History ({dataService.orders.length})</span>
+      </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
         Manage order statuses, UUIDs, and tracking links. Updates sync directly
         to Google Sheets.
@@ -651,10 +779,26 @@
         {:else if dataService.orders.length === 0}
           <div class="empty-state fade-in">
             <div class="icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path d="m7.5 4.27 9 5.15" /><path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg
+              >
             </div>
             <h3>No requests on file</h3>
-            <p>New procurement requests will appear here for administrative action.</p>
+            <p>
+              New procurement requests will appear here for administrative
+              action.
+            </p>
           </div>
         {:else}
           <div class="table-wrap" style="border: none; border-radius: 0;">
@@ -673,23 +817,33 @@
               <tbody>
                 {#each sortedAdminOrders as order (order.id)}
                   {@const orderColor = getOrderColor(order.orderUUID)}
-                  <tr class="fade-in group-row" style="--group-color: {orderColor}">
+                  <tr
+                    class="fade-in group-row"
+                    style="--group-color: {orderColor}"
+                  >
                     <td style="padding-left: 24px;">
                       <div class="item-primary">
                         {#if order.link}
-                          <a href={order.link} target="_blank" rel="noopener">{order.item}</a>
+                          <a href={order.link} target="_blank" rel="noopener"
+                            >{order.item}</a
+                          >
                         {:else}
                           {order.item}
                         {/if}
                       </div>
                       {#if order.company || order.notes}
                         <div class="item-secondary">
-                          {order.company || ''} {order.notes ? `· ${order.notes}` : ''}
+                          {order.company || ""}
+                          {order.notes ? `· ${order.notes}` : ""}
                         </div>
                       {/if}
                     </td>
                     <td>
-                      <span class="badge badge-{(order.category || '').toLowerCase()}">
+                      <span
+                        class="badge badge-{(
+                          order.category || ''
+                        ).toLowerCase()}"
+                      >
                         {capitalize(order.category) || "—"}
                       </span>
                     </td>
@@ -700,7 +854,10 @@
                     </td>
                     <td><OrderStatusBadge status={order.status} /></td>
                     <td class="text-right" style="padding-right: 24px;">
-                      <button class="btn btn-primary btn-sm" onclick={() => openEdit(order)}>
+                      <button
+                        class="btn btn-primary btn-sm"
+                        onclick={() => openEdit(order)}
+                      >
                         Manage
                       </button>
                     </td>
@@ -714,17 +871,34 @@
     </section>
   {:else if activeView === "orders"}
     <section class="fade-in">
-      <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+      <div
+        class="section-title"
+        style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;"
+      >
         <span>Pending Orders by Vendor ({newTabOrders.length})</span>
       </div>
       <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-        Review active orders waiting for processing or delivery, grouped by source vendor.
+        Review active orders waiting for processing or delivery, grouped by
+        source vendor.
       </p>
 
       {#if Object.keys(groupedCompanyOrders).length === 0}
         <div class="card empty-state fade-in" style="margin-bottom: 24px;">
           <div class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><path
+                d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+              /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg
+            >
           </div>
           <h3>All caught up</h3>
           <p>There are no active orders to display.</p>
@@ -732,12 +906,18 @@
       {:else}
         {#each Object.entries(groupedCompanyOrders) as [company, compOrders]}
           <div style="margin-bottom: 32px;" class="fade-in">
-            <h3 style="margin-bottom: 12px; color: var(--primary); font-size: 1.25rem;">
+            <h3
+              style="margin-bottom: 12px; color: var(--primary); font-size: 1.25rem;"
+            >
               {company}
-              <span class="badge badge-hardware" style="margin-left: 10px; padding: 4px 10px; font-weight: 600; vertical-align: middle;">Quantity: {compOrders.length}</span>
+              <span
+                class="badge badge-hardware"
+                style="margin-left: 10px; padding: 4px 10px; font-weight: 600; vertical-align: middle;"
+                >Quantity: {compOrders.length}</span
+              >
             </h3>
-            <OrderTable 
-              orders={compOrders} 
+            <OrderTable
+              orders={compOrders}
               hideCategoryColumn={true}
               hideCompanyColumn={true}
               onmanage={openEdit}
@@ -763,7 +943,20 @@
         {:else if dataService.funds.length === 0}
           <div class="empty-state">
             <div class="icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><circle cx="12" cy="12" r="10" /><path
+                  d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"
+                /><path d="M12 18V6" /></svg
+              >
             </div>
             No funding entries found.
           </div>
@@ -787,7 +980,11 @@
                     <td><span class="type-tag">{fund.Type || "—"}</span></td>
                     <td style="font-weight:500">{fund.Source || "—"}</td>
                     <td>{fund.Recipient || "—"}</td>
-                    <td class="text-dim" style="font-size:0.875rem; color: var(--text-dim);">{formatFullDate(fund.Date)}</td>
+                    <td
+                      class="text-dim"
+                      style="font-size:0.875rem; color: var(--text-dim);"
+                      >{formatFullDate(fund.Date)}</td
+                    >
                     <td
                       class="text-right monospace"
                       style="font-weight:600;color:#6bcb77"
@@ -809,9 +1006,21 @@
               </tbody>
               <tfoot>
                 <tr style="border-top: 2px solid var(--border);">
-                  <td colspan="4" style="font-weight: 700; text-align: right; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 12px 16px;">Total Funding</td>
-                  <td class="text-right monospace" style="color:#6bcb77; font-weight: 700; font-size: 1rem; padding: 12px 16px;">
-                    {formatCurrency(dataService.funds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0))}
+                  <td
+                    colspan="4"
+                    style="font-weight: 700; text-align: right; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 12px 16px;"
+                    >Total Funding</td
+                  >
+                  <td
+                    class="text-right monospace"
+                    style="color:#6bcb77; font-weight: 700; font-size: 1rem; padding: 12px 16px;"
+                  >
+                    {formatCurrency(
+                      dataService.funds.reduce(
+                        (sum, f) => sum + (Number(f.Amount) || 0),
+                        0,
+                      ),
+                    )}
                   </td>
                   <td colspan="2"></td>
                 </tr>
@@ -823,9 +1032,16 @@
     </section>
   {:else if activeView === "master"}
     <section class="fade-in">
-      <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+      <div
+        class="section-title"
+        style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;"
+      >
         <span>Full Finance History ({masterTransactions.length})</span>
-        <button class="btn btn-ghost btn-sm" onclick={exportMasterCSV} disabled={!masterTransactions.length}>
+        <button
+          class="btn btn-ghost btn-sm"
+          onclick={exportMasterCSV}
+          disabled={!masterTransactions.length}
+        >
           ↓ Export CSV
         </button>
       </div>
@@ -840,7 +1056,22 @@
         {:else if masterTransactions.length === 0}
           <div class="empty-state">
             <div class="icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path
+                  d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"
+                /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path
+                  d="M12 17.5v-11"
+                /></svg
+              >
             </div>
             No transactions found.
           </div>
@@ -860,8 +1091,13 @@
               <tbody>
                 {#each masterTransactions as tx (tx.id + tx.type)}
                   <tr class="fade-in">
-                    <td class="text-dim monospace" style="color: var(--text-dim);">{tx.date}</td>
-                    <td style="font-weight:600; color: #fff;">{tx.source || "—"}</td>
+                    <td
+                      class="text-dim monospace"
+                      style="color: var(--text-dim);">{tx.date}</td
+                    >
+                    <td style="font-weight:600; color: #fff;"
+                      >{tx.source || "—"}</td
+                    >
                     <td>
                       <span
                         class="badge {tx.type === 'Income'
@@ -891,9 +1127,14 @@
     </section>
   {:else if activeView === "add"}
     <!-- ── Add Funds ────────────────────────────────────────────────────────── -->
-    <div class="add-layout fade-in" style="display: grid; grid-template-columns: 1fr 280px; gap: 32px; align-items: start;">
+    <div
+      class="add-layout fade-in"
+      style="display: grid; grid-template-columns: 1fr 280px; gap: 32px; align-items: start;"
+    >
       <div class="card add-card" style="padding: 32px;">
-        <h3 style="margin-bottom:20px; color: var(--primary);">Add Funding Entry</h3>
+        <h3 style="margin-bottom:20px; color: var(--primary);">
+          Add Funding Entry
+        </h3>
 
         <form
           onsubmit={(e) => {
@@ -902,7 +1143,10 @@
           }}
           id="add-funds-form"
         >
-          <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div
+            class="form-grid"
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;"
+          >
             <div class="form-group">
               <label for="f-type">History Type *</label>
               <CustomDropdown
@@ -971,22 +1215,45 @@
       </div>
 
       <aside class="tips-card card" style="padding: 24px;">
-        <div class="card-title" style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Entry Tips</div>
-        <ul class="tips-list" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+        <div
+          class="card-title"
+          style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;"
+        >
+          Entry Tips
+        </div>
+        <ul
+          class="tips-list"
+          style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;"
+        >
           <li style="color: var(--text-dim); line-height: 1.4;">
             Use <strong>All</strong> for income that gets distributed equally.
           </li>
           <li style="color: var(--text-dim); line-height: 1.4;">
-            <strong>Grants</strong> and <strong>Sponsors</strong> go to specific teams.
+            <strong>Grants</strong> and <strong>Sponsors</strong> go to specific
+            teams.
           </li>
-          <li style="color: var(--text-dim); line-height: 1.4;">Date is optional but recommended.</li>
+          <li style="color: var(--text-dim); line-height: 1.4;">
+            Date is optional but recommended.
+          </li>
         </ul>
 
         <div style="margin-top:24px">
-          <div class="card-title" style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Fund Types</div>
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px">
+          <div
+            class="card-title"
+            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;"
+          >
+            Fund Types
+          </div>
+          <div
+            style="display:flex; flex-direction:column; gap:8px; margin-top:8px"
+          >
             {#each typeOptions as t}
-              <span class="type-tag" style="font-size: 0.75rem; padding: 4px 8px; background: var(--surface-2); border-left: 3px solid {TYPE_COLORS[t.value] || '#8a8a8a'};">
+              <span
+                class="type-tag"
+                style="font-size: 0.75rem; padding: 4px 8px; background: var(--surface-2); border-left: 3px solid {TYPE_COLORS[
+                  t.value
+                ] || '#8a8a8a'};"
+              >
                 {t.label}
               </span>
             {/each}
@@ -996,9 +1263,14 @@
     </div>
   {:else if activeView === "addOrder"}
     <!-- ── Add Expense ──────────────────────────────────────────────────────── -->
-    <div class="add-layout fade-in" style="display: grid; grid-template-columns: 1fr 300px; gap: 32px; align-items: start;">
+    <div
+      class="add-layout fade-in"
+      style="display: grid; grid-template-columns: 1fr 300px; gap: 32px; align-items: start;"
+    >
       <div class="card add-card" style="padding: 32px;">
-        <h3 style="margin-bottom:20px; color: var(--primary);">Record Manual Expense</h3>
+        <h3 style="margin-bottom:20px; color: var(--primary);">
+          Record Manual Expense
+        </h3>
 
         <form
           onsubmit={(e) => {
@@ -1006,7 +1278,10 @@
             adminAddOrder();
           }}
         >
-          <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div
+            class="form-grid"
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;"
+          >
             <div class="form-group" style="grid-column: 1 / -1">
               <label for="ae-item">Item Name *</label>
               <input
@@ -1019,19 +1294,20 @@
             </div>
 
             <div class="form-group">
-              <label for="ae-company">Vendor / Company</label>
+              <label for="ae-company">Vendor / Company *</label>
               <input
                 id="ae-company"
                 type="text"
                 bind:value={addOrderForm.company}
                 placeholder="e.g. REV Robotics"
+                required
               />
             </div>
 
             <div class="form-group">
-              <label for="ae-team">Team</label>
+              <label for="ae-team">Team *</label>
               <CustomDropdown
-                options={recipientOptions.filter(o => o.value !== 'All')}
+                options={recipientOptions.filter((o) => o.value !== "All")}
                 bind:value={addOrderForm.team}
               />
             </div>
@@ -1049,17 +1325,18 @@
             </div>
 
             <div class="form-group">
-              <label for="ae-qty">Quantity</label>
+              <label for="ae-qty">Quantity *</label>
               <input
                 id="ae-qty"
                 type="number"
                 bind:value={addOrderForm.quantity}
                 min="1"
+                required
               />
             </div>
 
             <div class="form-group">
-              <label for="ae-category">Category</label>
+              <label for="ae-category">Category *</label>
               <CustomDropdown
                 options={[
                   { label: "Hardware", value: "hardware" },
@@ -1074,7 +1351,7 @@
             <div class="form-group">
               <label for="ae-status">Initial Status</label>
               <CustomDropdown
-                options={ORDER_STATUSES.map(s => ({ label: s, value: s }))}
+                options={ORDER_STATUSES.map((s) => ({ label: s, value: s }))}
                 bind:value={addOrderForm.status}
               />
             </div>
@@ -1114,12 +1391,17 @@
       <aside class="tips-card card" style="padding: 24px;">
         <div class="card-title">Expense Control</div>
         <p class="text-muted" style="font-size: 0.85rem; line-height: 1.5;">
-          This form allows you to bypass the standard request flow and record an expense immediately with its final status.
+          This form allows you to bypass the standard request flow and record an
+          expense immediately with its final status.
         </p>
-        <ul style="margin: 16px 0 0 16px; padding: 0; font-size: 0.8rem; color: var(--text-dim); display: flex; flex-direction: column; gap: 8px;">
+        <ul
+          style="margin: 16px 0 0 16px; padding: 0; font-size: 0.8rem; color: var(--text-dim); display: flex; flex-direction: column; gap: 8px;"
+        >
           <li>Use Received for items already bought and in-hand.</li>
           <li>Use Ordered for items paid for but still in transit.</li>
-          <li>Setting status to Approved puts it in the pending orders list.</li>
+          <li>
+            Setting status to Approved puts it in the pending orders list.
+          </li>
         </ul>
       </aside>
     </div>
@@ -1151,8 +1433,23 @@
             {currentFund.Source}
           </p>
         </div>
-        <button class="modal-close" onclick={() => (editingFund = null)} aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        <button
+          class="modal-close"
+          onclick={() => (editingFund = null)}
+          aria-label="Close"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+          >
         </button>
       </div>
 
@@ -1213,7 +1510,7 @@
 {/if}
 
 <!-- ── Edit Modal ────────────────────────────────────────────────────────────── -->
-{#if editingOrder}
+{#if currentEditingOrder}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
   <div
     class="modal-backdrop"
@@ -1236,11 +1533,22 @@
         <div>
           <h2 style="margin:0">Edit Order</h2>
           <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">
-            {editingOrder.item}
+            {currentEditingOrder.item}
           </p>
         </div>
         <button class="modal-close" onclick={closeEdit} aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+          >
         </button>
       </div>
 
@@ -1269,28 +1577,35 @@
               bind:value={editUUID}
               placeholder="e.g. ORD-2026-001"
             />
-            
-            {#if dataService.orders.some(o => (o.status||"").toLowerCase().trim() === 'pending review' && o.company === editingOrder?.company && o.id !== editingOrder?.id && o.orderUUID)}
-              {@const pendingSameCompany = dataService.orders.filter(o => (o.status||"").toLowerCase().trim() === 'pending review' && o.company === editingOrder?.company && o.id !== editingOrder?.id && o.orderUUID)}
-              <div style="margin-top: 12px; font-size: 0.85rem; padding: 12px; background: rgba(107, 203, 119, 0.05); border: 1px solid rgba(107, 203, 119, 0.2); border-radius: 6px;">
-                <label for="link-uuid" class="text-dim" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary);">Link with existing pending order:</label>
-                <select 
-                  id="link-uuid"
-                  onchange={(e) => { 
-                    const target = /** @type {HTMLSelectElement} */ (e.target);
-                    if(target?.value) editUUID = target.value; 
-                  }}
-                  class="select-input dropdown-select"
-                  style="width: 100%; border: 1px solid var(--border); padding: 10px; border-radius: 6px; background: var(--surface-1); color: var(--text); outline: none; font-size: 0.9rem;"
-                >
-                  <option value={editingOrder?.orderUUID}>✨ Keep unique order ({editingOrder?.orderUUID})</option>
-                  {#each pendingSameCompany as p}
-                    <option value={p.orderUUID}>↳ {truncate(p.item, 40)} ({p.orderUUID})</option>
-                  {/each}
-                </select>
-              </div>
-            {/if}
           </div>
+
+          {#if groupingOptions.length > 0}
+            <div
+              class="form-group"
+              style="grid-column: 1 / -1; margin-top: 4px;"
+            >
+              <div
+                style="font-size: 0.85rem; padding: 10px 14px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 16px;"
+              >
+                <span
+                  class="text-dim"
+                  style="margin: 0; font-weight: 500; white-space: nowrap;"
+                  >Order grouping</span
+                >
+                <div style="flex-grow: 1; max-width: 70%;">
+                  <CustomDropdown
+                    options={groupingOptions}
+                    bind:value={editUUID}
+                    onchange={(/** @type {any} */ e) => {
+                      if (e.target.value === "__NEW__") {
+                        editUUID = generateShortId();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          {/if}
 
           <div class="form-group" style="grid-column: 1 / -1">
             <label for="edit-tracking">Tracking Link / Number</label>
@@ -1305,25 +1620,39 @@
 
         <div class="order-summary">
           <div class="summary-row">
-            <span>Company</span><span>{editingOrder.company || "—"}</span>
+            <span>Company</span><span>{currentEditingOrder.company || "—"}</span>
           </div>
           <div class="summary-row">
-            <span>Team</span><span>{editingOrder.team || "—"}</span>
+            <span>Team</span><span>{currentEditingOrder.team || "—"}</span>
           </div>
           <div class="summary-row">
-            <span>Category</span><span>{editingOrder.category || "—"}</span>
+            <span>Category</span><span>{currentEditingOrder.category || "—"}</span>
           </div>
           <div class="summary-row">
-            <span>Total</span><span>{formatCurrency(editingOrder.total)}</span>
+            <span>Total</span><span>{formatCurrency(currentEditingOrder.total)}</span>
           </div>
         </div>
 
-        <div class="modal-actions" style="display: flex; justify-content: space-between; width: 100%;">
-          <button type="button" class="btn btn-ghost" style="color: var(--primary);" onclick={requestDelete} disabled={editSaving}>
+        <div
+          class="modal-actions"
+          style="display: flex; justify-content: space-between; width: 100%;"
+        >
+          <button
+            type="button"
+            class="btn btn-ghost"
+            style="color: var(--primary);"
+            onclick={requestDelete}
+            disabled={editSaving}
+          >
             Delete Order
           </button>
           <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-ghost" onclick={closeEdit} disabled={editSaving}>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              onclick={closeEdit}
+              disabled={editSaving}
+            >
               Cancel
             </button>
             <button type="submit" class="btn btn-primary" disabled={editSaving}>
@@ -1339,20 +1668,42 @@
 <!-- ── Delete Confirmation Modal ────────────────────────────────────────────── -->
 {#if showDeleteConfirm}
   <div class="modal-backdrop fade-in" style="z-index: 1100;">
-    <div class="card modal-card" style="width: 100%; max-width: 360px; padding: 32px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+    <div
+      class="card modal-card"
+      style="width: 100%; max-width: 360px; padding: 32px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);"
+    >
       <div class="icon" style="margin-bottom: 20px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--status-rejected);"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          style="color: var(--status-rejected);"
+          ><path
+            d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+          /><path d="M12 9v4" /><path d="M12 17h.01" /></svg
+        >
       </div>
       <h3 style="margin-bottom: 12px; color: var(--text);">Delete Order?</h3>
-      <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5;">
-        Are you sure you want to permanently delete <strong>{editingOrder?.item}</strong>? This action cannot be undone.
+      <p
+        class="text-muted"
+        style="font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5;"
+      >
+        Are you sure you want to permanently delete <strong
+          >{currentEditingOrder?.item}</strong
+        >? This action cannot be undone.
       </p>
-      
+
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button 
-          class="btn" 
-          style="background: #ef4444; color: white; border: none;" 
-          onclick={deleteOrder} 
+        <button
+          class="btn"
+          style="background: #ef4444; color: white; border: none;"
+          onclick={deleteOrder}
           disabled={deleteSaving}
         >
           {#if deleteSaving}
@@ -1361,9 +1712,9 @@
             Yes, Delete Permanently
           {/if}
         </button>
-        <button 
-          class="btn btn-ghost" 
-          onclick={cancelDelete} 
+        <button
+          class="btn btn-ghost"
+          onclick={cancelDelete}
           disabled={deleteSaving}
         >
           Cancel
@@ -1397,7 +1748,12 @@
     justify-content: center;
     gap: 12px;
   }
-  .btn-block { width: 100%; justify-content: center; height: 48px; font-size: 0.95rem; }
+  .btn-block {
+    width: 100%;
+    justify-content: center;
+    height: 48px;
+    font-size: 0.95rem;
+  }
 
   .segmented-control {
     display: grid;
@@ -1444,13 +1800,42 @@
   }
 
   /* Table Customizations for Admin */
-  .item-primary { font-weight: 700; color: #fff; font-size: 0.9rem; }
-  .item-secondary { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
-  .amount { font-weight: 700; color: #fff; }
+  .item-primary {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.9rem;
+  }
+  .item-secondary {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .amount {
+    font-weight: 700;
+    color: #fff;
+  }
 
-  .message-bar { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; margin-bottom: 24px; border: 1px solid transparent; }
-  .success-bar { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.2); color: var(--status-received); }
-  .error-bar { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); color: var(--status-rejected); }
+  .message-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+    border: 1px solid transparent;
+  }
+  .success-bar {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: var(--status-received);
+  }
+  .error-bar {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--status-rejected);
+  }
 
   /* Modal Refined */
   .modal-backdrop {
@@ -1515,7 +1900,6 @@
     font-size: 0.85rem;
   }
 
-
   .modal-actions {
     display: flex;
     gap: 10px;
@@ -1530,10 +1914,20 @@
   }
 
   @keyframes dots {
-    0%, 20% { content: ""; }
-    40% { content: "."; }
-    60% { content: ".."; }
-    80%, 100% { content: "..."; }
+    0%,
+    20% {
+      content: "";
+    }
+    40% {
+      content: ".";
+    }
+    60% {
+      content: "..";
+    }
+    80%,
+    100% {
+      content: "...";
+    }
   }
 
   /* Note: The above keyframes using 'content' only works on pseudo-elements. 
@@ -1545,10 +1939,20 @@
   }
 
   @keyframes dots-pseudo {
-    0%, 20% { content: ""; }
-    40% { content: "."; }
-    60% { content: ".."; }
-    80%, 100% { content: "..."; }
+    0%,
+    20% {
+      content: "";
+    }
+    40% {
+      content: ".";
+    }
+    60% {
+      content: "..";
+    }
+    80%,
+    100% {
+      content: "...";
+    }
   }
   .admin-auth-container {
     display: flex;
