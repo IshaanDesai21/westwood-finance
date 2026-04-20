@@ -17,7 +17,7 @@
     "FRC",
     "Slingshot",
     "Hunga Munga",
-    "AtlAtl",
+    "Atlatl",
     "Kunai",
     "Westwood Overall",
   ];
@@ -135,7 +135,10 @@
   
   <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
     {#if dataService.error}
-      <span class="error-text">⚠ {dataService.error}</span>
+      <span class="error-text" style="display:inline-flex;align-items:center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        {dataService.error}
+      </span>
     {/if}
     
     <div class="deploy-info">
@@ -320,6 +323,8 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .section-header {
@@ -345,13 +350,14 @@
 
   .recent-item {
     display: grid;
-    grid-template-columns: 1fr auto 90px;
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
     align-items: center;
     padding: 12px 14px 12px 18px;
     background: var(--surface);
     transition: all 0.2s;
     position: relative;
+    min-width: 0;
   }
 
   .recent-item::before {
@@ -370,9 +376,18 @@
     background: var(--surface-2);
   }
 
-  .item-name { font-weight: 600; font-size: 0.95rem; color: #fff; }
-  .item-meta { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-dim); font-weight: 500; }
-  .item-meta .dot { width: 3px; height: 3px; background: var(--text-dim); border-radius: 50%; }
+  .item-info {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .item-name { font-weight: 600; font-size: 0.95rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-meta { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-dim); font-weight: 500; overflow: hidden; }
+  .item-meta .company, .item-meta .date { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-meta .dot { width: 3px; height: 3px; background: var(--text-dim); border-radius: 50%; flex-shrink: 0; }
+
+  .item-status { flex-shrink: 0; }
+  .item-amount { flex-shrink: 0; white-space: nowrap; }
 
   .amount { text-align: right; font-weight: 700; color: #fff; font-size: 0.95rem; }
 

@@ -1,4 +1,5 @@
 import { BASE_URL, SECRET_KEY } from './config.js';
+import { generateShortId } from './utils.js';
 
 /**
  * @typedef {Object} Order
@@ -17,6 +18,7 @@ import { BASE_URL, SECRET_KEY } from './config.js';
  * @property {string} id
  * @property {string} orderUUID
  * @property {number} rowIndex
+ * @property {string} orderedBy
  */
 
 /**
@@ -92,12 +94,13 @@ class DataStore {
           const hasItem = !!(o.Item || o.item);
           const hasCompany = !!(o.Company || o.company);
           const hasTracking = !!(o.Tracking || o.tracking);
-          const hasUUID = !!(o["List UUID"] || o.orderUUID || o.id);
+          const hasUUID = !!(o["UUID"] || o["List UUID"] || o["Order UUID"] || o.orderUUID || o.id);
           // Only keep rows that have some actual data
           return hasItem || hasCompany || hasTracking || hasUUID;
       })
       .map((o, index) => {
-      let baseId = String(o["List UUID"] || o.orderUUID || o.id || `order-${index}-${Date.now()}`);
+      const stableInput = encodeURIComponent(o.Item ?? o.item ?? "item");
+      let baseId = String(o.UUID || o["Order UUID"] || o["List UUID"] || o.orderUUID || o.id || `order-${index}-${stableInput}`);
       let finalId = baseId;
       let counter = 1;
       while (seenIds.has(finalId)) {
@@ -132,7 +135,8 @@ class DataStore {
       tracking: o.Tracking ?? o.tracking ?? "",
       id: finalId,
       orderUUID: o["Order UUID"] || o.orderUUID || "",
-      rowIndex: o.rowIndex ?? (index + 3)
+      rowIndex: o.rowIndex ?? (index + 3),
+      orderedBy: o["Ordered By"] ?? o.orderedBy ?? "",
     }});
   }
 
@@ -144,7 +148,8 @@ class DataStore {
     if (!Array.isArray(data)) return [];
     const seenIds = new Set();
     return data.map((f, index) => {
-      let baseId = String(f.id || `fund-${index}-${Date.now()}`);
+      const stableInput = encodeURIComponent(f.Type ?? f.Source ?? "fund");
+      let baseId = String(f.id || f.UUID || `fund-${index}-${stableInput}`);
       let finalId = baseId;
       let counter = 1;
       while (seenIds.has(finalId)) {
@@ -219,6 +224,76 @@ class DataStore {
       this.isSilentLoading = false;
       this.hasLoadedOnce = true;
     }
+  }
+
+  /**
+   * Optimistically add a new order to the local store.
+   * Immediately updates UI, then silently syncs with Google Sheets in the background.
+   * @param {Partial<Order>} orderData
+   */
+  addOrderOptimistic(orderData) {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    /** @type {Order} */
+    const newOrder = {
+      item: orderData.item || "Unknown",
+      company: orderData.company || "",
+      link: orderData.link || "",
+      price: Number(orderData.price) || 0,
+      quantity: Number(orderData.quantity) || 1,
+      notes: orderData.notes || "",
+      category: (orderData.category || "miscellaneous").toLowerCase().trim(),
+      team: orderData.team || "",
+      timestamp: orderData.timestamp || new Date().toISOString(),
+      total: (Number(orderData.price) || 0) * (Number(orderData.quantity) || 1),
+      status: orderData.status || "Pending Review",
+      tracking: orderData.tracking || "",
+      id: tempId,
+      orderUUID: orderData.orderUUID || `OPT-${generateShortId()}`,
+      rowIndex: this.orders.length + 3,
+      orderedBy: orderData.orderedBy || "",
+    };
+
+    // Inject immediately into the reactive store
+    this.orders = [...this.orders, newOrder];
+    this.persist();
+    console.log(`⚡ DataStore: Optimistic add — "${newOrder.item}" injected instantly.`);
+
+    // Background sync to get the real data from Google Sheets
+    setTimeout(() => this.load(true, true), 2000);
+  }
+
+  /**
+   * Optimistically update an order's status/tracking in the local store.
+   * @param {string} orderId
+   * @param {Partial<Order>} updates
+   */
+  updateOrderOptimistic(orderId, updates) {
+    this.orders = this.orders.map(o => {
+      if (o.id === orderId) {
+        return { ...o, ...updates };
+      }
+      return o;
+    });
+    this.persist();
+    console.log(`⚡ DataStore: Optimistic update — order "${orderId}" updated instantly.`);
+  }
+
+  /**
+   * Optimistically add a funding entry.
+   * @param {any} fundData
+   */
+  addFundOptimistic(fundData) {
+    const tempId = `temp-fund-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const newFund = {
+      ...fundData,
+      id: tempId,
+      Amount: Number(fundData.Amount || fundData.amount) || 0,
+      rowIndex: this.funds.length + 2,
+    };
+    this.funds = [...this.funds, newFund];
+    this.persist();
+    console.log(`⚡ DataStore: Optimistic add — funding entry injected instantly.`);
+    setTimeout(() => this.load(true, true), 2000);
   }
 }
 

@@ -114,3 +114,15 @@ export const CONTRIBUTION_TYPES = ['money', 'parts', 'services'];
 
 /** Grant statuses */
 export const GRANT_STATUSES = ['Applied', 'Pending', 'Awarded', 'Rejected'];
+
+/**
+ * Generate a short 6-character alphanumeric ID
+ */
+export function generateShortId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}

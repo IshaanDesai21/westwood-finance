@@ -7,36 +7,14 @@
   let { children } = $props();
 
   onMount(() => {
-    let lastActive = Date.now();
-    
-    function markActive() {
-      lastActive = Date.now();
-    }
-
-    // List of events to consider as "activity"
-    window.addEventListener('mousemove', markActive);
-    window.addEventListener('keydown', markActive);
-    window.addEventListener('click', markActive);
-    window.addEventListener('scroll', markActive);
-
+    // Poll the backend every 3000ms (3 seconds) globally to ensure fast updates.
     const interval = setInterval(() => {
-      const now = Date.now();
-      const inactiveTime = now - lastActive;
-      
-      // If inactive for more than 10 seconds, and we haven't fetched in the last 10 seconds
-      if (inactiveTime > 10000 && (!dataService.lastFetched || (now - dataService.lastFetched) > 10000)) {
-        // Trigger a background sync
-        // force=true to bypass regular 2-minute cache rule in dataService
-        // silent=true to prevent UI loading indicators/animations
-        dataService.load(true, true);
-      }
-    }, 5000); // Check every 5 seconds
+      // force=true to bypass regular 2-minute cache rule in dataService
+      // silent=true to prevent UI loading indicators/animations
+      dataService.load(true, true);
+    }, 3000);
 
     return () => {
-      window.removeEventListener('mousemove', markActive);
-      window.removeEventListener('keydown', markActive);
-      window.removeEventListener('click', markActive);
-      window.removeEventListener('scroll', markActive);
       clearInterval(interval);
     };
   });

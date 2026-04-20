@@ -135,15 +135,15 @@
   
   .filter-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
     align-items: flex-end;
   }
 
   /* Wide screen desktop layout */
-  @media (min-width: 1000px) {
+  @media (min-width: 1200px) {
     .filter-grid {
-      grid-template-columns: repeat(4, 1fr) 280px;
+      grid-template-columns: repeat(4, 1fr) 1.5fr;
     }
   }
 
@@ -185,19 +185,35 @@
   .date-range {
     display: flex;
     align-items: center;
-    gap: 4px;
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 0 8px;
+    height: 44px;
+    overflow: hidden;
+  }
+  
+  .date-range:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
   }
 
   .date-range input {
     background: transparent;
     border: none;
-    padding: 8px 4px;
-    font-size: 0.8rem;
-    width: 100px;
+    padding: 0 12px;
+    font-size: 0.85rem;
+    flex: 1;
+    width: 0;
+    min-width: 0;
+    height: 100%;
+    color: #fff;
+    cursor: pointer;
+    text-align: center;
+  }
+  
+  .date-range input:focus {
+    background: rgba(255, 255, 255, 0.03);
+    outline: none;
   }
 
   .connector {

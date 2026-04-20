@@ -152,7 +152,10 @@
   
   <div class="header-right" style="display: flex; align-items: center; gap: 24px;">
     {#if dataService.error}
-       <span class="error-text">⚠ {dataService.error}</span>
+       <span class="error-text" style="display:inline-flex;align-items:center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        {dataService.error}
+       </span>
     {/if}
 
     <div style="display: flex; align-items: center; gap: 12px;">

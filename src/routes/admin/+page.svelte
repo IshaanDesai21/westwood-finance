@@ -4,7 +4,8 @@
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import AdminLock from "$lib/components/AdminLock.svelte";
-  import { formatCurrency, formatFullDate, formatDate, capitalize } from "$lib/utils.js";
+  import OrderTable from "$lib/components/OrderTable.svelte";
+  import { formatCurrency, formatFullDate, formatDate, capitalize, truncate } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
 
@@ -44,6 +45,31 @@
     });
   });
 
+  let newTabOrders = $derived.by(() => {
+    return dataService.orders.filter((/** @type {Order} */ o) => {
+      const s = (o.status || "").toLowerCase().trim();
+      return !["received", "cancelled", "denied", "ordered"].includes(s);
+    });
+  });
+
+  let groupedCompanyOrders = $derived.by(() => {
+    /** @type {Record<string, Order[]>} */
+    const groups = {};
+    // Ensure all sorted keys so output is consistent
+    const sorted = newTabOrders.slice().sort((a, b) => {
+      let tA = new Date(a.timestamp || 0).getTime();
+      let tB = new Date(b.timestamp || 0).getTime();
+      return tB - tA;
+    });
+
+    for (const o of sorted) {
+      const comp = o.company?.trim() || "General Items";
+      if (!groups[comp]) groups[comp] = [];
+      groups[comp].push(o);
+    }
+    return groups;
+  });
+
   let unlocked = $state(false);
 
   async function sync() {
@@ -75,7 +101,7 @@
     Type: "",
     Date: "",
   });
-  let activeView = $state("orders"); // "orders" | "master" | "funding" | "add"
+  let activeView = $state("orderHistory"); // "orderHistory" | "orders" | "master" | "funding" | "add" | "addOrder"
 
   const typeOptions = [
     { label: "Fundraiser", value: "Fundraiser" },
@@ -211,9 +237,18 @@
       if (!res.ok || result?.error)
         throw new Error(result?.error || "Update failed");
 
-      actionMsg = `✓ "${editingOrder.item}" updated!`;
+      actionMsg = `"${editingOrder.item}" updated!`;
+      
+      // ⚡ Optimistic: update local store immediately
+      dataService.updateOrderOptimistic(editingOrder.id, {
+        status: editStatus,
+        tracking: editTracking,
+        orderUUID: editUUID,
+      });
+      
       closeEdit();
-      await dataService.load(true); // Force refresh shared store
+      // Silent background sync for authoritative data
+      dataService.load(true, true);
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Update failed";
     } finally {
@@ -258,7 +293,7 @@
         throw new Error(msg);
       }
       
-      actionMsg = "✓ Order completely removed from Spreadsheet!";
+      actionMsg = "Order completely removed from Spreadsheet!";
       
       // 🔥 Optimistic UI Update: Remove from local state immediately
       const idToDelete = editingOrder?.orderUUID;
@@ -352,9 +387,20 @@
       if (!res.ok || result?.error)
         throw new Error(result?.error || "Update failed");
 
-      actionMsg = `✓ Funding entry updated!`;
+      actionMsg = `Funding entry updated!`;
+      
+      // ⚡ Optimistic: update local store immediately
+      dataService.funds = dataService.funds.map(f => {
+        if (f.id === currentFund.id) {
+          return { ...f, ...editFundFields };
+        }
+        return f;
+      });
+      dataService.persist();
+      
       editingFund = null;
-      await dataService.load(true);
+      // Silent background sync
+      dataService.load(true, true);
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Update failed";
     } finally {
@@ -401,7 +447,22 @@
       if (!res.ok || result?.error)
         throw new Error(result?.error || "Request failed");
 
-      actionMsg = "✓ Order recorded successfully!";
+      actionMsg = "Order recorded successfully!";
+      
+      // ⚡ Optimistic: inject into local store instantly
+      dataService.addOrderOptimistic({
+        item: addOrderForm.item,
+        company: addOrderForm.company,
+        link: finalLink,
+        price: Number(addOrderForm.price) || 0,
+        quantity: Number(addOrderForm.quantity) || 1,
+        notes: addOrderForm.notes,
+        category: addOrderForm.category,
+        team: addOrderForm.team,
+        status: addOrderForm.status,
+        timestamp: new Date().toISOString(),
+      });
+      
       addOrderForm = {
         item: "",
         company: "",
@@ -413,7 +474,6 @@
         category: "hardware",
         status: "Received",
       };
-      await dataService.load(true);
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Request failed";
     } finally {
@@ -450,7 +510,18 @@
       if (!res.ok || result?.error)
         throw new Error(result?.error || "Request failed");
 
-      actionMsg = "✓ Funding entry added!";
+      actionMsg = "Funding entry added!";
+      
+      // ⚡ Optimistic: inject into local store instantly
+      dataService.addFundOptimistic({
+        Type: addFundsForm.type,
+        Source: addFundsForm.source,
+        Amount: Number(addFundsForm.amount) || 0,
+        Date: addFundsForm.date,
+        Notes: addFundsForm.notes,
+        Recipient: addFundsForm.recipient,
+      });
+      
       addFundsForm = {
         type: "Fundraiser",
         source: "",
@@ -459,9 +530,6 @@
         notes: "",
         recipient: "All",
       };
-      // Force reload and wait a bit for GAS to settle
-      await dataService.load(true);
-      setTimeout(() => dataService.load(true), 1500); 
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Update failed";
     } finally {
@@ -504,11 +572,18 @@
 
   <!-- ── Tab Nav ──────────────────────────────────────────────────────── -->
   <div class="tabs-wrapper" style="margin-bottom: 32px;">
-    <div class="segmented-control" style="width: auto; min-width: 600px; margin: 0 auto; position: relative; grid-template-columns: repeat(5, 1fr);">
+    <div class="segmented-control" style="width: auto; min-width: 650px; margin: 0 auto; position: relative; grid-template-columns: repeat(6, 1fr);">
       <div
         class="segment-highlight"
-        style="transform: translateX(calc({['orders', 'master', 'funding', 'add', 'addOrder'].indexOf(activeView)} * 100%)); width: calc((100% - 8px) / 5);"
+        style="transform: translateX(calc({['orderHistory', 'orders', 'master', 'funding', 'add', 'addOrder'].indexOf(activeView)} * 100%)); width: calc((100% - 10px) / 6);"
       ></div>
+      <button
+        class="segment"
+        class:active={activeView === "orderHistory"}
+        onclick={() => (activeView = "orderHistory")}
+      >
+        Order History
+      </button>
       <button
         class="segment"
         class:active={activeView === "orders"}
@@ -548,13 +623,19 @@
   </div>
 
   {#if actionMsg}
-    <div class="success-bar message-bar">{actionMsg}</div>
+    <div class="success-bar message-bar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      {actionMsg}
+    </div>
   {/if}
   {#if actionErr}
-    <div class="error-bar message-bar">{actionErr}</div>
+    <div class="error-bar message-bar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {actionErr}
+    </div>
   {/if}
 
-    {#if activeView === "orders"}
+    {#if activeView === "orderHistory"}
       <section class="fade-in">
         <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
           <span>Order History ({dataService.orders.length})</span>
@@ -630,6 +711,40 @@
           </div>
         {/if}
       </div>
+    </section>
+  {:else if activeView === "orders"}
+    <section class="fade-in">
+      <div class="section-title" style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+        <span>Pending Orders by Vendor ({newTabOrders.length})</span>
+      </div>
+      <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
+        Review active orders waiting for processing or delivery, grouped by source vendor.
+      </p>
+
+      {#if Object.keys(groupedCompanyOrders).length === 0}
+        <div class="card empty-state fade-in" style="margin-bottom: 24px;">
+          <div class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+          </div>
+          <h3>All caught up</h3>
+          <p>There are no active orders to display.</p>
+        </div>
+      {:else}
+        {#each Object.entries(groupedCompanyOrders) as [company, compOrders]}
+          <div style="margin-bottom: 32px;" class="fade-in">
+            <h3 style="margin-bottom: 12px; color: var(--primary); font-size: 1.25rem;">
+              {company}
+              <span class="badge badge-hardware" style="margin-left: 10px; padding: 4px 10px; font-weight: 600; vertical-align: middle;">Quantity: {compOrders.length}</span>
+            </h3>
+            <OrderTable 
+              orders={compOrders} 
+              hideCategoryColumn={true}
+              hideCompanyColumn={true}
+              onmanage={openEdit}
+            />
+          </div>
+        {/each}
+      {/if}
     </section>
   {:else if activeView === "funding"}
     <!-- ── Funding Management ────────────────────────────────────────────────── -->
@@ -1036,9 +1151,9 @@
             {currentFund.Source}
           </p>
         </div>
-        <button class="modal-close" onclick={() => (editingFund = null)}
-          >✕</button
-        >
+        <button class="modal-close" onclick={() => (editingFund = null)} aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
 
       {#if actionErr}<div class="error-bar">{actionErr}</div>{/if}
@@ -1124,9 +1239,9 @@
             {editingOrder.item}
           </p>
         </div>
-        <button class="modal-close" onclick={closeEdit} aria-label="Close"
-          >✕</button
-        >
+        <button class="modal-close" onclick={closeEdit} aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
 
       {#if actionErr}
@@ -1154,6 +1269,27 @@
               bind:value={editUUID}
               placeholder="e.g. ORD-2026-001"
             />
+            
+            {#if dataService.orders.some(o => (o.status||"").toLowerCase().trim() === 'pending review' && o.company === editingOrder?.company && o.id !== editingOrder?.id && o.orderUUID)}
+              {@const pendingSameCompany = dataService.orders.filter(o => (o.status||"").toLowerCase().trim() === 'pending review' && o.company === editingOrder?.company && o.id !== editingOrder?.id && o.orderUUID)}
+              <div style="margin-top: 12px; font-size: 0.85rem; padding: 12px; background: rgba(107, 203, 119, 0.05); border: 1px solid rgba(107, 203, 119, 0.2); border-radius: 6px;">
+                <label for="link-uuid" class="text-dim" style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary);">Link with existing pending order:</label>
+                <select 
+                  id="link-uuid"
+                  onchange={(e) => { 
+                    const target = /** @type {HTMLSelectElement} */ (e.target);
+                    if(target?.value) editUUID = target.value; 
+                  }}
+                  class="select-input dropdown-select"
+                  style="width: 100%; border: 1px solid var(--border); padding: 10px; border-radius: 6px; background: var(--surface-1); color: var(--text); outline: none; font-size: 0.9rem;"
+                >
+                  <option value={editingOrder?.orderUUID}>✨ Keep unique order ({editingOrder?.orderUUID})</option>
+                  {#each pendingSameCompany as p}
+                    <option value={p.orderUUID}>↳ {truncate(p.item, 40)} ({p.orderUUID})</option>
+                  {/each}
+                </select>
+              </div>
+            {/if}
           </div>
 
           <div class="form-group" style="grid-column: 1 / -1">
@@ -1204,7 +1340,9 @@
 {#if showDeleteConfirm}
   <div class="modal-backdrop fade-in" style="z-index: 1100;">
     <div class="card modal-card" style="width: 100%; max-width: 360px; padding: 32px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
-      <div class="icon" style="font-size: 2.5rem; margin-bottom: 20px;">⚠️</div>
+      <div class="icon" style="margin-bottom: 20px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--status-rejected);"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </div>
       <h3 style="margin-bottom: 12px; color: var(--text);">Delete Order?</h3>
       <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5;">
         Are you sure you want to permanently delete <strong>{editingOrder?.item}</strong>? This action cannot be undone.

@@ -2,8 +2,8 @@
   import { formatCurrency, formatFullDate, truncate, capitalize, getTeamBadgeClass } from '../utils.js';
   import OrderStatusBadge from './OrderStatusBadge.svelte';
 
-  /** @type {{ orders: any[], limit?: number, hideTeamColumn?: boolean }} */
-  let { orders = [], limit = 0, hideTeamColumn = false } = $props();
+  /** @type {{ orders: any[], limit?: number, hideTeamColumn?: boolean, hideCategoryColumn?: boolean, hideCompanyColumn?: boolean, onmanage?: (order: any) => void }} */
+  let { orders = [], limit = 0, hideTeamColumn = false, hideCategoryColumn = false, hideCompanyColumn = false, onmanage } = $props();
 
   let sortCol = $state("status");
   let sortDir = $state("asc");
@@ -32,11 +32,12 @@
       if (sortCol === 'status') {
         let pA = STATUS_PRIORITY[(a.status || "").toLowerCase().trim()] ?? 99;
         let pB = STATUS_PRIORITY[(b.status || "").toLowerCase().trim()] ?? 99;
-        if (pA !== pB) return sortDir === "asc" ? pA - pB : pB - pA;
-        // Secondary sort: timestamp newest first
-        let tA = new Date(a.timestamp || 0).getTime();
-        let tB = new Date(b.timestamp || 0).getTime();
-        return tB - tA;
+        const diff = sortDir === "asc" ? pA - pB : pB - pA;
+        if (diff !== 0) return diff;
+        // Group identically prioritized active statuses strongly by their grouping-color (UUID)
+        const uA = String(a.orderUUID || "").toLowerCase();
+        const uB = String(b.orderUUID || "").toLowerCase();
+        return uA.localeCompare(uB);
       }
 
       let valA = a[sortCol] || "";
@@ -56,14 +57,23 @@
   let display = $derived(limit > 0 ? sortedOrders.slice(0, limit) : sortedOrders);
   
   // Generate a stable hue from an order UUID
+  /** @type {Record<string, string>} */
+  const colorCache = {};
+
   function getOrderColor(/** @type {string|undefined} */ uuid) {
     if (!uuid) return "transparent";
+    if (colorCache[uuid]) return colorCache[uuid];
+    
     let hash = 0;
     for (let i = 0; i < uuid.length; i++) {
         hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const h = Math.abs(hash % 360);
-    return `hsl(${h}, 65%, 45%)`;
+    // Multiply by golden angle (137.5) to ensure radically distinct scattered colors 
+    // rather than highly similar neighbor hashes.
+    const h = Math.abs(Math.floor(hash * 137.5) % 360);
+    const color = `hsl(${h}, 70%, 40%)`;
+    colorCache[uuid] = color;
+    return color;
   }
 </script>
 
@@ -76,16 +86,20 @@
             Item {sortCol === "item" ? (sortDir === "asc" ? "↑" : "↓") : ""}
           </div>
         </th>
-        <th class="sortable" onclick={() => toggleSort("company")}>
-          <div class="th-content">
-            Company {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}
-          </div>
-        </th>
-        <th class="sortable" onclick={() => toggleSort("category")}>
-          <div class="th-content">
-            Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}
-          </div>
-        </th>
+        {#if !hideCompanyColumn}
+          <th class="sortable" onclick={() => toggleSort("company")}>
+            <div class="th-content">
+              Vendor {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+            </div>
+          </th>
+        {/if}
+        {#if !hideCategoryColumn}
+          <th class="sortable" onclick={() => toggleSort("category")}>
+            <div class="th-content">
+              Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+            </div>
+          </th>
+        {/if}
         {#if !hideTeamColumn}
           <th class="sortable" onclick={() => toggleSort("team")}>
             <div class="th-content">
@@ -108,6 +122,9 @@
             Total {sortCol === "total" ? (sortDir === "asc" ? "↑" : "↓") : ""}
           </div>
         </th>
+        {#if onmanage}
+          <th class="text-right" style="padding-right: 24px;"></th>
+        {/if}
       </tr>
     </thead>
     <tbody>
@@ -128,12 +145,16 @@
               <div class="item-notes">{truncate(order.notes, 50)}</div>
             {/if}
           </td>
-          <td><span class="company-name">{order.company || '—'}</span></td>
-          <td>
-            <span class="badge badge-{order.category}">
-              {capitalize(order.category)}
-            </span>
-          </td>
+          {#if !hideCompanyColumn}
+            <td><span class="company-name">{order.company || '—'}</span></td>
+          {/if}
+          {#if !hideCategoryColumn}
+            <td>
+              <span class="badge badge-{order.category}">
+                {capitalize(order.category)}
+              </span>
+            </td>
+          {/if}
           {#if !hideTeamColumn}
             <td class="text-muted font-medium">
               {order.team || order.user || '—'}
@@ -146,13 +167,23 @@
           <td class="text-right monospace amount">
             {formatCurrency(order.total)}
           </td>
+          {#if onmanage}
+            <td class="text-right" style="padding-right: 24px;">
+              <button class="btn btn-primary btn-sm" onclick={() => onmanage(order)}>
+                Manage
+              </button>
+            </td>
+          {/if}
         </tr>
       {/each}
       {#if orders.length === 0}
+        {@const emptyCols = 7 - (hideTeamColumn ? 1 : 0) - (hideCategoryColumn ? 1 : 0) - (hideCompanyColumn ? 1 : 0) + (onmanage ? 1 : 0)}
         <tr>
-          <td colspan={hideTeamColumn ? 6 : 7}>
+          <td colspan={emptyCols}>
             <div class="empty-state">
-              <div class="icon">📦</div>
+              <div class="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+              </div>
               No orders found
             </div>
           </td>
@@ -160,12 +191,16 @@
       {/if}
     </tbody>
     {#if display.length > 0}
+      {@const footCols = 6 - (hideTeamColumn ? 1 : 0) - (hideCategoryColumn ? 1 : 0) - (hideCompanyColumn ? 1 : 0) + (onmanage ? 1 : 0) - (onmanage ? 1 : 0)}
       <tfoot>
         <tr class="total-row">
-          <td colspan={hideTeamColumn ? 5 : 6} class="total-label">Subtotal</td>
+          <td colspan={footCols} class="total-label">Subtotal</td>
           <td class="text-right monospace total-amount">
             {formatCurrency(display.reduce((sum, o) => sum + (o.total || 0), 0))}
           </td>
+          {#if onmanage}
+            <td></td>
+          {/if}
         </tr>
       </tfoot>
     {/if}
