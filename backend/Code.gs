@@ -48,6 +48,10 @@ function doGet(e) {
   }
 }
 
+function doPost(e) {
+  return doGet(e);
+}
+
 // ── ORDERS ──────────────────────────────────────────────────────────────────
 
 function getOrders() {
