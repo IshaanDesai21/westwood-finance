@@ -1668,12 +1668,12 @@
           {/if}
 
           <div class="form-group" style="grid-column: 1 / -1">
-            <label for="edit-tracking">Tracking Link / Number</label>
+            <label for="edit-tracking">Tracking Link</label>
             <input
               id="edit-tracking"
               type="text"
               bind:value={editTracking}
-              placeholder="ex. UPS/Status"
+              placeholder="Please provide a LINK"
             />
           </div>
         </div>

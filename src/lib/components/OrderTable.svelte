@@ -144,6 +144,15 @@
             {#if order.notes}
               <div class="item-notes">{truncate(order.notes, 50)}</div>
             {/if}
+            {#if order.tracking}
+              <div class="tracking-info">
+                {#if String(order.tracking).startsWith('http')}
+                  <a href={order.tracking} target="_blank" rel="noopener" class="tracking-link">Track Package</a>
+                {:else}
+                  <span class="tracking-text">Tracking: {order.tracking}</span>
+                {/if}
+              </div>
+            {/if}
           </td>
           {#if !hideCompanyColumn}
             <td><span class="company-name">{order.company || '—'}</span></td>
@@ -275,5 +284,31 @@
     width: 4px;
     background: var(--group-color, var(--primary));
     opacity: 0.9;
+  }
+
+  .tracking-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .tracking-link {
+    color: var(--primary);
+    text-decoration: none;
+    transition: all 0.2s;
+    border-bottom: 1px solid rgba(var(--primary-rgb), 0.3);
+  }
+
+  .tracking-link:hover {
+    color: var(--primary-light, #fff);
+    border-bottom-color: currentColor;
+  }
+
+  .tracking-text {
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
   }
 </style>

@@ -1,5 +1,6 @@
 <script>
   import { page } from "$app/stores";
+  import { onMount } from "svelte";
 
   const navItems = [
     { 
@@ -40,9 +41,50 @@
     const target = href.replace(/\/$/, '') || '/';
     return current === target;
   }
+
+  let isMobileOpen = $state(false);
+  let isMobile = $state(false);
+
+  function checkMobile() {
+    isMobile = window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  onMount(() => {
+    checkMobile();
+    const mq = window.matchMedia("(max-width: 768px)");
+    mq.addEventListener("change", checkMobile);
+    return () => mq.removeEventListener("change", checkMobile);
+  });
+
+  function closeMobileNav() {
+    isMobileOpen = false;
+  }
+
+  function toggleMobileNav() {
+    isMobileOpen = !isMobileOpen;
+  }
+
+  /** @param {string} href */
+  function handleNavClick(href) {
+    if (isMobile) {
+      closeMobileNav();
+    }
+  }
 </script>
 
-<aside class="sidebar">
+<!-- Mobile Backdrop -->
+{#if isMobile && isMobileOpen}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+  <div 
+    class="mobile-backdrop" 
+    onclick={closeMobileNav}
+    role="button"
+    tabindex="-1"
+    aria-label="Close navigation"
+  ></div>
+{/if}
+
+<aside class="sidebar" class:mobile-open={isMobileOpen} class:is-mobile={isMobile}>
   <div class="sidebar-brand">
     <div class="logo-wrapper">
       <img src="/logo-bordered.png" alt="Westwood Logo" class="logo-actual" />
@@ -51,6 +93,11 @@
        <span class="brand-title">WESTWOOD</span>
        <span class="brand-module">FINANCE</span>
     </div>
+    {#if isMobile}
+      <button class="mobile-close-btn" onclick={closeMobileNav} aria-label="Close navigation">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    {/if}
   </div>
 
   <nav class="sidebar-nav">
@@ -60,6 +107,7 @@
         class="nav-link"
         class:active={isActive(item.href)}
         aria-current={isActive(item.href) ? "page" : undefined}
+        onclick={() => handleNavClick(item.href)}
       >
         <span class="nav-icon">{@html item.icon}</span>
         <span>{item.label}</span>
@@ -73,7 +121,26 @@
   </div>
 </aside>
 
+<!-- Mobile FAB Toggle Button -->
+{#if isMobile}
+  <button 
+    class="mobile-fab" 
+    class:is-open={isMobileOpen}
+    onclick={toggleMobileNav}
+    aria-label={isMobileOpen ? "Close navigation" : "Open navigation"}
+  >
+    {#if isMobileOpen}
+      <!-- X icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    {:else}
+      <!-- Hamburger icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    {/if}
+  </button>
+{/if}
+
 <style>
+  /* ── Desktop Sidebar (unchanged) ─────────────────────────────── */
   .sidebar {
     position: fixed;
     top: 0;
@@ -84,9 +151,95 @@
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    z-index: 100;
+    z-index: 200;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* ── Mobile Sidebar ───────────────────────────────────────────── */
+  .sidebar.is-mobile {
+    transform: translateX(-100%);
+    box-shadow: none;
+    width: 280px;
+  }
+
+  .sidebar.is-mobile.mobile-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.6);
+  }
+
+  /* ── Mobile Backdrop ─────────────────────────────────────────── */
+  .mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 199;
+    animation: fadeBackdrop 0.25s ease;
+  }
+
+  @keyframes fadeBackdrop {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── Mobile Close Button (inside sidebar header) ─────────────── */
+  .mobile-close-btn {
+    margin-left: auto;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .mobile-close-btn:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  /* ── Floating Action Button ──────────────────────────────────── */
+  .mobile-fab {
+    position: fixed;
+    bottom: 24px;
+    left: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(249, 115, 22, 0.5), 0 2px 8px rgba(0,0,0,0.4);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-fab:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 28px rgba(249, 115, 22, 0.65), 0 2px 12px rgba(0,0,0,0.5);
+  }
+
+  .mobile-fab:active {
+    transform: scale(0.95);
+  }
+
+  .mobile-fab.is-open {
+    background: var(--surface-3);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+
+  /* ── Brand / Nav / Footer (shared desktop + mobile) ─────────── */
   .sidebar-brand {
     display: flex;
     align-items: center;
