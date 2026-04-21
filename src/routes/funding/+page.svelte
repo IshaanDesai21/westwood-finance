@@ -474,7 +474,7 @@
     {#if selectedBudgetTeam === "Westwood Overall"}
       <!-- ── Westwood Overall: Clean Team Summary Table ─────────────────── -->
       <div class="overall-summary fade-in">
-        <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="card" style="padding: 0; overflow-x: auto; overflow-y: visible;">
           <table class="overall-table">
             <thead>
               <tr>
@@ -675,7 +675,7 @@
     </div>
   {/if}
   <button class="page-fab" onclick={() => showTabMenu = !showTabMenu} aria-label="Switch tab">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
   </button>
 {/if}
 
