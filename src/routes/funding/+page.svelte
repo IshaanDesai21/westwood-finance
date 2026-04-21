@@ -13,6 +13,7 @@
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
   import AdminLock from "$lib/components/AdminLock.svelte";
   import PieChart from "$lib/components/PieChart.svelte";
+  import { browser } from "$app/environment";
 
   const typeOptions = [
     { label: "Fundraiser", value: "Fundraiser" },
@@ -53,8 +54,14 @@
   let unlocked = $state(false);
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
+  let isMobile = $state(false);
+  let showTabMenu = $state(false);
+
   onMount(() => {
     dataService.load(); // Uses cache for instant load
+    const mq = window.matchMedia("(max-width: 768px)");
+    isMobile = mq.matches;
+    mq.addEventListener("change", (e) => { isMobile = e.matches; });
   });
 
   async function sync() {
@@ -464,114 +471,120 @@
       No budget data available.
     </div>
   {:else}
-    <div
-      class="budget-overview-container"
-      class:is-single={selectedBudgetTeam !== "Westwood Overall"}
-    >
-      <div
-        class="budget-single-view"
-        class:fade-in={!dataService.hasLoadedOnce}
-        class:is-grid={selectedBudgetTeam === "Westwood Overall"}
-      >
-        {#each budgetTeams as [team, data]}
-          {#if selectedBudgetTeam === "Westwood Overall" || team === selectedBudgetTeam}
-            {@const teamFundsRaised = dataService.funds.reduce((sum, f) => {
-              const r = String(f.Recipient || "")
-                .toLowerCase()
-                .trim();
-              const s = team.toLowerCase().trim();
-              if (r === s || r === "all") {
-                return sum + (Number(f.Amount) || 0);
-              }
-              return sum;
-            }, 0)}
-            {@const baseFinal = data["Final"] ?? 0}
-            {@const final = baseFinal + teamFundsRaised}
-            {@const clubFunds = data["Club Funds"] ?? 0}
-            {@const expenses = data["Expenses"] ?? 0}
-            {@const personal = data["Personal Funds"] ?? 0}
-            {@const pct =
-              budgetTotal && budgetTotal["Final"] > 0
-                ? Math.min(100, (final / budgetTotal["Final"]) * 100)
-                : 0}
-
-            <div
-              class="budget-card card selected"
-              style={selectedBudgetTeam === "Westwood Overall"
-                ? "margin-bottom: 0;"
-                : "border-color: var(--border);"}
-            >
-              <div
-                class="budget-team-name"
-                style="font-size: 1.4rem; color: var(--primary);"
-              >
-                {team}
-              </div>
-              <div
-                class="budget-final"
-                style="color:{final >= 0
-                  ? '#6bcb77'
-                  : '#f16a4e'}; font-size: 2.2rem;"
-              >
-                {formatCurrency(final)}
-              </div>
-              <div class="budget-details" style="gap: 12px; margin-top: 20px;">
-                <div class="budget-detail-row" style="font-size: 0.95rem;">
-                  <span class="text-muted">Raised</span>
-                  <span class="monospace" style="color:#6bcb77"
-                    >+{formatCurrency(teamFundsRaised)}</span
-                  >
-                </div>
-                <div class="budget-detail-row" style="font-size: 0.95rem;">
-                  <span class="text-muted">Team Budget</span>
-                  <span class="monospace">{formatCurrency(clubFunds)}</span>
-                </div>
-                <div class="budget-detail-row" style="font-size: 0.95rem;">
-                  <span class="text-muted">Personal</span>
-                  <span class="monospace" style="color:#4e9af1"
-                    >{formatCurrency(personal)}</span
-                  >
-                </div>
-                <div class="budget-detail-row" style="font-size: 0.95rem;">
-                  <span class="text-muted">Expenses</span>
-                  <span class="monospace" style="color:#f16a4e"
-                    >{formatCurrency(Math.abs(expenses))}</span
-                  >
-                </div>
-              </div>
-              <div
-                class="budget-bar-track"
-                style="margin-top:24px; height: 8px;"
-              >
-                <div
-                  class="budget-bar-fill"
-                  style="width:{pct}%;background:var(--primary)"
-                ></div>
-              </div>
-            </div>
-          {/if}
-        {/each}
+    {#if selectedBudgetTeam === "Westwood Overall"}
+      <!-- ── Westwood Overall: Clean Team Summary Table ─────────────────── -->
+      <div class="overall-summary fade-in">
+        <div class="card" style="padding: 0; overflow: hidden;">
+          <table class="overall-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th class="text-right">Budget</th>
+                <th class="text-right">Raised</th>
+                <th class="text-right">Expenses</th>
+                <th class="text-right">Balance</th>
+                <th style="width: 120px; padding-left: 0;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each budgetTeams as [team, data]}
+                {@const teamFundsRaised = dataService.funds.reduce((sum, f) => {
+                  const r = String(f.Recipient || "").toLowerCase().trim();
+                  const s = team.toLowerCase().trim();
+                  return (r === s || r === "all") ? sum + (Number(f.Amount) || 0) : sum;
+                }, 0)}
+                {@const final = (data["Final"] ?? 0) + teamFundsRaised}
+                {@const clubFunds = data["Club Funds"] ?? 0}
+                {@const expenses = data["Expenses"] ?? 0}
+                {@const pct = budgetTotal && budgetTotal["Final"] > 0
+                  ? Math.min(100, (Math.max(0, final) / budgetTotal["Final"]) * 100)
+                  : 0}
+                <tr class="overall-row">
+                  <td>
+                    <span class="overall-team-name">{team}</span>
+                  </td>
+                  <td class="text-right monospace">{formatCurrency(clubFunds)}</td>
+                  <td class="text-right monospace" style="color:#6bcb77">+{formatCurrency(teamFundsRaised)}</td>
+                  <td class="text-right monospace" style="color:#f16a4e">{formatCurrency(Math.abs(expenses))}</td>
+                  <td class="text-right monospace overall-balance" style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}">{formatCurrency(final)}</td>
+                  <td style="padding-left: 8px; padding-right: 20px;">
+                    <div class="overall-bar-track">
+                      <div class="overall-bar-fill" style="width:{pct}%"></div>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+            {#if budgetTotal}
+              <tfoot>
+                <tr class="total-row">
+                  <td class="total-label" style="text-align:left; padding-left:20px;">Westwood Total</td>
+                  <td class="text-right monospace total-amount" style="font-size:0.9rem">{formatCurrency(budgetTotal["Club Funds"] || 0)}</td>
+                  <td class="text-right monospace total-amount" style="font-size:0.9rem; color:#6bcb77">+{formatCurrency(totalRaised)}</td>
+                  <td class="text-right monospace total-amount" style="font-size:0.9rem; color:#f16a4e">{formatCurrency(Math.abs(budgetTotal["Expenses"] || 0))}</td>
+                  <td class="text-right monospace total-amount" style="color:{( budgetTotal['Final'] || 0) >= 0 ? '#6bcb77' : '#f16a4e'}">{formatCurrency(budgetTotal["Final"] || 0)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            {/if}
+          </table>
+        </div>
       </div>
-
-      {#if selectedBudgetTeam !== "Westwood Overall"}
+    {:else}
+      <!-- ── Single Team: Card + Pie Chart ──────────────────────────────── -->
+      <div class="budget-overview-container is-single fade-in">
+        <div class="budget-single-view">
+          {#each budgetTeams as [team, data]}
+            {#if team === selectedBudgetTeam}
+              {@const teamFundsRaised = dataService.funds.reduce((sum, f) => {
+                const r = String(f.Recipient || "").toLowerCase().trim();
+                const s = team.toLowerCase().trim();
+                return (r === s || r === "all") ? sum + (Number(f.Amount) || 0) : sum;
+              }, 0)}
+              {@const baseFinal = data["Final"] ?? 0}
+              {@const final = baseFinal + teamFundsRaised}
+              {@const clubFunds = data["Club Funds"] ?? 0}
+              {@const expenses = data["Expenses"] ?? 0}
+              {@const personal = data["Personal Funds"] ?? 0}
+              <div class="budget-card card selected">
+                <div class="budget-team-name" style="font-size: 1.4rem; color: var(--primary);">{team}</div>
+                <div class="budget-final" style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}; font-size: 2.2rem;">{formatCurrency(final)}</div>
+                <div class="budget-details" style="gap: 12px; margin-top: 20px;">
+                  <div class="budget-detail-row" style="font-size: 0.95rem;">
+                    <span class="text-muted">Raised</span>
+                    <span class="monospace" style="color:#6bcb77">+{formatCurrency(teamFundsRaised)}</span>
+                  </div>
+                  <div class="budget-detail-row" style="font-size: 0.95rem;">
+                    <span class="text-muted">Team Budget</span>
+                    <span class="monospace">{formatCurrency(clubFunds)}</span>
+                  </div>
+                  <div class="budget-detail-row" style="font-size: 0.95rem;">
+                    <span class="text-muted">Personal</span>
+                    <span class="monospace" style="color:#4e9af1">{formatCurrency(personal)}</span>
+                  </div>
+                  <div class="budget-detail-row" style="font-size: 0.95rem;">
+                    <span class="text-muted">Expenses</span>
+                    <span class="monospace" style="color:#f16a4e">{formatCurrency(Math.abs(expenses))}</span>
+                  </div>
+                </div>
+                <div class="budget-bar-track" style="margin-top:24px; height: 8px;">
+                  <div class="budget-bar-fill" style="background:var(--primary);width:100%"></div>
+                </div>
+              </div>
+            {/if}
+          {/each}
+        </div>
         <div class="breakdown-card fade-in">
           <PieChart data={spentByCategory} hideLegend={true} />
         </div>
-      {/if}
-    </div>
+      </div>
+    {/if}
 
-    <!-- Team Dashboard View -->
+    <!-- Team Dashboard Activity -->
     <div class="team-dashboard-content fade-in" style="margin-top: 40px;">
-      <div
-        class="dashboard-stack"
-        style="display: flex; flex-direction: column; gap: 40px;"
-      >
-        <!-- Activity Section -->
+      <div class="dashboard-stack" style="display: flex; flex-direction: column; gap: 40px;">
         <div class="activity-section">
-          <div
-            class="section-title"
-            style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);"
-          >
+          <div class="section-title" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-muted);">
             {selectedBudgetTeam} Activity
           </div>
           <OrderTable
@@ -649,6 +662,21 @@
       </div>
     </div>
   </div>
+{/if}
+
+<!-- ── Mobile Tab FAB (bottom right) ──────────────────────────────────── -->
+{#if isMobile}
+  {#if showTabMenu}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+    <div class="tab-fab-backdrop" onclick={() => showTabMenu = false} role="button" tabindex="-1"></div>
+    <div class="tab-fab-menu">
+      <button class="tab-fab-option" class:active={activeTab === 'budget'} onclick={() => { activeTab = 'budget'; showTabMenu = false; }}>Team Dashboard</button>
+      <button class="tab-fab-option" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; showTabMenu = false; }}>{selectedBudgetTeam} Funding</button>
+    </div>
+  {/if}
+  <button class="page-fab" onclick={() => showTabMenu = !showTabMenu} aria-label="Switch tab">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+  </button>
 {/if}
 
 <style>
@@ -851,20 +879,139 @@
     display: flex;
     justify-content: center;
     width: auto;
+    min-width: 0;
+  }
+
+  /* ── Westwood Overall Table ────────────────────────────────────────── */
+  .overall-summary {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .overall-table {
+    font-size: 0.875rem;
+  }
+
+  .overall-row td {
+    padding: 14px 16px;
+    vertical-align: middle;
+  }
+
+  .overall-team-name {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.9rem;
+  }
+
+  .overall-balance {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .overall-bar-track {
+    height: 5px;
+    background: var(--surface-2);
+    border-radius: 99px;
+    overflow: hidden;
+    min-width: 60px;
+  }
+
+  .overall-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    transition: width 0.5s ease;
   }
 
   @media (max-width: 950px) {
     .budget-overview-container.is-single {
       flex-direction: column;
       gap: 32px;
+      align-items: stretch;
+    }
+    .is-single .budget-card {
+      width: 100% !important;
+      max-width: none !important;
+    }
+    .breakdown-card {
+      width: 100% !important;
+      height: 240px !important;
     }
   }
 
-  .budget-single-view.is-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    align-items: start;
+  @media (max-width: 768px) {
+    .budget-overview-container.is-single {
+      gap: 20px;
+    }
+    .budget-card {
+      min-height: unset !important;
+    }
+    .breakdown-card {
+      height: 200px !important;
+    }
+    /* Hide the segmented control on mobile (FAB handles navigation) */
+    .tabs-container {
+      display: none;
+    }
+    /* Tab FAB styles */
+    .tab-fab-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 299;
+    }
+    .tab-fab-menu {
+      position: fixed;
+      bottom: 88px;
+      right: 20px;
+      z-index: 300;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      overflow: hidden;
+      min-width: 180px;
+      animation: fadeInUp 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .tab-fab-option {
+      display: block;
+      width: 100%;
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-fab-option:last-child { border-bottom: none; }
+    .tab-fab-option:hover { background: var(--surface-2); color: var(--text); }
+    .tab-fab-option.active { color: var(--primary); background: var(--primary-glow); }
+    .page-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--surface-3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      transition: all 0.2s;
+    }
+    .page-fab:hover { background: var(--surface-3); transform: scale(1.06); }
   }
 
   .breakdown-card {

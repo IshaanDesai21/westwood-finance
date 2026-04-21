@@ -221,13 +221,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 20px rgba(249, 115, 22, 0.5), 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .mobile-fab:hover {
     transform: scale(1.08);
-    box-shadow: 0 6px 28px rgba(249, 115, 22, 0.65), 0 2px 12px rgba(0,0,0,0.5);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
   }
 
   .mobile-fab:active {

@@ -249,8 +249,16 @@
   });
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
+  let isMobile = $state(false);
+  let showTabMenu = $state(false);
+
   onMount(() => {
     dataService.load(); // Uses persistent cache for instant load
+
+    // Mobile detection
+    const mq = window.matchMedia("(max-width: 768px)");
+    isMobile = mq.matches;
+    mq.addEventListener("change", (e) => { isMobile = e.matches; });
     
     // Check for view parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -1468,6 +1476,29 @@
   {/if}
 {/if}
 
+<!-- ── Mobile Tab FAB (bottom right, admin) ────────────────────────────── -->
+{#if unlocked && isMobile}
+  {#if showTabMenu}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+    <div class="tab-fab-backdrop" onclick={() => showTabMenu = false} role="button" tabindex="-1"></div>
+    <div class="tab-fab-menu">
+      {#each [
+        ['orderHistory', 'Order History'],
+        ['orders', 'Orders'],
+        ['master', 'Finance History'],
+        ['funding', 'Funding'],
+        ['add', 'Add Funds +'],
+        ['addOrder', 'Add Expense +'],
+      ] as [key, label]}
+        <button class="tab-fab-option" class:active={activeView === key} onclick={() => { activeView = key; showTabMenu = false; }}>{label}</button>
+      {/each}
+    </div>
+  {/if}
+  <button class="page-fab" onclick={() => showTabMenu = !showTabMenu} aria-label="Switch admin view">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+  </button>
+{/if}
+
 <!-- ── Funding Edit Modal ──────────────────────────────────────────────────────── -->
 {#if editingFund}
   {@const currentFund = /** @type {any} */ (editingFund)}
@@ -2025,5 +2056,68 @@
     align-items: center;
     height: calc(100vh - 130px);
     width: 100%;
+  }
+
+  /* ── Mobile Tab FAB ──────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .tabs-wrapper { display: none; }
+    .tab-fab-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 299;
+    }
+    .tab-fab-menu {
+      position: fixed;
+      bottom: 88px;
+      right: 20px;
+      z-index: 300;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      overflow: hidden;
+      min-width: 200px;
+      animation: tabMenuIn 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    @keyframes tabMenuIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .tab-fab-option {
+      display: block;
+      width: 100%;
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-fab-option:last-child { border-bottom: none; }
+    .tab-fab-option:hover { background: var(--surface-2); color: var(--text); }
+    .tab-fab-option.active { color: var(--primary); background: var(--primary-glow); }
+    .page-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--surface-3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      transition: all 0.2s;
+    }
+    .page-fab:hover { transform: scale(1.06); }
   }
 </style>
