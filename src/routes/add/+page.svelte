@@ -72,7 +72,8 @@
       "Quantity": form.quantity,
       "Team": form.team,
       "Category": form.category,
-      "Ordered By": form.orderedBy
+      "Ordered By": form.orderedBy,
+      "Team Notes": form.notes,
     };
 
     const missing = Object.entries(required)
@@ -179,14 +180,8 @@
     }
   }
   function toggleExpenseMode() {
-    if (form.isExpense) {
-      form.isExpense = false;
-      return;
-    }
-    showExpenseModal = true;
+    goto("/admin?view=addOrder");
   }
-
-  let showExpenseModal = $state(false);
 </script>
 
 <svelte:head>
@@ -227,18 +222,7 @@
 </div>
 
 <div class="add-layout-wide fade-in">
-  {#if showExpenseModal}
-    <div class="lock-screen-wrapper fade-in" style="position: fixed; inset: 0; z-index: 1000; background: var(--bg); display: flex; align-items: center; justify-content: center;">
-      <div style="position: relative; width: 100%; max-width: 480px;">
-        <AdminLock 
-          onunlock={() => { form.isExpense = true; showExpenseModal = false; }} 
-          oncancel={() => { showExpenseModal = false; }}
-          title="Admin Access" 
-          description="You need the admin password to record an immediate expense."
-        />
-      </div>
-    </div>
-  {:else}
+  {#if true}
     <div class="card add-card">
       {#if submitError}
         <div class="error-bar message-bar">
@@ -359,12 +343,13 @@
           </div>
 
           <div class="form-group span-2">
-            <label for="ae-notes">Team Notes</label>
+            <label for="ae-notes">Team Notes *</label>
             <textarea
               id="ae-notes"
               bind:value={form.notes}
-              placeholder="Promo codes, notes, etc."
+              placeholder="Please give a breif description on the reason for ordering this item. Promo codes and/or additional information if applicable as well."
               rows="3"
+              required
             ></textarea>
           </div>
         </div>

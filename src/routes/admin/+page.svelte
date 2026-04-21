@@ -251,6 +251,14 @@
   // ── Data Loading ─────────────────────────────────────────────────────────────
   onMount(() => {
     dataService.load(); // Uses persistent cache for instant load
+    
+    // Check for view parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const view = urlParams.get("view");
+    const validViews = ["orderHistory", "orders", "master", "funding", "add", "addOrder"];
+    if (view && validViews.includes(view)) {
+      activeView = view;
+    }
   });
 
   // ── Modal helpers ─────────────────────────────────────────────────────────────
@@ -489,6 +497,10 @@
     }
     if (!addOrderForm.price || isNaN(Number(addOrderForm.price))) {
       actionErr = "Valid price is required.";
+      return;
+    }
+    if (!addOrderForm.notes.trim()) {
+      actionErr = "Team Notes (Reason for order) is required.";
       return;
     }
 
@@ -1414,12 +1426,13 @@
             </div>
 
             <div class="form-group" style="grid-column: 1 / -1">
-              <label for="ae-notes">Notes</label>
+              <label for="ae-notes">Notes *</label>
               <textarea
                 id="ae-notes"
                 rows="3"
                 bind:value={addOrderForm.notes}
-                placeholder="Internal notes..."
+                placeholder="Reason for ordering this item..."
+                required
               ></textarea>
             </div>
           </div>
