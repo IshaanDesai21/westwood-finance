@@ -89,8 +89,10 @@
 
   // ── Modal state ─────────────────────────────────────────────────────────────
   let editingOrderId = $state("");
-  let currentEditingOrder = $derived(dataService.orders.find(o => o.id === editingOrderId) || null);
-  
+  let currentEditingOrder = $derived(
+    dataService.orders.find((o) => o.id === editingOrderId) || null,
+  );
+
   let editStatus = $state("");
   let editTracking = $state("");
   let editUUID = $state("");
@@ -102,38 +104,46 @@
   // Derived state for the grouping dropdown targets
   let groupingOptions = $derived.by(() => {
     if (!currentEditingOrder) return [];
-    
+
     // 1. Get all other pending orders from same company
-    const otherPending = dataService.orders.filter(o => 
-      o.company === currentEditingOrder.company && 
-      o.id !== editingOrderId && 
-      (o.status || "").toLowerCase().trim() === "pending review"
+    const otherPending = dataService.orders.filter(
+      (o) =>
+        o.company === currentEditingOrder.company &&
+        o.id !== editingOrderId &&
+        (o.status || "").toLowerCase().trim() === "pending review",
     );
-    
+
     if (otherPending.length === 0) return [];
-    
-    const isCurrentlyGrouped = otherPending.some(o => o.orderUUID && o.orderUUID === editUUID);
+
+    const isCurrentlyGrouped = otherPending.some(
+      (o) => o.orderUUID && o.orderUUID === editUUID,
+    );
     const seenUUIDs = new Set();
-    
+
     // 2. Identify unique targets for grouping
-    const uniqueTargets = otherPending.filter(o => {
+    const uniqueTargets = otherPending.filter((o) => {
       if (!o.orderUUID || seenUUIDs.has(o.orderUUID)) return false;
       seenUUIDs.add(o.orderUUID);
       return true;
     });
 
     return [
-      { 
-        label: "Make separate order", 
-        value: isCurrentlyGrouped ? "__NEW__" : editUUID 
+      {
+        label: "Make separate order",
+        value: isCurrentlyGrouped ? "__NEW__" : editUUID,
       },
-      ...uniqueTargets.map(t => {
+      ...uniqueTargets.map((t) => {
         const isMatch = t.orderUUID === editUUID;
         return {
-          label: (isMatch ? "Keep grouped with: " : "Group with: ") + truncate(t.item, 40) + " (" + t.orderUUID + ")",
-          value: String(t.orderUUID)
+          label:
+            (isMatch ? "Keep grouped with: " : "Group with: ") +
+            truncate(t.item, 40) +
+            " (" +
+            t.orderUUID +
+            ")",
+          value: String(t.orderUUID),
         };
-      })
+      }),
     ];
   });
 
@@ -163,7 +173,6 @@
     { label: "Hunga Munga", value: "Hunga Munga" },
     { label: "FRC", value: "FRC" },
     { label: "Westwood Overall", value: "Westwood Overall" },
-    { label: "All", value: "All" },
   ];
 
   let addFundsForm = $state({
@@ -172,7 +181,7 @@
     amount: "",
     date: "",
     notes: "",
-    recipient: "All",
+    recipient: "Westwood Overall",
   });
   let addFundsSubmitting = $state(false);
 
@@ -595,12 +604,51 @@
         amount: "",
         date: "",
         notes: "",
-        recipient: "All",
+        recipient: "Westwood Overall",
       };
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Update failed";
     } finally {
       addFundsSubmitting = false;
+    }
+  }
+
+  /** @param {any[]} orders */
+  async function linkGroupOrders(orders) {
+    if (!orders || orders.length < 2) return;
+
+    syncing = true;
+    actionMsg = "Linking " + orders.length + " orders...";
+
+    // Pick first valid UUID or generate new
+    const targetUUID =
+      orders.find((o) => o.orderUUID)?.orderUUID || generateShortId();
+
+    try {
+      const promises = orders.map((/** @type {any} */ o) => {
+        const params = new URLSearchParams({
+          action: "updateOrderStatus",
+          key: SECRET_KEY,
+          id: o.id,
+          rowIndex: String(o.rowIndex),
+          orderUUID: targetUUID,
+        });
+        return fetch(`${BASE_URL}?${params.toString()}`).then((r) => r.json());
+      });
+
+      const results = await Promise.all(promises);
+      if (results.some((r) => r.error)) throw new Error("Batch link failed");
+
+      actionMsg = "✓ Linked into Order #" + targetUUID;
+
+      orders.forEach((/** @type {any} */ o) =>
+        dataService.updateOrderOptimistic(o.id, { orderUUID: targetUUID }),
+      );
+      dataService.load(true, true);
+    } catch (e) {
+      actionErr = e instanceof Error ? e.message : "Error linking orders";
+    } finally {
+      syncing = false;
     }
   }
 </script>
@@ -623,7 +671,6 @@
   <div class="page-header">
     <div class="header-left">
       <h1>Admin <span>Portal</span></h1>
-      <p class="text-muted">Westwood Robotics Resource & Procurement Control</p>
     </div>
 
     <div
@@ -775,7 +822,7 @@
 
       <div class="card orders-card" style="padding:0;overflow:hidden">
         {#if dataService.loading && !dataService.orders.length}
-          <LoadingIndicator text="Loading procurement backlog..." />
+          <LoadingIndicator text="Loading admin backlog..." />
         {:else if dataService.orders.length === 0}
           <div class="empty-state fade-in">
             <div class="icon">
@@ -795,10 +842,7 @@
               >
             </div>
             <h3>No requests on file</h3>
-            <p>
-              New procurement requests will appear here for administrative
-              action.
-            </p>
+            <p>New requests will appear here for admin action.</p>
           </div>
         {:else}
           <div class="table-wrap" style="border: none; border-radius: 0;">
@@ -877,10 +921,6 @@
       >
         <span>Pending Orders by Vendor ({newTabOrders.length})</span>
       </div>
-      <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-        Review active orders waiting for processing or delivery, grouped by
-        source vendor.
-      </p>
 
       {#if Object.keys(groupedCompanyOrders).length === 0}
         <div class="card empty-state fade-in" style="margin-bottom: 24px;">
@@ -912,9 +952,20 @@
               {company}
               <span
                 class="badge badge-hardware"
-                style="margin-left: 10px; padding: 4px 10px; font-weight: 600; vertical-align: middle;"
+                style="margin-left: 10px; padding: 4px 10px; font-weight: 600; vertical-align: middle; line-height: 1;"
                 >Quantity: {compOrders.length}</span
               >
+
+              {#if compOrders.length > 1}
+                <button
+                  class="btn btn-ghost btn-sm"
+                  style="margin-left: 12px; font-size: 0.7rem; padding: 4px 10px; border-color: var(--border-bright); font-weight: 400; border-radius: 4px; line-height: 1; vertical-align: middle;"
+                  onclick={() => linkGroupOrders(compOrders)}
+                  disabled={syncing}
+                >
+                  Merge Group
+                </button>
+              {/if}
             </h3>
             <OrderTable
               orders={compOrders}
@@ -1036,7 +1087,7 @@
         class="section-title"
         style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;"
       >
-        <span>Full Finance History ({masterTransactions.length})</span>
+        <span>Master Finance History ({masterTransactions.length})</span>
         <button
           class="btn btn-ghost btn-sm"
           onclick={exportMasterCSV}
@@ -1045,10 +1096,6 @@
           ↓ Export CSV
         </button>
       </div>
-      <p class="text-muted" style="margin-bottom:16px;font-size:0.875rem">
-        Combined view of all finalized inbound (Funding) and outbound
-        (Approved/Ordered/Received) transactions.
-      </p>
 
       <div class="card orders-card" style="padding:0;overflow:hidden">
         {#if dataService.loading && !masterTransactions.length}
@@ -1169,7 +1216,7 @@
                 id="f-source"
                 type="text"
                 bind:value={addFundsForm.source}
-                placeholder="e.g. Bake Sale, Westwood Overall Special Team Grant…"
+                placeholder="ex. Member Dues"
                 required
               />
             </div>
@@ -1288,7 +1335,7 @@
                 id="ae-item"
                 type="text"
                 bind:value={addOrderForm.item}
-                placeholder="e.g. REV UltraPlanetary Motor"
+                placeholder="ex. Pit Banner"
                 required
               />
             </div>
@@ -1299,7 +1346,7 @@
                 id="ae-company"
                 type="text"
                 bind:value={addOrderForm.company}
-                placeholder="e.g. REV Robotics"
+                placeholder="ex. REV Robotics"
                 required
               />
             </div>
@@ -1307,7 +1354,7 @@
             <div class="form-group">
               <label for="ae-team">Team *</label>
               <CustomDropdown
-                options={recipientOptions.filter((o) => o.value !== "All")}
+                options={recipientOptions}
                 bind:value={addOrderForm.team}
               />
             </div>
@@ -1575,7 +1622,7 @@
               id="edit-uuid"
               type="text"
               bind:value={editUUID}
-              placeholder="e.g. ORD-2026-001"
+              placeholder="ex. RFV2RF"
             />
           </div>
 
@@ -1613,23 +1660,28 @@
               id="edit-tracking"
               type="text"
               bind:value={editTracking}
-              placeholder="e.g. UPS/Status..."
+              placeholder="ex. UPS/Status"
             />
           </div>
         </div>
 
         <div class="order-summary">
           <div class="summary-row">
-            <span>Company</span><span>{currentEditingOrder.company || "—"}</span>
+            <span>Company</span><span>{currentEditingOrder.company || "—"}</span
+            >
           </div>
           <div class="summary-row">
             <span>Team</span><span>{currentEditingOrder.team || "—"}</span>
           </div>
           <div class="summary-row">
-            <span>Category</span><span>{currentEditingOrder.category || "—"}</span>
+            <span>Category</span><span
+              >{currentEditingOrder.category || "—"}</span
+            >
           </div>
           <div class="summary-row">
-            <span>Total</span><span>{formatCurrency(currentEditingOrder.total)}</span>
+            <span>Total</span><span
+              >{formatCurrency(currentEditingOrder.total)}</span
+            >
           </div>
         </div>
 

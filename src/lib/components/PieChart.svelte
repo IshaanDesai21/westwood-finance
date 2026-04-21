@@ -5,7 +5,7 @@
 
   Chart.register(ArcElement, Tooltip, Legend, PieController);
 
-  let { data = {}, colorMap = null } = $props();
+  let { data = {}, colorMap = null, hideLegend = false } = $props();
   
   let labels = $derived(Object.keys(data));
   let values = $derived(labels.map(l => data[l]));
@@ -51,6 +51,7 @@
         maintainAspectRatio: false,
         plugins: {
           legend: {
+            display: !hideLegend,
             position: 'bottom',
             labels: {
               color: '#a1a1aa',

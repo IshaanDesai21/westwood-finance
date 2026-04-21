@@ -36,24 +36,13 @@
   );
 
   let showPassword = $state(false);
-  let showTestModal = $state(false);
-  let testPasswordInput = $state("");
+  let showTestLock = $state(false);
   let testModalError = $state("");
 
-  /** 🤖 TEST DATA GENERATOR */
-  function openTestModal() {
-    showTestModal = true;
-    testPasswordInput = "";
-    testModalError = "";
-  }
 
-  function handleTestSubmit() {
-    if (testPasswordInput === "hi") {
-      fillTestOrder();
-      showTestModal = false;
-    } else {
-      testModalError = "Invalid test password.";
-    }
+  function handleTestUnlock() {
+    fillTestOrder();
+    showTestLock = false;
   }
 
   function fillTestOrder() {
@@ -214,7 +203,7 @@
     <div class="header-actions">
       <button 
         class="btn btn-ghost btn-sm" 
-        onclick={openTestModal}
+        onclick={() => showTestLock = true}
         title="Autofill for validation"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
@@ -239,8 +228,8 @@
 
 <div class="add-layout-wide fade-in">
   {#if showExpenseModal}
-    <div class="lock-screen-wrapper fade-in" style="position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center;">
-      <div style="position: relative; width: 100%; max-width: 380px;">
+    <div class="lock-screen-wrapper fade-in" style="position: fixed; inset: 0; z-index: 1000; background: var(--bg); display: flex; align-items: center; justify-content: center;">
+      <div style="position: relative; width: 100%; max-width: 480px;">
         <AdminLock 
           onunlock={() => { form.isExpense = true; showExpenseModal = false; }} 
           oncancel={() => { showExpenseModal = false; }}
@@ -278,7 +267,7 @@
               id="ae-item"
               type="text"
               bind:value={form.item}
-              placeholder="e.g. REV Control Hub"
+              placeholder="ex. Gobilda 312 RPM Motor"
               required
             />
           </div>
@@ -407,46 +396,15 @@
     </div>
   {/if}
 
-  {#if showTestModal}
-    <div 
-      class="modal-backdrop fade-in" 
-      onclick={() => showTestModal = false}
-      onkeydown={(e) => e.key === 'Escape' && (showTestModal = false)}
-      role="button"
-      tabindex="0"
-    >
-      <div class="card modal-card test-modal" onclick={(e) => e.stopPropagation()}>
-        <div class="modal-header">
-          <div>
-            <h3 style="margin: 0; color: var(--primary);">Developer Sandbox</h3>
-            <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-dim);">Authenticate to populate sample data</p>
-          </div>
-          <button class="modal-close" onclick={() => showTestModal = false} aria-label="Close">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
-        </div>
-        
-        <div class="modal-body" style="padding: 24px;">
-            {#if testModalError}
-                <div class="error-bar" style="margin-bottom: 16px; font-size: 0.8rem;">{testModalError}</div>
-            {/if}
-            
-            <div class="form-group">
-                <label for="test-pw" style="color: var(--text-dim);">Test Password</label>
-                <input 
-                    id="test-pw"
-                    type="password" 
-                    placeholder="••••••••" 
-                    bind:value={testPasswordInput}
-                    style="width: 100%;"
-                    onkeydown={(e) => e.key === 'Enter' && handleTestSubmit()}
-                />
-            </div>
-            
-            <button class="btn btn-primary btn-block" style="margin-top: 16px;" onclick={handleTestSubmit}>
-                Authenticate & Populate
-            </button>
-        </div>
+  {#if showTestLock}
+    <div class="lock-screen-wrapper fade-in" style="position: fixed; inset: 0; z-index: 1000; background: var(--bg); display: flex; align-items: center; justify-content: center;">
+      <div style="position: relative; width: 100%; max-width: 420px;">
+        <AdminLock 
+          onunlock={handleTestUnlock} 
+          oncancel={() => { showTestLock = false; }}
+          title="Developer Login" 
+          description="Authenticate to populate sample data for testing."
+        />
       </div>
     </div>
   {/if}
@@ -487,25 +445,6 @@
     align-items: center;
   }
 
-  .modal-header h3 { margin: 0; font-size: 1.1rem; color: #fff; }
-  .close-btn { background: none; border: none; color: var(--text-dim); font-size: 1.5rem; cursor: pointer; }
-
-  .modal-body { padding: 24px; }
-  .modal-desc { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 24px; line-height: 1.5; }
-
-  .test-input-group { margin-bottom: 24px; }
-  .test-input-group input {
-    width: 100%;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    padding: 12px 16px;
-    border-radius: var(--radius-sm);
-    color: #fff;
-    font-size: 1rem;
-    outline: none;
-    transition: all 0.2s;
-  }
-  .test-input-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
   .test-error { color: #ef4444; font-size: 0.75rem; font-weight: 600; margin-top: 8px; display: block; }
 
   .header-actions { display: flex; gap: 8px; align-items: center; }

@@ -4,6 +4,7 @@
     formatCurrency,
     formatFullDate,
     getTeamBadgeClass,
+    CATEGORIES,
   } from "$lib/utils.js";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
@@ -11,6 +12,7 @@
   import { dataService } from "$lib/dataService.svelte.js";
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
   import AdminLock from "$lib/components/AdminLock.svelte";
+  import PieChart from "$lib/components/PieChart.svelte";
 
   const typeOptions = [
     { label: "Fundraiser", value: "Fundraiser" },
@@ -26,7 +28,6 @@
     { label: "Hunga Munga", value: "Hunga Munga" },
     { label: "FRC", value: "FRC" },
     { label: "Westwood Overall", value: "Westwood Overall" },
-    { label: "All", value: "All" },
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -36,18 +37,12 @@
   let sortCol = $state("Date");
   let sortDir = $state("desc");
 
-
-
   let selectedBudgetTeam = $state("FRC");
 
   let teamSpecificBudgetOrders = $derived(
     dataService.orders.filter((/** @type {any} */ o) => {
       // Westwood Overall shows all teams (aggregate)
-      if (
-        selectedBudgetTeam === "Westwood Overall" ||
-        selectedBudgetTeam === "All"
-      )
-        return true;
+      if (selectedBudgetTeam === "Westwood Overall") return true;
       const t = (o.team || "").toLowerCase().trim();
       const s = selectedBudgetTeam.toLowerCase().trim();
       return t === s || t.includes(s);
@@ -103,11 +98,7 @@
   );
   let teamSpecificFunds = $derived(
     dataService.funds.filter((/** @type {any} */ f) => {
-      if (
-        selectedBudgetTeam === "Westwood Overall" ||
-        selectedBudgetTeam === "All"
-      )
-        return true;
+      if (selectedBudgetTeam === "Westwood Overall") return true;
       const r = String(f.Recipient || "")
         .toLowerCase()
         .trim();
@@ -141,8 +132,6 @@
     }
   }
 
-
-
   // ── Formatting helpers ──────────────────────────────────────────────────────
   function formatDate(/** @type {string} */ ts) {
     if (!ts) return "—";
@@ -162,6 +151,35 @@
     Sponsor: "#6bcb77",
     Other: "#f1a94e",
   });
+
+  const CATEGORY_LABELS = /** @type {Record<string,string>} */ ({
+    hardware: "Hardware",
+    software: "Software",
+    outreach: "Outreach",
+    food: "Food",
+    miscellaneous: "Misc",
+  });
+
+  let spentByCategory = $derived.by(() => {
+    const map = /** @type {Record<string,number>} */ ({});
+    CATEGORIES.forEach((c) => (map[c] = 0));
+
+    // Filter team specific orders by status for "Spent" calculation
+    const expenses = teamSpecificBudgetOrders.filter((o) => {
+      const s = (o.status || "").toLowerCase().trim();
+      return s === "received" || s === "ordered" || s === "approved";
+    });
+
+    for (const e of expenses) {
+      const cat = (e.category || "miscellaneous").toLowerCase().trim();
+      map[cat] = (map[cat] || 0) + (e.total || 0);
+    }
+    return map;
+  });
+
+  let totalSpentForBreakdown = $derived(
+    Object.values(spentByCategory).reduce((sum, val) => sum + val, 0),
+  );
 </script>
 
 <svelte:head>
@@ -171,16 +189,21 @@
 <div class="page-header">
   <div class="header-left">
     <h1>Team <span>Dashboard</span></h1>
-    <p class="text-muted">Westwood Robotics Financial Management</p>
   </div>
-  
-  <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
+
+  <div
+    class="header-right"
+    style="display: flex; align-items: center; gap: 12px;"
+  >
     <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
       <span class:spinning={syncing}>↻</span>
       {syncing ? "Syncing..." : "Refresh"}
     </button>
-    
-    <div class="budget-team-selector {!dataService.hasLoadedOnce ? 'fade-in' : ''}" style="width: 180px;">
+
+    <div
+      class="budget-team-selector {!dataService.hasLoadedOnce ? 'fade-in' : ''}"
+      style="width: 180px;"
+    >
       <CustomDropdown
         options={[
           "FRC",
@@ -189,7 +212,6 @@
           "Kunai",
           "Hunga Munga",
           "Westwood Overall",
-          "All",
         ]}
         bind:value={selectedBudgetTeam}
         placeholder="Select Team"
@@ -203,7 +225,9 @@
   <div class="segmented-control">
     <div
       class="segment-highlight"
-      style="transform: translateX(calc({['budget', 'history'].indexOf(activeTab)} * 100%));"
+      style="transform: translateX(calc({['budget', 'history'].indexOf(
+        activeTab,
+      )} * 100%));"
     ></div>
     {#each [["budget", "Team Dashboard"], ["history", `${selectedBudgetTeam} Funding`]] as [key, label]}
       <button
@@ -215,10 +239,6 @@
     {/each}
   </div>
 </div>
-
-
-
-
 
 <!-- ══ OVERVIEW ══════════════════════════════════════════════════════════════ -->
 {#if activeTab === "overview"}
@@ -277,7 +297,9 @@
         {@const color = TYPE_COLORS[type.value] || "#8a8a8a"}
         <div class="breakdown-row">
           <div class="breakdown-meta">
-            <span class="breakdown-label" style="color:{color}">{type.label}</span>
+            <span class="breakdown-label" style="color:{color}"
+              >{type.label}</span
+            >
             <span class="breakdown-amount">{formatCurrency(amount)}</span>
           </div>
           <div class="breakdown-bar-track">
@@ -299,7 +321,20 @@
   {:else if dataService.funds.length === 0}
     <div class="empty-state card">
       <div class="icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><circle cx="12" cy="12" r="10" /><path
+            d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"
+          /><path d="M12 18V6" /></svg
+        >
       </div>
       No funding entries yet.
     </div>
@@ -408,86 +443,121 @@
   {:else if !dataService.budget}
     <div class="empty-state card">
       <div class="icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><line x1="18" y1="20" x2="18" y2="10" /><line
+            x1="12"
+            y1="20"
+            x2="12"
+            y2="4"
+          /><line x1="6" y1="20" x2="6" y2="14" /></svg
+        >
       </div>
       No budget data available.
     </div>
   {:else}
     <div
-      class="budget-single-view"
-      class:fade-in={!dataService.hasLoadedOnce}
-      class:is-grid={selectedBudgetTeam === "All"}
-      style="width:100%"
+      class="budget-overview-container"
+      class:is-single={selectedBudgetTeam !== "Westwood Overall"}
     >
-      {#each budgetTeams as [team, data]}
-        {#if selectedBudgetTeam === "All" || selectedBudgetTeam === "Westwood Overall" || team === selectedBudgetTeam}
-          {@const teamFundsRaised = dataService.funds.reduce((sum, f) => {
-            const r = String(f.Recipient || "").toLowerCase().trim();
-            const s = team.toLowerCase().trim();
-            if (r === s || r === "all") {
-               return sum + (Number(f.Amount) || 0);
-            }
-            return sum;
-          }, 0)}
-          {@const baseFinal = data["Final"] ?? 0}
-          {@const final = baseFinal + teamFundsRaised}
-          {@const clubFunds = data["Club Funds"] ?? 0}
-          {@const expenses = data["Expenses"] ?? 0}
-          {@const personal = data["Personal Funds"] ?? 0}
-          {@const pct =
-            budgetTotal && budgetTotal["Final"] > 0
-              ? Math.min(100, (final / budgetTotal["Final"]) * 100)
-              : 0}
+      <div
+        class="budget-single-view"
+        class:fade-in={!dataService.hasLoadedOnce}
+        class:is-grid={selectedBudgetTeam === "Westwood Overall"}
+      >
+        {#each budgetTeams as [team, data]}
+          {#if selectedBudgetTeam === "Westwood Overall" || team === selectedBudgetTeam}
+            {@const teamFundsRaised = dataService.funds.reduce((sum, f) => {
+              const r = String(f.Recipient || "")
+                .toLowerCase()
+                .trim();
+              const s = team.toLowerCase().trim();
+              if (r === s || r === "all") {
+                return sum + (Number(f.Amount) || 0);
+              }
+              return sum;
+            }, 0)}
+            {@const baseFinal = data["Final"] ?? 0}
+            {@const final = baseFinal + teamFundsRaised}
+            {@const clubFunds = data["Club Funds"] ?? 0}
+            {@const expenses = data["Expenses"] ?? 0}
+            {@const personal = data["Personal Funds"] ?? 0}
+            {@const pct =
+              budgetTotal && budgetTotal["Final"] > 0
+                ? Math.min(100, (final / budgetTotal["Final"]) * 100)
+                : 0}
 
-          <div
-            class="budget-card card selected"
-            style={selectedBudgetTeam === "All" ? "margin-bottom: 0;" : "max-width: 500px; margin: 0 auto 32px;"}
-          >
             <div
-              class="budget-team-name"
-              style="font-size: 1.4rem; color: var(--primary);"
+              class="budget-card card selected"
+              style={selectedBudgetTeam === "Westwood Overall"
+                ? "margin-bottom: 0;"
+                : "border-color: var(--border);"}
             >
-              {team}
-            </div>
-            <div
-              class="budget-final"
-              style="color:{final >= 0
-                ? '#6bcb77'
-                : '#f16a4e'}; font-size: 2.2rem;"
-            >
-              {formatCurrency(final)}
-            </div>
-            <div class="budget-details" style="gap: 12px; margin-top: 20px;">
-              <div class="budget-detail-row" style="font-size: 0.95rem;">
-                <span class="text-muted">Raised</span>
-                <span class="monospace" style="color:#6bcb77">+{formatCurrency(teamFundsRaised)}</span>
-              </div>
-              <div class="budget-detail-row" style="font-size: 0.95rem;">
-                <span class="text-muted">Team Budget</span>
-                <span class="monospace">{formatCurrency(clubFunds)}</span>
-              </div>
-              <div class="budget-detail-row" style="font-size: 0.95rem;">
-                <span class="text-muted">Personal</span>
-                <span class="monospace" style="color:#4e9af1"
-                  >{formatCurrency(personal)}</span
-                >
-              </div>
-              <div class="budget-detail-row" style="font-size: 0.95rem;">
-                <span class="text-muted">Expenses</span>
-                <span class="monospace" style="color:#f16a4e"
-                  >{formatCurrency(Math.abs(expenses))}</span
-                >
-              </div>
-            </div>
-            <div class="budget-bar-track" style="margin-top:24px; height: 8px;">
               <div
-                class="budget-bar-fill"
-                style="width:{pct}%;background:var(--primary)"
-              ></div>
+                class="budget-team-name"
+                style="font-size: 1.4rem; color: var(--primary);"
+              >
+                {team}
+              </div>
+              <div
+                class="budget-final"
+                style="color:{final >= 0
+                  ? '#6bcb77'
+                  : '#f16a4e'}; font-size: 2.2rem;"
+              >
+                {formatCurrency(final)}
+              </div>
+              <div class="budget-details" style="gap: 12px; margin-top: 20px;">
+                <div class="budget-detail-row" style="font-size: 0.95rem;">
+                  <span class="text-muted">Raised</span>
+                  <span class="monospace" style="color:#6bcb77"
+                    >+{formatCurrency(teamFundsRaised)}</span
+                  >
+                </div>
+                <div class="budget-detail-row" style="font-size: 0.95rem;">
+                  <span class="text-muted">Team Budget</span>
+                  <span class="monospace">{formatCurrency(clubFunds)}</span>
+                </div>
+                <div class="budget-detail-row" style="font-size: 0.95rem;">
+                  <span class="text-muted">Personal</span>
+                  <span class="monospace" style="color:#4e9af1"
+                    >{formatCurrency(personal)}</span
+                  >
+                </div>
+                <div class="budget-detail-row" style="font-size: 0.95rem;">
+                  <span class="text-muted">Expenses</span>
+                  <span class="monospace" style="color:#f16a4e"
+                    >{formatCurrency(Math.abs(expenses))}</span
+                  >
+                </div>
+              </div>
+              <div
+                class="budget-bar-track"
+                style="margin-top:24px; height: 8px;"
+              >
+                <div
+                  class="budget-bar-fill"
+                  style="width:{pct}%;background:var(--primary)"
+                ></div>
+              </div>
             </div>
-          </div>
-        {/if}
-      {/each}
+          {/if}
+        {/each}
+      </div>
+
+      {#if selectedBudgetTeam !== "Westwood Overall"}
+        <div class="breakdown-card fade-in">
+          <PieChart data={spentByCategory} hideLegend={true} />
+        </div>
+      {/if}
     </div>
 
     <!-- Team Dashboard View -->
@@ -550,7 +620,7 @@
                       ><span
                         style="font-size: 1.05rem; font-weight: 500; border-left: 2px solid {TYPE_COLORS[
                           f.Type
-                         ] || '#ccc'}; padding-left: 8px;">{f.Type}</span
+                        ] || '#ccc'}; padding-left: 8px;">{f.Type}</span
                       ></td
                     >
                     <td class="text-right monospace" style="color:#6bcb77"
@@ -564,7 +634,12 @@
                 <tr>
                   <td colspan="2" class="total-label">Total Raised</td>
                   <td class="text-right monospace total-amount">
-                    {formatCurrency(teamSpecificFunds.reduce((sum, f) => sum + (Number(f.Amount) || 0), 0))}
+                    {formatCurrency(
+                      teamSpecificFunds.reduce(
+                        (sum, f) => sum + (Number(f.Amount) || 0),
+                        0,
+                      ),
+                    )}
                   </td>
                 </tr>
               </tfoot>
@@ -577,7 +652,6 @@
 {/if}
 
 <style>
-
   .tabs-container {
     display: flex;
     justify-content: center;
@@ -691,7 +765,26 @@
   }
 
   .budget-card {
-    padding: 24px;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 420px;
+    min-height: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid var(--border); /* Default muted border */
+  }
+  .budget-card.selected {
+    border-color: var(--border-bright) !important;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Wide card for single team view */
+  .is-single .budget-card {
+    width: 500px;
+    max-width: none;
+    padding: 28px 32px;
   }
   .budget-team-name {
     font-size: 1.1rem;
@@ -699,14 +792,14 @@
     margin-bottom: 4px;
   }
   .budget-final {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .budget-details {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   .budget-detail-row {
     display: flex;
@@ -724,9 +817,6 @@
     transition: width 0.6s ease;
   }
 
-
-
-
   .date-chip {
     background: var(--surface-2);
     padding: 3px 10px;
@@ -738,10 +828,53 @@
   }
 
   /* ── Enhanced Budget View Styles ────────────────────── */
+  .budget-overview-container {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .budget-overview-container.is-single {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .budget-single-view:not(.is-grid) {
+    display: flex;
+    justify-content: center;
+    width: auto;
+  }
+
+  @media (max-width: 950px) {
+    .budget-overview-container.is-single {
+      flex-direction: column;
+      gap: 32px;
+    }
+  }
+
   .budget-single-view.is-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 32px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
     align-items: start;
+  }
+
+  .breakdown-card {
+    height: 260px; /* Matching budget card min-height */
+    width: 260px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    position: relative;
   }
 </style>

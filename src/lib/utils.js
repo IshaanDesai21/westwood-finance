@@ -105,7 +105,7 @@ export const TEAMS = ['FRC', 'Westwood Overall', 'Slingshot', 'Atlatl', 'Kunai',
  * @param {string} team 
  */
 export function getTeamBadgeClass(team) {
-  if (!team || team === 'All') return '';
+  if (!team || team === 'All' || team === 'Westwood Overall') return '';
   return `badge-${team.toString().toLowerCase().trim().replace(/\s+/g, '-')}`;
 }
 

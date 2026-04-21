@@ -1,19 +1,32 @@
 <script>
-  import { onMount } from 'svelte';
-  import StatCard from '$lib/components/StatCard.svelte';
-  import PieChart from '$lib/components/PieChart.svelte';
-  import LineChart from '$lib/components/LineChart.svelte';
-  import BarChart from '$lib/components/BarChart.svelte';
-  import LoadingIndicator from '$lib/components/LoadingIndicator.svelte';
-  import CustomDropdown from '$lib/components/CustomDropdown.svelte';
-  import { formatCurrency, formatDate, CATEGORIES, STATUS_COLORS, truncate } from "$lib/utils.js";
-  import { dataService } from '$lib/dataService.svelte.js';
+  import { onMount } from "svelte";
+  import StatCard from "$lib/components/StatCard.svelte";
+  import PieChart from "$lib/components/PieChart.svelte";
+  import LineChart from "$lib/components/LineChart.svelte";
+  import BarChart from "$lib/components/BarChart.svelte";
+  import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
+  import CustomDropdown from "$lib/components/CustomDropdown.svelte";
+  import {
+    formatCurrency,
+    formatDate,
+    CATEGORIES,
+    STATUS_COLORS,
+    truncate,
+  } from "$lib/utils.js";
+  import { dataService } from "$lib/dataService.svelte.js";
 
   /** @typedef {import('$lib/dataService.svelte.js').Order} Order */
 
   let syncing = $state(false);
 
-  const TEAM_OPTIONS = ["FRC", "Slingshot", "Hunga Munga", "Atlatl", "Kunai", "Westwood Overall"];
+  const TEAM_OPTIONS = [
+    "FRC",
+    "Slingshot",
+    "Hunga Munga",
+    "Atlatl",
+    "Kunai",
+    "Westwood Overall",
+  ];
   let selectedTeam = $state("FRC");
 
   async function sync() {
@@ -27,49 +40,61 @@
   });
 
   // ── Stats Calculations ──────────────────────────────────────────────────────
-  
-  // Use all requested orders for analytics 
+
+  // Use all requested orders for analytics
   let teamOrders = $derived(
-    selectedTeam === "Westwood Overall" 
-      ? dataService.orders 
+    selectedTeam === "Westwood Overall"
+      ? dataService.orders
       : dataService.orders.filter((o) => {
           const t = (o.team || "").toLowerCase().trim();
           const s = selectedTeam.toLowerCase().trim();
-          // Match exact, includes, or FRC specific (e.g., FRC matches 7117)
-          return t === s || t.includes(s) || (s === "frc" && (t.includes("frc") || /^\d+$/.test(t)));
-        })
+          return (
+            t === s ||
+            t.includes(s) ||
+            (s === "frc" && (t.includes("frc") || /^\d+$/.test(t)))
+          );
+        }),
   );
 
   let analyticsOrders = $derived(
     teamOrders.map((/** @type {Order} */ o) => {
       const d = new Date(o.timestamp || "");
-      const month = isNaN(d.getTime()) ? "" : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const month = isNaN(d.getTime())
+        ? ""
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       return {
         ...o,
         month,
       };
-    })
+    }),
   );
 
   // Financial orders include only definitively spent items (Received/Ordered)
   let financialOrders = $derived(
     analyticsOrders.filter((o) => {
-      const s = String(o.status || "").toLowerCase().trim();
+      const s = String(o.status || "")
+        .toLowerCase()
+        .trim();
       return s === "received" || s === "ordered" || s === "approved";
-    })
+    }),
   );
 
   // ── Stats Calculations (Split into individual runes for perfect reactivity) ──
-  
-  let totalSpent = $derived(financialOrders.reduce((sum, e) => sum + (e.total || 0), 0));
-  let totalItems = $derived(financialOrders.length);
-  let avgCost = $derived(financialOrders.length > 0 ? (totalSpent / financialOrders.length) : 0);
-  
-  let mostExpensive = $derived(financialOrders.length > 0 
-    ? [...financialOrders].sort((a,b) => (b.total||0) - (a.total||0))[0] 
-    : null
+
+  let totalSpent = $derived(
+    financialOrders.reduce((sum, e) => sum + (e.total || 0), 0),
   );
-  
+  let totalItems = $derived(financialOrders.length);
+  let avgCost = $derived(
+    financialOrders.length > 0 ? totalSpent / financialOrders.length : 0,
+  );
+
+  let mostExpensive = $derived(
+    financialOrders.length > 0
+      ? [...financialOrders].sort((a, b) => (b.total || 0) - (a.total || 0))[0]
+      : null,
+  );
+
   let topVendor = $derived.by(() => {
     if (financialOrders.length === 0) return null;
     /** @type {Record<string, number>} */
@@ -78,7 +103,7 @@
       const comp = e.company || "Unknown";
       map[comp] = (map[comp] || 0) + 1;
     });
-    const top = Object.entries(map).sort(([,a],[,b]) => b - a)[0];
+    const top = Object.entries(map).sort(([, a], [, b]) => b - a)[0];
     if (!top) return null;
     return { company: top[0], count: top[1] };
   });
@@ -87,8 +112,8 @@
     /** @type {Record<string, number>} */
     const map = {};
     // Ensure all standard categories exist even if 0
-    CATEGORIES.forEach(c => map[c] = 0);
-    
+    CATEGORIES.forEach((c) => (map[c] = 0));
+
     financialOrders.forEach((e) => {
       const cat = (e.category || "miscellaneous").toLowerCase().trim();
       if (map[cat] !== undefined) {
@@ -110,9 +135,9 @@
     });
     return Object.entries(map)
       .map(([month, amount]) => ({ month, amount }))
-      .sort((a,b) => a.month.localeCompare(b.month));
+      .sort((a, b) => a.month.localeCompare(b.month));
   });
-  
+
   let byVendorDollars = $derived.by(() => {
     /** @type {Record<string, number>} */
     const map = {};
@@ -123,8 +148,8 @@
     // Sort and take top 8 for clarity
     return Object.fromEntries(
       Object.entries(map)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 8)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 8),
     );
   });
 
@@ -137,7 +162,6 @@
     });
     return map;
   });
-
 </script>
 
 <svelte:head>
@@ -147,15 +171,31 @@
 <div class="page-header">
   <div class="header-left">
     <h1>Spending <span>Trends</span></h1>
-    <p class="text-muted">Visual history of team purchases and classification</p>
   </div>
-  
-  <div class="header-right" style="display: flex; align-items: center; gap: 24px;">
+
+  <div
+    class="header-right"
+    style="display: flex; align-items: center; gap: 24px;"
+  >
     {#if dataService.error}
-       <span class="error-text" style="display:inline-flex;align-items:center;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <span class="error-text" style="display:inline-flex;align-items:center;">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          style="margin-right:6px;"
+          ><path
+            d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+          /><path d="M12 9v4" /><path d="M12 17h.01" /></svg
+        >
         {dataService.error}
-       </span>
+      </span>
     {/if}
 
     <div style="display: flex; align-items: center; gap: 12px;">
@@ -176,31 +216,33 @@
 {:else if analyticsOrders.length > 0}
   <div class={!dataService.hasLoadedOnce ? "fade-in" : ""}>
     <div class="stat-grid" style="margin-bottom: 32px">
-      <StatCard 
-        label="Total Spend" 
-        value={totalSpent.toString()} 
+      <StatCard
+        label="Total Spend"
+        value={totalSpent.toString()}
         isCurrency={true}
         accentColor="var(--status-rejected)"
         icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M12 2v20m-5-17h10a4 4 0 1 1 0 8H7a4 4 0 1 0 0 8h10"/></svg>'
       />
-      <StatCard 
-        label="Request Count" 
-        value={totalItems.toString()} 
+      <StatCard
+        label="Request Count"
+        value={totalItems.toString()}
         sub="Valid entries"
         accentColor="var(--status-ordered)"
         icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>'
       />
-      <StatCard 
-        label="Average Spend" 
-        value={avgCost.toString()} 
+      <StatCard
+        label="Average Spend"
+        value={avgCost.toString()}
         isCurrency={true}
         accentColor="var(--status-rejected)"
         icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M12 2v20m-5-17h10a4 4 0 1 1 0 8H7a4 4 0 1 0 0 8h10"/></svg>'
       />
-      <StatCard 
-        label="Most Common Vendor" 
+      <StatCard
+        label="Most Common Vendor"
         value={topVendor ? topVendor.company : "—"}
-        sub={topVendor ? `${topVendor.count} order${topVendor.count !== 1 ? 's' : ''}` : "No data"}
+        sub={topVendor
+          ? `${topVendor.count} order${topVendor.count !== 1 ? "s" : ""}`
+          : "No data"}
         accentColor="var(--primary)"
         icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'
       />
@@ -210,7 +252,6 @@
       <div class="card chart-card">
         <div class="card-header-group">
           <h3 class="chart-title">Category Distribution</h3>
-          <p class="chart-subtitle">By total volume</p>
         </div>
         <div class="chart-container">
           <PieChart data={byCategory} />
@@ -219,8 +260,7 @@
 
       <div class="card chart-card">
         <div class="card-header-group">
-          <h3 class="chart-title">Status Distribution</h3>
-          <p class="chart-subtitle">Request overview</p>
+          <h3 class="chart-title">Request Overview</h3>
         </div>
         <div class="chart-container">
           <PieChart data={statusDistribution} colorMap={STATUS_COLORS} />
@@ -228,63 +268,19 @@
       </div>
     </div>
 
-    <div class="card stats-table-card" style="margin-top: 24px; padding: 0; overflow: hidden;">
-      <div class="card-table-header">
-        <div class="card-header-group">
-          <h3 style="margin: 0; font-size: 1.1rem;">Category <span>Totals</span></h3>
-          <p class="chart-subtitle">Money spent by each category</p>
-        </div>
-      </div>
-      <div class="table-wrap" style="border: none; border-radius: 0; margin-bottom: 0;">
-        <table>
-          <thead>
-            <tr>
-              <th style="padding-left: 24px;">Classification</th>
-              <th class="text-right">Total Invested</th>
-              <th class="text-right" style="padding-right: 24px;">Budget Percentage</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each Object.entries(byCategory).sort(([,a],[,b]) => b-a) as [cat, amt]}
-              <tr>
-                <td style="padding-left: 24px;">
-                  <span class="badge badge-{cat}" style="font-weight: 700; font-size: 0.65rem;">
-                    {cat.toUpperCase()}
-                  </span>
-                </td>
-                <td class="text-right monospace amount">{formatCurrency(amt)}</td>
-                <td class="text-right text-dim monospace" style="padding-right: 24px;">
-                  {totalSpent > 0 ? ((amt / totalSpent) * 100).toFixed(1) : '0.0'}%
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="charts-grid" style="margin-top: 24px">
       <div class="card chart-card">
         <div class="card-header-group">
-          <h3 class="chart-title">Spend Allocation</h3>
-          <p class="chart-subtitle">By project category</p>
-        </div>
-        <div class="chart-container">
-          <BarChart data={byCategory} />
-        </div>
-      </div>
-
-      <div class="card chart-card">
-        <div class="card-header-group">
-          <h3 class="chart-title">Monthly Trends</h3>
-          <p class="chart-subtitle">Spending over time</p>
+          <h3 class="chart-title">Spending over Time</h3>
         </div>
         {#if monthlyTrends.length > 0}
           <div class="chart-container">
             <LineChart data={monthlyTrends} />
           </div>
         {:else}
-          <div class="empty-state" style="padding: 48px">No historical data recorded yet</div>
+          <div class="empty-state" style="padding: 48px">
+            No historical data recorded yet
+          </div>
         {/if}
       </div>
     </div>
@@ -292,7 +288,23 @@
 {:else}
   <div class="empty-state card fade-in">
     <div class="icon">
-      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="48"
+        height="48"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        ><line x1="18" y1="20" x2="18" y2="10" /><line
+          x1="12"
+          y1="20"
+          x2="12"
+          y2="4"
+        /><line x1="6" y1="20" x2="6" y2="14" /></svg
+      >
     </div>
     <h3>No analytical insights</h3>
     <p>History will populate once requests are recorded.</p>
@@ -300,34 +312,62 @@
 {/if}
 
 <style>
-  .header-right { display: flex; gap: 12px; align-items: center; }
-  .team-selector { width: 170px; }
-  
+  .header-right {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .team-selector {
+    width: 170px;
+  }
+
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 20px;
   }
 
-  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .chart-wide  { grid-column: 1 / -1; }
-  .chart-card  { padding: 24px; display: flex; flex-direction: column; }
-  
-  .card-header-group { margin-bottom: 24px; }
-  .chart-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; margin-bottom: 4px; }
-  .chart-subtitle { font-size: 0.75rem; color: var(--text-dim); font-weight: 500; }
-  
-  .card-table-header { padding: 24px 24px 0 24px; }
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .chart-card {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+  }
 
-  .chart-container { height: 260px; width: 100%; position: relative; }
-  .chart-container-wide { height: 340px; width: 100%; position: relative; padding: 20px 0; }
+  .card-header-group {
+    margin-bottom: 24px;
+  }
+  .chart-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #fff;
+    margin-bottom: 4px;
+  }
 
-  .amount { font-weight: 700; color: #fff; }
-  
-  .error-text { color: var(--status-rejected); font-size: 0.8rem; font-weight: 600; margin-right: 12px; }
 
-  @media (max-width: 1000px) { 
-    .charts-grid { grid-template-columns: 1fr; } 
-    .chart-wide { grid-column: 1; } 
+  .chart-container {
+    height: 260px;
+    width: 100%;
+    position: relative;
+  }
+
+
+  .error-text {
+    color: var(--status-rejected);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 12px;
+  }
+
+  @media (max-width: 1000px) {
+    .charts-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

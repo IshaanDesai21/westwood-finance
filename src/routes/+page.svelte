@@ -93,24 +93,7 @@
 
   let budgetTotalValue = $derived(dataService.budget?.Total?.["Final"] || 0);
 
-  // Category breakdown
-  let spentByCategory = $derived.by(() => {
-    const map = /** @type {Record<string,number>} */ ({});
-    CATEGORIES.forEach((c) => (map[c] = 0));
-    for (const e of expenses) {
-      const cat = (e.category || "miscellaneous").toLowerCase().trim();
-      map[cat] = (map[cat] || 0) + (e.total || 0);
-    }
-    return map;
-  });
 
-  const CATEGORY_LABELS = /** @type {Record<string,string>} */ ({
-    hardware: "Hardware",
-    software: "Software",
-    outreach: "Outreach",
-    food: "Food",
-    miscellaneous: "Misc",
-  });
   // Generate a stable hue from an order UUID
   function getOrderColor(/** @type {string|undefined} */ uuid) {
     if (!uuid) return "transparent";
@@ -130,7 +113,6 @@
 <div class="page-header">
   <div class="header-left">
     <h1>Dashboard</h1>
-    <p class="text-muted">Westwood Robotics Financial Overview</p>
   </div>
   
   <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
@@ -187,9 +169,8 @@
     />
     <StatCard
       label="Budget Progress"
-      value={budgetTotalValue > 0 ? ((totalSpent / budgetTotalValue) * 100).toFixed(2) : "0"}
+      value={budgetTotalValue > 0 ? ((totalSpent / budgetTotalValue) * 100).toFixed(2) + "%" : "0%"}
       progress={budgetTotalValue > 0 ? (totalSpent / budgetTotalValue) * 100 : 0}
-      progressLabel={budgetTotalValue > 0 ? `${((totalSpent / budgetTotalValue) * 100).toFixed(2)}%` : "N/A"}
       sub={budgetTotalValue > 0
         ? `${formatCurrency(totalSpent)} of ${formatCurrency(budgetTotalValue)}`
         : "No active budget"}
@@ -204,7 +185,6 @@
         <div class="section-header">
           <div class="section-title-group">
             <h2>Recent <span>Expenses</span></h2>
-            <p class="section-subtitle">Purchases history</p>
           </div>
           <a href="/orders" class="btn btn-ghost btn-xs">View History</a>
         </div>
@@ -223,7 +203,6 @@
         <div class="section-header">
           <div class="section-title-group">
             <h2 style="font-size: 1.1rem">Recent <span>Orders</span></h2>
-            <p class="section-subtitle">Latest purchase status</p>
           </div>
           <a href="/orders" class="btn btn-ghost btn-xs">Track</a>
         </div>
@@ -255,32 +234,6 @@
         </div>
       </section>
 
-      <section class="card">
-        <div class="section-title-group" style="margin-bottom: 24px;">
-           <h2 style="font-size: 1.1rem">Spending <span>Breakdown</span></h2>
-           <p class="section-subtitle">By category</p>
-        </div>
-        <div class="category-list">
-          {#each Object.entries(spentByCategory) as [cat, amount]}
-            {@const pct = totalSpent > 0 ? (amount / totalSpent) * 100 : 0}
-            <div class="cat-row">
-              <div class="cat-info">
-                <span class="cat-label">{CATEGORY_LABELS[cat] || cat.toUpperCase()}</span>
-                <span class="cat-amount">{formatCurrency(amount)}</span>
-              </div>
-              <div class="cat-bar-track">
-                <div
-                  class="cat-bar-fill"
-                  style="width: {pct}%; background: var(--cat-{cat}, #8a8a8a)"
-                ></div>
-                <div class="cat-bar-glow" style="background: var(--cat-{cat}, #8a8a8a); width: {pct}%"></div>
-              </div>
-            </div>
-          {:else}
-            <div class="empty-state small">No data yet</div>
-          {/each}
-        </div>
-      </section>
 
     </aside>
   </div>
@@ -391,16 +344,7 @@
 
   .amount { text-align: right; font-weight: 700; color: #fff; font-size: 0.95rem; }
 
-  /* Category List */
-  .category-list { display: flex; flex-direction: column; gap: 20px; }
-  .cat-row { display: flex; flex-direction: column; gap: 8px; }
-  .cat-info { display: flex; justify-content: space-between; font-size: 0.825rem; font-weight: 700; }
-  .cat-label { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .cat-amount { color: #fff; }
 
-  .cat-bar-track { height: 6px; background: var(--surface-3); border-radius: 99px; overflow: hidden; position: relative; }
-  .cat-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 2; }
-  .cat-bar-glow { position: absolute; top: 0; left: 0; height: 100%; opacity: 0.15; filter: blur(4px); z-index: 1; }
 
   .btn-xs { font-size: 0.7rem; padding: 4px 10px; }
   .btn-xs { font-size: 0.7rem; padding: 4px 10px; }

@@ -191,7 +191,11 @@ h3 { font-size: 1.1rem; font-weight: 600; }
   background: var(--primary);
   color: #fff;
 }
-.btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+.btn-primary:hover { 
+  background: var(--primary-dark); 
+  border-color: var(--primary-dark);
+  color: #fff !important;
+}
 
 .btn-ghost {
   background: transparent;
@@ -348,8 +352,9 @@ tbody td {
 /* ── Stat Grids ──────────────────────────────────────────────────────────────── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 28px;
+  margin-bottom: 32px;
 }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────────── */
