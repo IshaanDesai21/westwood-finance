@@ -367,24 +367,19 @@
   async function deleteOrder() {
     if (!currentEditingOrder) return;
     
-    const prevStatus = currentEditingOrder.status;
     const editId = currentEditingOrder.id;
-    const editRowIndex = currentEditingOrder.rowIndex;
     
     deleteSaving = true;
     actionErr = "";
     undoFn = null;
     try {
       const params = new URLSearchParams({
-        action: "updateOrderStatus",
+        action: "deleteOrder",
         key: SECRET_KEY,
-        id: currentEditingOrder.id,
-        rowIndex: String(currentEditingOrder.rowIndex),
-        status: "Void",
+        uuid: editId,
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
 
-      // If we get an error response, try to parse it
       let result;
       const text = await res.text();
       try {
@@ -396,38 +391,22 @@
       }
 
       if (!res.ok || result?.error) {
-        throw new Error(result?.error || "Void failed");
+        throw new Error(result?.error || "Delete failed");
       }
 
-      actionMsg = "Order voided successfully!";
+      actionMsg = "Order deleted permanently.";
 
-      // 🔥 Optimistic UI Update: Update local state immediately
-      dataService.updateOrderOptimistic(currentEditingOrder.id, {
-        status: "Void",
-      });
-
-      undoFn = () => {
-        dataService.updateOrderOptimistic(editId, {
-          status: prevStatus,
-        });
-        const revertParams = new URLSearchParams({
-          action: "updateOrderStatus",
-          key: SECRET_KEY,
-          id: editId,
-          rowIndex: String(editRowIndex),
-          status: prevStatus || "",
-        });
-        fetch(`${BASE_URL}?${revertParams.toString()}`).then(() => dataService.load(true, true));
-      };
+      // 🔥 Optimistic UI Update: Remove from local state
+      dataService.deleteOrderOptimistic(editId);
 
       closeEdit();
       showDeleteConfirm = false;
       
-      // Perform background re-sync to be 100% sure everything matches (silent)
+      // Perform background re-sync
       dataService.load(true, true);
     } catch (e) {
-      actionErr = e instanceof Error ? e.message : "Void failed";
-      console.error("Void Order Error:", e);
+      actionErr = e instanceof Error ? e.message : "Delete failed";
+      console.error("Delete Order Error:", e);
     } finally {
       deleteSaving = false;
       showDeleteConfirm = false;
@@ -798,7 +777,7 @@
     />
   </div>
 {:else}
-  <div class="page-header">
+  <div class="page-header" style="padding-top: env(safe-area-inset-top);">
     <div class="header-left">
       <h1>Admin <span>Portal</span></h1>
     </div>
@@ -807,7 +786,7 @@
       class="header-right"
       style="display: flex; align-items: center; gap: 12px;"
     >
-      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
+      <button class="btn btn-ghost btn-sm refresh-btn" onclick={sync} disabled={syncing}>
         <span class:spinning={syncing}>↻</span>
         <span class="hide-mobile">{syncing ? "Syncing..." : "Refresh"}</span>
       </button>
@@ -1095,8 +1074,7 @@
 
               {#if compOrders.length > 1}
                 <button
-                  class="btn btn-ghost btn-sm"
-                  style="margin-left: 12px; font-size: 0.7rem; padding: 4px 10px; border-color: var(--border-bright); font-weight: 400; border-radius: 4px; line-height: 1; vertical-align: middle;"
+                  class="badge badge-hardware admin-action-tag"
                   onclick={() => linkGroupOrders(compOrders)}
                   disabled={syncing}
                 >
@@ -1105,8 +1083,7 @@
               {/if}
               {#if compOrders.length > 0}
                 <button
-                  class="btn btn-ghost btn-sm"
-                  style="margin-left: 12px; font-size: 0.7rem; padding: 4px 10px; border-color: var(--border-bright); font-weight: 400; border-radius: 4px; line-height: 1; vertical-align: middle;"
+                  class="badge badge-hardware admin-action-tag"
                   onclick={() => openGroupStatusModal(compOrders)}
                   disabled={syncing}
                 >
@@ -1585,7 +1562,7 @@
         </form>
       </div>
 
-      <aside class="tips-card card" style="padding: 24px;">
+      <aside class="tips-card card hide-mobile" style="padding: 24px;">
         <div class="card-title">Expense Control</div>
         <p class="text-muted" style="font-size: 0.85rem; line-height: 1.5;">
           This form allows you to bypass the standard request flow and record an
@@ -1942,11 +1919,11 @@
           <button
             type="button"
             class="btn btn-ghost"
-            style="color: var(--primary);"
+            style="color: var(--status-rejected);"
             onclick={requestDelete}
             disabled={editSaving}
           >
-            Void Order
+            Delete Order
           </button>
           <div style="display: flex; gap: 8px;">
             <button
@@ -1991,7 +1968,7 @@
           /><path d="M12 9v4" /><path d="M12 17h.01" /></svg
         >
       </div>
-      <h3 style="margin-bottom: 12px; color: var(--text);">Void Order?</h3>
+      <h3 style="margin-bottom: 12px; color: var(--text);">Delete Order?</h3>
       <p
         class="text-muted"
         style="font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5;"
@@ -2263,6 +2240,7 @@
     align-items: center;
     height: calc(100vh - 130px);
     width: 100%;
+    padding-top: env(safe-area-inset-top);
   }
 
   /* ── Mobile Tab FAB ──────────────────────────────────────────── */
@@ -2271,13 +2249,15 @@
     .tab-fab-backdrop {
       position: fixed;
       inset: 0;
-      z-index: 299;
+      z-index: 599;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(2px);
     }
     .tab-fab-menu {
       position: fixed;
-      bottom: 88px;
+      bottom: 144px;
       right: 20px;
-      z-index: 300;
+      z-index: 601;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -2309,7 +2289,7 @@
     .tab-fab-option.active { color: var(--primary); background: var(--primary-glow); }
     .page-fab {
       position: fixed;
-      bottom: 24px;
+      bottom: 80px;
       right: 20px;
       width: 52px;
       height: 52px;
@@ -2318,7 +2298,7 @@
       color: var(--text);
       border: 1px solid var(--border);
       cursor: pointer;
-      z-index: 300;
+      z-index: 600;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2326,5 +2306,27 @@
       transition: all 0.2s;
     }
     .page-fab:hover { transform: scale(1.06); }
+
+    .refresh-btn { width: 42px; padding: 0; justify-content: center; }
+  }
+
+  :global(.admin-action-tag) {
+    margin-left: 12px;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border: 1px solid var(--border-bright) !important;
+    font-weight: 600;
+    border-radius: 6px;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-2);
+    transition: all 0.2s;
+  }
+  :global(.admin-action-tag:hover) {
+    background: var(--surface-3);
+    border-color: var(--primary) !important;
   }
 </style>

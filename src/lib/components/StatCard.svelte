@@ -33,7 +33,7 @@
 
   <div class="stat-main">
     <div class="stat-value">
-      {isCurrency ? formatCurrency(value) : value}
+      {isCurrency ? formatCurrency(Number(value)) : value}
     </div>
     {#if sub}
       <div class="stat-sub">{sub}</div>

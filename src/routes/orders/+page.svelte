@@ -182,7 +182,7 @@
   <title>Orders Dashboard | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header">
+<div class="page-header" style="padding-top: env(safe-area-inset-top);">
   <div class="header-left">
     <h1>Order <span>History</span></h1>
   </div>
@@ -248,7 +248,7 @@
         <span>New Request</span>
       </a>
 
-      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+      <button class="btn btn-ghost btn-sm refresh-btn" onclick={sync} disabled={dataService.isManualRefreshing}>
         <span class:spinning={dataService.isManualRefreshing}>↻</span>
         <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
       </button>
@@ -304,7 +304,8 @@
   }
 
   @media (max-width: 768px) {
-    .btn { height: 42px; display: inline-flex; align-items: center; }
+    .btn { height: 42px; display: inline-flex; align-items: center; justify-content: center; }
+    .refresh-btn { width: 42px; padding: 0; }
   }
 
   .error-text {

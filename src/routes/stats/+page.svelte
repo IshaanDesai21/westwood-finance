@@ -171,7 +171,7 @@
   <title>Analytics | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header">
+<div class="page-header" style="padding-top: env(safe-area-inset-top);">
   <div class="header-left">
     <h1>Spending <span>Trends</span></h1>
   </div>
@@ -202,7 +202,7 @@
     {/if}
 
     <div style="display: flex; align-items: center; gap: 12px;">
-      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+      <button class="btn btn-ghost btn-sm refresh-btn" onclick={sync} disabled={dataService.isManualRefreshing}>
         <span class:spinning={dataService.isManualRefreshing}>↻</span>
         <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
       </button>
@@ -372,5 +372,10 @@
     .charts-grid {
       grid-template-columns: 1fr;
     }
+  }
+  @media (max-width: 768px) {
+    .btn { height: 42px; line-height: 1; display: inline-flex; align-items: center; }
+    .refresh-btn { width: 42px; padding: 0; justify-content: center; flex-shrink: 0; }
+    .team-selector { width: 175px; }
   }
 </style>

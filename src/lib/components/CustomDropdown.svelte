@@ -33,17 +33,19 @@
   }
 
   onMount(() => {
-    const handleCloseOthers = (/** @type {CustomEvent} */ e) => {
-      if (e.detail.caller !== dropdownRef) {
+    const handleCloseOthers = (/** @type {any} */ e) => {
+      if (e.detail && e.detail.caller !== dropdownRef) {
         isOpen = false;
       }
     };
 
     window.addEventListener('click', handleClickOutside);
+    // @ts-ignore - custom event
     window.addEventListener('close-dropdowns', handleCloseOthers);
     
     return () => {
       window.removeEventListener('click', handleClickOutside);
+      // @ts-ignore - custom event
       window.removeEventListener('close-dropdowns', handleCloseOthers);
     };
   });

@@ -189,40 +189,6 @@
     border-color: var(--primary);
   }
 
-  /* ── Floating Action Button ──────────────────────────────────── */
-  .mobile-fab {
-    position: fixed;
-    bottom: 24px;
-    left: 20px;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    z-index: 300;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .mobile-fab:hover {
-    transform: scale(1.08);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-  }
-
-  .mobile-fab:active {
-    transform: scale(0.95);
-  }
-
-  .mobile-fab.is-open {
-    background: var(--surface-3);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-  }
-
   /* ── Brand / Nav / Footer (shared desktop + mobile) ─────────── */
   .sidebar-brand {
     display: flex;

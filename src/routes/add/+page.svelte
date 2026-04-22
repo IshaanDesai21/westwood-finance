@@ -201,7 +201,7 @@
   <title>Add Order | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header">
+<div class="page-header" style="padding-top: env(safe-area-inset-top);">
   <div class="header-left">
     <h1>New <span>Order</span></h1>
     <p class="text-muted hide-mobile">Fill out the form below to request a new purchase</p>
@@ -576,9 +576,10 @@
   .btn-block { width: 100%; justify-content: center; height: 48px; font-size: 0.95rem; }
 
   @media (max-width: 600px) {
-    .form-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; gap: 16px; }
     .span-2 { grid-column: 1; }
-    .add-card { padding: 24px; }
+    .add-card { padding: 20px; border-radius: 0; width: 100vw; margin-left: calc(-1 * var(--page-padding, 20px)); border-left: none; border-right: none; box-sizing: border-box; }
+    .add-layout-wide { padding: 0; width: 100%; overflow-x: hidden; }
   }
 
   /* Handled by global styles but adding specifics for test modal */

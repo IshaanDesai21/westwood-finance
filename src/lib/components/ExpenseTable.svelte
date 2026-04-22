@@ -61,6 +61,34 @@
 
   /** @type {any} */
   let selectedExpense = $state(null);
+
+  // Swipe gesture variables
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+  let isSwiping = $state(false);
+  let swipeTranslateY = $state(0);
+
+  function handleTouchStart(/** @type {TouchEvent} */ e) {
+    touchStartY = e.touches[0].clientY;
+    isSwiping = true;
+  }
+
+  function handleTouchMove(/** @type {TouchEvent} */ e) {
+    if (!isSwiping) return;
+    touchCurrentY = e.touches[0].clientY;
+    const delta = touchCurrentY - touchStartY;
+    if (delta > 0) {
+      swipeTranslateY = delta;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (swipeTranslateY > 100) {
+      selectedExpense = null;
+    }
+    isSwiping = false;
+    swipeTranslateY = 0;
+  }
 </script>
 
 <!-- ── Desktop Table ─────────────────────────────────────────────────────── -->
@@ -228,7 +256,18 @@
     tabindex="-1"
     aria-label="Close details"
   >
-    <div class="ios-popup-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+    <div 
+      class="ios-popup-content" 
+      onclick={(e) => e.stopPropagation()} 
+      onkeydown={(e) => e.stopPropagation()} 
+      role="dialog" 
+      aria-modal="true" 
+      tabindex="-1"
+      style="transform: translateY({swipeTranslateY}px); transition: {isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'}"
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+    >
       <div class="ios-popup-header">
         <div class="ios-popup-title">Expense Details</div>
         <button class="ios-popup-close" onclick={() => selectedExpense = null} aria-label="Close details">

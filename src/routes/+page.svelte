@@ -133,13 +133,41 @@
   }
   /** @type {any} */
   let selectedOrder = $state(null);
+
+  // Swipe gesture variables
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+  let isSwiping = $state(false);
+  let swipeTranslateY = $state(0);
+
+  function handleTouchStart(/** @type {TouchEvent} */ e) {
+    touchStartY = e.touches[0].clientY;
+    isSwiping = true;
+  }
+
+  function handleTouchMove(/** @type {TouchEvent} */ e) {
+    if (!isSwiping) return;
+    touchCurrentY = e.touches[0].clientY;
+    const delta = touchCurrentY - touchStartY;
+    if (delta > 0) {
+      swipeTranslateY = delta;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (swipeTranslateY > 100) {
+      selectedOrder = null;
+    }
+    isSwiping = false;
+    swipeTranslateY = 0;
+  }
 </script>
 
 <svelte:head>
   <title>Dashboard | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header">
+<div class="page-header" style="padding-top: env(safe-area-inset-top);">
   <div class="header-left">
     <h1>Dashboard</h1>
   </div>
@@ -175,7 +203,7 @@
     </div>
 
     <button
-      class="btn btn-ghost btn-sm"
+      class="btn btn-ghost btn-sm refresh-btn"
       onclick={sync}
       disabled={dataService.isManualRefreshing}
     >
@@ -316,7 +344,18 @@
     tabindex="-1"
     aria-label="Close details"
   >
-    <div class="ios-popup-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+    <div 
+      class="ios-popup-content" 
+      onclick={(e) => e.stopPropagation()} 
+      onkeydown={(e) => e.stopPropagation()} 
+      role="dialog" 
+      aria-modal="true" 
+      tabindex="-1"
+      style="transform: translateY({swipeTranslateY}px); transition: {isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'}"
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+    >
       <div class="ios-popup-header">
         <div class="ios-popup-title">Order Details</div>
         <button
@@ -683,5 +722,6 @@
     .mobile-version-footer {
       display: block;
     }
+    .refresh-btn { width: 42px; padding: 0; justify-content: center; }
   }
 </style>

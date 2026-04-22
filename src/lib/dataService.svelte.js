@@ -281,6 +281,16 @@ class DataStore {
   }
 
   /**
+   * Optimistically remove an order from the local store.
+   * @param {string} orderId
+   */
+  deleteOrderOptimistic(orderId) {
+    this.orders = this.orders.filter(o => o.id !== orderId);
+    this.persist();
+    console.log(`⚡ DataStore: Optimistic delete — order "${orderId}" removed instantly.`);
+  }
+
+  /**
    * Optimistically add a funding entry.
    * @param {any} fundData
    */

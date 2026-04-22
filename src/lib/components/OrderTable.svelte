@@ -127,6 +127,34 @@
 
   /** @type {any} */
   let selectedOrder = $state(null);
+
+  // Swipe gesture variables
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+  let isSwiping = $state(false);
+  let swipeTranslateY = $state(0);
+
+  function handleTouchStart(/** @type {TouchEvent} */ e) {
+    touchStartY = e.touches[0].clientY;
+    isSwiping = true;
+  }
+
+  function handleTouchMove(/** @type {TouchEvent} */ e) {
+    if (!isSwiping) return;
+    touchCurrentY = e.touches[0].clientY;
+    const delta = touchCurrentY - touchStartY;
+    if (delta > 0) {
+      swipeTranslateY = delta;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (swipeTranslateY > 100) {
+      selectedOrder = null;
+    }
+    isSwiping = false;
+    swipeTranslateY = 0;
+  }
 </script>
 
 <!-- ── Desktop Table ─────────────────────────────────────────────────────── -->
@@ -376,7 +404,10 @@
           <!-- Status + Amount -->
           <div class="ios-cell-trailing">
             <span class="ios-cell-amount">{formatCurrency(order.total)}</span>
-            <OrderStatusBadge status={order.status} />
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+              <OrderStatusBadge status={order.status} />
+              <span class="ios-cell-qty">×{order.quantity}</span>
+            </div>
           </div>
 
           {#if onmanage}
@@ -419,7 +450,18 @@
     tabindex="-1"
     aria-label="Close details"
   >
-    <div class="ios-popup-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+    <div 
+      class="ios-popup-content" 
+      onclick={(e) => e.stopPropagation()} 
+      onkeydown={(e) => e.stopPropagation()} 
+      role="dialog" 
+      aria-modal="true" 
+      tabindex="-1"
+      style="transform: translateY({swipeTranslateY}px); transition: {isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'}"
+      ontouchstart={handleTouchStart}
+      ontouchmove={handleTouchMove}
+      ontouchend={handleTouchEnd}
+    >
       <div class="ios-popup-header">
         <div class="ios-popup-title">Order Details</div>
         <button class="ios-popup-close" onclick={() => (selectedOrder = null)} aria-label="Close details">
@@ -706,5 +748,12 @@
     color: #fff;
     font-family: "SF Mono", "JetBrains Mono", monospace;
     font-variant-numeric: tabular-nums;
+  }
+
+  .ios-cell-qty {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: -apple-system, "SF Pro Text", sans-serif;
+    font-weight: 600;
   }
 </style>
