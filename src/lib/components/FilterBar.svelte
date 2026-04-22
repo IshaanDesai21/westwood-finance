@@ -1,6 +1,8 @@
 <script>
   import { CATEGORIES, TEAMS } from '../utils.js';
   import CustomDropdown from './CustomDropdown.svelte';
+  import IOSBottomSheet from './IOSBottomSheet.svelte';
+  import { onMount } from 'svelte';
 
   const categoryOptions = [
     { label: 'All Categories', value: '' },
@@ -25,6 +27,15 @@
   /** @type {{ onchange?: (f: any) => void, filters: any }} */
   let { onchange, filters = $bindable() } = $props();
 
+  let isMobile = $state(false);
+  let showFilterSheet = $state(false);
+
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    isMobile = mq.matches;
+    mq.addEventListener('change', e => { isMobile = e.matches; });
+  });
+
   function emit() {
     onchange?.({ ...filters });
   }
@@ -39,79 +50,146 @@
     filters.dateTo = "";
     emit();
   }
+
+  let activeFilterCount = $derived(
+    [filters.category, filters.company, filters.team, filters.status, filters.dateFrom, filters.dateTo]
+      .filter(v => v && v.trim()).length
+  );
 </script>
 
-<div class="filter-bar fade-in">
-  <div class="filter-main">
-    <div class="search-input">
-      <div class="input-wrapper">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input
-          id="filter-search"
-          type="search"
-          placeholder="Filter requests, vendors, or notes..."
-          bind:value={filters.search}
-          oninput={emit}
-        />
+<!-- ── Desktop Filter Bar ─────────────────────────────────────────────────── -->
+{#if !isMobile}
+  <div class="filter-bar fade-in">
+    <div class="filter-main">
+      <div class="search-input">
+        <div class="input-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input
+            id="filter-search"
+            type="search"
+            placeholder="Filter requests, vendors, or notes..."
+            bind:value={filters.search}
+            oninput={emit}
+          />
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm reset-button" onclick={reset} title="Reset filters">
+         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      </button>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-field">
+        <span class="field-label">Category</span>
+        <CustomDropdown options={categoryOptions} bind:value={filters.category} onchange={emit} />
+      </div>
+      <div class="filter-field">
+        <span class="field-label">Vendor</span>
+        <input id="filter-company" type="text" placeholder="Any vendor" bind:value={filters.company} oninput={emit} />
+      </div>
+      <div class="filter-field">
+        <span class="field-label">Team</span>
+        <CustomDropdown options={teamOptions} bind:value={filters.team} onchange={emit} />
+      </div>
+      <div class="filter-field">
+        <span class="field-label">Status</span>
+        <CustomDropdown options={statusOptions} bind:value={filters.status} onchange={emit} />
+      </div>
+      <div class="filter-field">
+        <span class="field-label">Timeline</span>
+        <div class="date-range">
+          <input type="date" bind:value={filters.dateFrom} onchange={emit} />
+          <span class="connector">→</span>
+          <input type="date" bind:value={filters.dateTo} onchange={emit} />
+        </div>
       </div>
     </div>
-    
-    <button class="btn btn-ghost btn-sm reset-button" onclick={reset} title="Reset filters">
-       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+  </div>
+{:else}
+  <!-- ── iOS Mobile Search Bar ─────────────────────────────────────────────── -->
+  <div class="ios-filter-row fade-in">
+    <div class="ios-search-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="ios-search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input
+        id="filter-search-mobile"
+        type="search"
+        placeholder="Search orders..."
+        bind:value={filters.search}
+        oninput={emit}
+        class="ios-search-input"
+      />
+      {#if filters.search}
+        <button class="ios-search-clear" onclick={() => { filters.search = ''; emit(); }} aria-label="Clear search">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+        </button>
+      {/if}
+    </div>
+
+    <button
+      class="ios-filter-btn"
+      class:ios-filter-active={activeFilterCount > 0}
+      onclick={() => showFilterSheet = true}
+      aria-label="Open filters"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      Filters
+      {#if activeFilterCount > 0}
+        <span class="ios-filter-badge">{activeFilterCount}</span>
+      {/if}
     </button>
   </div>
 
-  <div class="filter-grid">
-    <div class="filter-field">
-      <span class="field-label">Category</span>
-      <CustomDropdown 
-        options={categoryOptions} 
-        bind:value={filters.category} 
-        onchange={emit} 
-      />
-    </div>
-
-    <div class="filter-field">
-      <span class="field-label">Vendor</span>
-      <input
-        id="filter-company"
-        type="text"
-        placeholder="Any vendor"
-        bind:value={filters.company}
-        oninput={emit}
-      />
-    </div>
-
-    <div class="filter-field">
-      <span class="field-label">Team</span>
-      <CustomDropdown 
-        options={teamOptions} 
-        bind:value={filters.team} 
-        onchange={emit} 
-      />
-    </div>
-
-    <div class="filter-field">
-      <span class="field-label">Status</span>
-      <CustomDropdown 
-        options={statusOptions} 
-        bind:value={filters.status} 
-        onchange={emit} 
-      />
-    </div>
-
-    <div class="filter-field">
-      <span class="field-label">Timeline</span>
-      <div class="date-range">
-        <input type="date" bind:value={filters.dateFrom} onchange={emit} />
-        <span class="connector">→</span>
-        <input type="date" bind:value={filters.dateTo} onchange={emit} />
+  <!-- iOS Filter Bottom Sheet -->
+  <IOSBottomSheet open={showFilterSheet} onclose={() => showFilterSheet = false} title="Filters">
+    {#snippet children()}
+      <div class="ios-sheet-filters">
+        <div class="ios-sheet-filter-group">
+          <div class="ios-sheet-filter-label">Category</div>
+          <select bind:value={filters.category} onchange={emit} class="ios-native-select">
+            {#each categoryOptions as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="ios-sheet-filter-group">
+          <div class="ios-sheet-filter-label">Team</div>
+          <select bind:value={filters.team} onchange={emit} class="ios-native-select">
+            {#each teamOptions as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="ios-sheet-filter-group">
+          <div class="ios-sheet-filter-label">Status</div>
+          <select bind:value={filters.status} onchange={emit} class="ios-native-select">
+            {#each statusOptions as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="ios-sheet-filter-group">
+          <div class="ios-sheet-filter-label">Vendor</div>
+          <input type="text" placeholder="Any vendor" bind:value={filters.company} oninput={emit} class="ios-native-input" />
+        </div>
+        <div class="ios-sheet-filter-group">
+          <div class="ios-sheet-filter-label">Date From</div>
+          <input type="date" bind:value={filters.dateFrom} onchange={emit} class="ios-native-input" />
+        </div>
+        <div class="ios-sheet-filter-group">
+          <div class="ios-sheet-filter-label">Date To</div>
+          <input type="date" bind:value={filters.dateTo} onchange={emit} class="ios-native-input" />
+        </div>
+        <div class="ios-sheet-filter-actions">
+          <button class="ios-reset-btn" onclick={() => { reset(); showFilterSheet = false; }}>Reset All Filters</button>
+          <button class="ios-apply-btn" onclick={() => showFilterSheet = false}>Show Results</button>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
+    {/snippet}
+  </IOSBottomSheet>
+{/if}
 
 <style>
+  /* ── Desktop ────────────────────────────────────────────────────── */
   .filter-bar {
     margin-bottom: 24px;
     padding: 20px;
@@ -122,112 +200,43 @@
     flex-direction: column;
     gap: 20px;
   }
-  
-  .filter-main {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
+  .filter-main { display: flex; gap: 12px; align-items: center; }
+  .search-input { flex: 1; }
+  .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; align-items: flex-end; }
+  @media (min-width: 1200px) { .filter-grid { grid-template-columns: repeat(4, 1fr) 1.5fr; } }
+  .filter-field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); }
+  .input-wrapper { position: relative; display: flex; align-items: center; }
+  .search-icon { position: absolute; left: 14px; color: var(--text-dim); pointer-events: none; }
+  .input-wrapper input { padding-left: 40px; height: 44px; background: var(--surface-2); border-radius: var(--radius-sm); font-size: 0.9rem; }
+  .date-range { display: flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); height: 44px; overflow: hidden; }
+  .date-range:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); }
+  .date-range input { background: transparent; border: none; padding: 0 12px; font-size: 0.85rem; flex: 1; width: 0; min-width: 0; height: 100%; color: #fff; cursor: pointer; text-align: center; }
+  .date-range input:focus { background: rgba(255,255,255,0.03); outline: none; }
+  .connector { color: var(--text-dim); font-size: 0.8rem; }
+  .reset-button { width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); }
 
-  .search-input {
-    flex: 1;
-  }
-  
-  .filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 20px;
-    align-items: flex-end;
-  }
+  /* ── iOS Mobile ─────────────────────────────────────────────────── */
+  .ios-filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+  .ios-search-wrap { flex: 1; position: relative; display: flex; align-items: center; background: rgba(118, 118, 128, 0.18); border-radius: 10px; overflow: hidden; }
+  .ios-search-icon { position: absolute; left: 10px; color: var(--text-dim); pointer-events: none; flex-shrink: 0; }
+  .ios-search-input { flex: 1; background: transparent; border: none; outline: none; padding: 10px 36px 10px 34px; font-size: 16px; color: #fff; font-family: -apple-system, 'SF Pro Text', sans-serif; min-height: 38px; -webkit-appearance: none; }
+  .ios-search-input::placeholder { color: var(--text-dim); }
+  .ios-search-clear { position: absolute; right: 8px; background: var(--surface-3); border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); -webkit-tap-highlight-color: transparent; padding: 0; }
+  .ios-filter-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(118, 118, 128, 0.18); border: none; border-radius: 10px; color: var(--text-muted); font-size: 14px; font-weight: 600; font-family: -apple-system, 'SF Pro Text', sans-serif; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; transition: background 0.15s; min-height: 38px; }
+  .ios-filter-btn:active { background: rgba(118, 118, 128, 0.3); }
+  .ios-filter-active { background: rgba(249, 115, 22, 0.15) !important; color: var(--primary); }
+  .ios-filter-badge { background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; border-radius: 99px; padding: 1px 6px; min-width: 18px; text-align: center; line-height: 16px; }
 
-  /* Wide screen desktop layout */
-  @media (min-width: 1200px) {
-    .filter-grid {
-      grid-template-columns: repeat(4, 1fr) 1.5fr;
-    }
-  }
-
-  .filter-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .field-label {
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-dim);
-  }
-  
-  .input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  
-  .search-icon {
-    position: absolute;
-    left: 14px;
-    color: var(--text-dim);
-    pointer-events: none;
-  }
-  
-  .input-wrapper input {
-    padding-left: 40px;
-    height: 44px;
-    background: var(--surface-2);
-    border-radius: var(--radius-sm);
-    font-size: 0.9rem;
-  }
-
-  .date-range {
-    display: flex;
-    align-items: center;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    height: 44px;
-    overflow: hidden;
-  }
-  
-  .date-range:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-  }
-
-  .date-range input {
-    background: transparent;
-    border: none;
-    padding: 0 12px;
-    font-size: 0.85rem;
-    flex: 1;
-    width: 0;
-    min-width: 0;
-    height: 100%;
-    color: #fff;
-    cursor: pointer;
-    text-align: center;
-  }
-  
-  .date-range input:focus {
-    background: rgba(255, 255, 255, 0.03);
-    outline: none;
-  }
-
-  .connector {
-    color: var(--text-dim);
-    font-size: 0.8rem;
-  }
-
-  .reset-button {
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-  }
+  /* ── Sheet Content ──────────────────────────────────────────────── */
+  .ios-sheet-filters { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .ios-sheet-filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .ios-sheet-filter-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; font-family: -apple-system, 'SF Pro Text', sans-serif; }
+  .ios-native-select, .ios-native-input { width: 100%; background: rgba(118, 118, 128, 0.18); border: none; border-radius: 10px; color: #fff; font-size: 16px; font-family: -apple-system, 'SF Pro Text', sans-serif; padding: 12px 14px; -webkit-appearance: none; outline: none; min-height: 44px; }
+  .ios-native-select option { background: var(--surface-2); }
+  .ios-sheet-filter-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .ios-apply-btn { background: var(--primary); color: #fff; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; padding: 14px; cursor: pointer; font-family: -apple-system, 'SF Pro Text', sans-serif; -webkit-tap-highlight-color: transparent; transition: opacity 0.15s; }
+  .ios-apply-btn:active { opacity: 0.8; }
+  .ios-reset-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; padding: 12px; cursor: pointer; font-family: -apple-system, 'SF Pro Text', sans-serif; -webkit-tap-highlight-color: transparent; transition: opacity 0.15s; }
+  .ios-reset-btn:active { opacity: 0.7; }
 </style>

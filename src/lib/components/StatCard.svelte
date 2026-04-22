@@ -75,13 +75,24 @@
     transition: opacity 0.3s;
   }
 
-  .stat-card:hover { 
-    border-color: var(--border-bright);
-    background: var(--surface-2);
+  @media (hover: hover) {
+    .stat-card:hover { 
+      border-color: var(--border-bright);
+      background: var(--surface-2);
+    }
+    .stat-card:hover::after {
+      opacity: 0.5;
+    }
   }
-  
-  .stat-card:hover::after {
-    opacity: 0.5;
+
+  @media (max-width: 768px) {
+    .stat-card {
+      padding: 14px 16px;
+      gap: 8px;
+      border-radius: 14px;
+      border-color: rgba(255,255,255,0.07);
+      background: rgba(24, 24, 27, 0.9);
+    }
   }
 
   .stat-meta {

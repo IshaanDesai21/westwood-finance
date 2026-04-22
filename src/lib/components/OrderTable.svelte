@@ -34,7 +34,6 @@
         let pB = STATUS_PRIORITY[(b.status || "").toLowerCase().trim()] ?? 99;
         const diff = sortDir === "asc" ? pA - pB : pB - pA;
         if (diff !== 0) return diff;
-        // Group identically prioritized active statuses strongly by their grouping-color (UUID)
         const uA = String(a.orderUUID || "").toLowerCase();
         const uB = String(b.orderUUID || "").toLowerCase();
         return uA.localeCompare(uB);
@@ -56,28 +55,50 @@
 
   let display = $derived(limit > 0 ? sortedOrders.slice(0, limit) : sortedOrders);
   
-  // Generate a stable hue from an order UUID
   /** @type {Record<string, string>} */
   const colorCache = {};
 
   function getOrderColor(/** @type {string|undefined} */ uuid) {
     if (!uuid) return "transparent";
     if (colorCache[uuid]) return colorCache[uuid];
-    
     let hash = 0;
     for (let i = 0; i < uuid.length; i++) {
-        hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
+      hash = uuid.charCodeAt(i) + ((hash << 5) - hash);
     }
-    // Multiply by golden angle (137.5) to ensure radically distinct scattered colors 
-    // rather than highly similar neighbor hashes.
     const h = Math.abs(Math.floor(hash * 137.5) % 360);
     const color = `hsl(${h}, 70%, 40%)`;
     colorCache[uuid] = color;
     return color;
   }
+
+  /** @type {Record<string, string>} */
+  const CAT_COLORS = {
+    hardware: '#f97316',
+    software: '#3b82f6',
+    outreach: '#10b981',
+    food: '#eab308',
+    miscellaneous: '#8b5cf6',
+  };
+
+  /** @type {Record<string, string>} */
+  const CAT_ICONS = {
+    hardware: '⚙',
+    software: '💻',
+    outreach: '📣',
+    food: '🍕',
+    miscellaneous: '📦',
+  };
+
+  function getCatColor(/** @type {string|undefined} */ cat) {
+    return CAT_COLORS[(cat || 'miscellaneous').toLowerCase()] || '#8b5cf6';
+  }
+  function getCatIcon(/** @type {string|undefined} */ cat) {
+    return CAT_ICONS[(cat || 'miscellaneous').toLowerCase()] || '📦';
+  }
 </script>
 
-<div class="table-wrap fade-in">
+<!-- ── Desktop Table ─────────────────────────────────────────────────────── -->
+<div class="table-wrap fade-in desktop-table">
   <table>
     <thead>
       <tr>
@@ -145,8 +166,8 @@
               <div class="item-notes">{truncate(order.notes, 50)}</div>
             {/if}
             {#if order.tracking}
+              {@const href = String(order.tracking).startsWith('http') ? order.tracking : `https://www.google.com/search?q=${order.tracking}`}
               <div class="tracking-info">
-                {@const href = String(order.tracking).startsWith('http') ? order.tracking : `https://www.google.com/search?q=${order.tracking}`}
                 <a {href} target="_blank" rel="noopener" class="tracking-link">Tracking</a>
               </div>
             {/if}
@@ -213,7 +234,74 @@
   </table>
 </div>
 
+<!-- ── iOS Mobile List ───────────────────────────────────────────────────── -->
+<div class="ios-list-wrap fade-in mobile-list">
+  {#if orders.length === 0}
+    <div class="empty-state" style="padding: 40px 16px; border-radius: 14px;">
+      <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      </div>
+      No orders found
+    </div>
+  {:else}
+    <div class="ios-list-group">
+      {#each display as order (order.id)}
+        {@const catColor = getCatColor(order.category)}
+        {@const catIcon = getCatIcon(order.category)}
+        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+        <div
+          class="ios-cell"
+          onclick={() => onmanage && onmanage(order)}
+        >
+          <!-- Category icon -->
+          <div class="ios-cell-icon" style="background: {catColor}22; color: {catColor}; font-size: 18px;">
+            {catIcon}
+          </div>
+
+          <!-- Item info -->
+          <div class="ios-cell-body">
+            <div class="ios-cell-title">
+              {truncate(order.item, 32)}
+            </div>
+            <div class="ios-cell-subtitle">
+              {order.company || '—'}{!hideTeamColumn && order.team ? ` · ${order.team}` : ''}
+            </div>
+          </div>
+
+          <!-- Status + Amount -->
+          <div class="ios-cell-trailing">
+            <span class="ios-cell-amount">{formatCurrency(order.total)}</span>
+            <OrderStatusBadge status={order.status} />
+          </div>
+
+          {#if onmanage}
+            <svg class="ios-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          {/if}
+        </div>
+      {/each}
+    </div>
+
+    <!-- Total row -->
+    {#if display.length > 0}
+      <div class="ios-total-row">
+        <span class="ios-total-label">Subtotal</span>
+        <span class="ios-total-amount">{formatCurrency(display.reduce((sum, o) => sum + (o.total || 0), 0))}</span>
+      </div>
+    {/if}
+  {/if}
+</div>
+
 <style>
+  /* ── Desktop: show table, hide list ─────────────────────────── */
+  .desktop-table { display: block; }
+  .mobile-list   { display: none; }
+
+  @media (max-width: 768px) {
+    .desktop-table { display: none; }
+    .mobile-list   { display: block; }
+  }
+
+  /* ── Desktop Table Styles ────────────────────────────────────── */
   .table-wrap {
     box-shadow: var(--shadow-sm);
     margin-bottom: 2rem;
@@ -240,9 +328,11 @@
     transition: color 0.2s;
   }
   
-  .item-link:hover {
-    color: var(--primary-dark);
-    text-decoration: underline;
+  @media (hover: hover) {
+    .item-link:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
   }
 
   .item-notes { 
@@ -266,7 +356,6 @@
   .text-dim { color: var(--text-dim); }
   .font-medium { font-weight: 500; }
 
-  /* Group Indicator Line */
   .group-row td:first-child {
     position: relative;
     padding-left: 20px !important;
@@ -296,16 +385,43 @@
     color: var(--primary);
     text-decoration: none;
     transition: all 0.2s;
-    border-bottom: 1px solid rgba(var(--primary-rgb), 0.3);
+    border-bottom: 1px solid rgba(249, 115, 22, 0.3);
   }
 
-  .tracking-link:hover {
-    color: var(--primary-light, #fff);
-    border-bottom-color: currentColor;
+  @media (hover: hover) {
+    .tracking-link:hover {
+      color: #fff;
+      border-bottom-color: currentColor;
+    }
   }
 
-  .tracking-text {
-    color: var(--text-dim);
-    letter-spacing: 0.02em;
+  /* ── iOS List Styles ─────────────────────────────────────────── */
+  .ios-list-wrap {
+    margin-bottom: 1.5rem;
+  }
+
+  .ios-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    margin-top: 8px;
+  }
+
+  .ios-total-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+  }
+
+  .ios-total-amount {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
   }
 </style>

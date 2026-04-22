@@ -33,9 +33,35 @@
   );
 
   let display = $derived(limit > 0 ? sortedExpenses.slice(0, limit) : sortedExpenses);
+
+  /** @type {Record<string, string>} */
+  const CAT_COLORS = {
+    hardware: '#f97316',
+    software: '#3b82f6',
+    outreach: '#10b981',
+    food: '#eab308',
+    miscellaneous: '#8b5cf6',
+  };
+
+  /** @type {Record<string, string>} */
+  const CAT_ICONS = {
+    hardware: '⚙',
+    software: '💻',
+    outreach: '📣',
+    food: '🍕',
+    miscellaneous: '📦',
+  };
+
+  function getCatColor(/** @type {string|undefined} */ cat) {
+    return CAT_COLORS[(cat || 'miscellaneous').toLowerCase()] || '#8b5cf6';
+  }
+  function getCatIcon(/** @type {string|undefined} */ cat) {
+    return CAT_ICONS[(cat || 'miscellaneous').toLowerCase()] || '📦';
+  }
 </script>
 
-<div class="table-wrap fade-in">
+<!-- ── Desktop Table ─────────────────────────────────────────────────────── -->
+<div class="table-wrap fade-in desktop-table">
   <table>
     <thead>
       <tr>
@@ -143,10 +169,57 @@
   </table>
 </div>
 
+<!-- ── iOS Mobile List ───────────────────────────────────────────────────── -->
+<div class="ios-list-wrap fade-in mobile-list">
+  {#if expenses.length === 0}
+    <div class="empty-state" style="padding: 40px 16px; border-radius: 14px;">
+      <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+      </div>
+      No expenses found
+    </div>
+  {:else}
+    <div class="ios-list-group">
+      {#each display as expense (expense.id)}
+        {@const catColor = getCatColor(expense.category)}
+        {@const catIcon = getCatIcon(expense.category)}
+        <div class="ios-cell">
+          <div class="ios-cell-icon" style="background: {catColor}22; color: {catColor}; font-size: 18px;">
+            {catIcon}
+          </div>
+          <div class="ios-cell-body">
+            <div class="ios-cell-title">{truncate(expense.item, 28)}</div>
+            <div class="ios-cell-subtitle">
+              {expense.company || '—'}{!hideTeam && expense.team ? ` · ${expense.team}` : ''} · {formatDate(expense.timestamp)}
+            </div>
+          </div>
+          <div class="ios-cell-trailing">
+            <span class="ios-cell-amount">{formatCurrency(expense.total)}</span>
+            <span class="ios-cell-qty">×{expense.quantity}</span>
+          </div>
+        </div>
+      {/each}
+    </div>
+
+    {#if display.length > 0}
+      <div class="ios-total-row">
+        <span class="ios-total-label">Subtotal</span>
+        <span class="ios-total-amount">{formatCurrency(display.reduce((sum, e) => sum + (e.total || 0), 0))}</span>
+      </div>
+    {/if}
+  {/if}
+</div>
+
 <style>
-  .table-wrap {
-    box-shadow: var(--shadow-sm);
+  .desktop-table { display: block; }
+  .mobile-list   { display: none; }
+
+  @media (max-width: 768px) {
+    .desktop-table { display: none; }
+    .mobile-list   { display: block; }
   }
+
+  .table-wrap { box-shadow: var(--shadow-sm); }
 
   .th-content {
     display: flex;
@@ -155,39 +228,50 @@
     height: 100%;
   }
 
-  .item-name { 
-    font-weight: 600; 
-    color: var(--text);
-  }
-
-  .item-link {
-    color: var(--primary);
-    transition: color 0.2s;
-  }
+  .item-name { font-weight: 600; color: var(--text); }
+  .item-link { color: var(--primary); transition: color 0.2s; }
   
-  .item-link:hover {
-    color: var(--primary-dark);
-    text-decoration: underline;
+  @media (hover: hover) {
+    .item-link:hover { color: var(--primary-dark); text-decoration: underline; }
   }
 
-  .item-notes { 
-    font-size: 0.72rem; 
-    color: var(--text-muted); 
-    margin-top: 1px;
-    font-weight: 400;
-  }
-
-  .company-name {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-  }
-
-  .amount {
-    font-weight: 700;
-    color: #fff;
-    font-size: 0.95rem;
-  }
-
+  .item-notes { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; font-weight: 400; }
+  .company-name { font-size: 0.82rem; color: var(--text-muted); }
+  .amount { font-weight: 700; color: #fff; font-size: 0.95rem; }
   .text-dim { color: var(--text-dim); }
   .font-medium { font-weight: 500; }
+
+  /* iOS list extras */
+  .ios-list-wrap { margin-bottom: 1.5rem; }
+
+  .ios-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    margin-top: 8px;
+  }
+
+  .ios-total-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+  }
+
+  .ios-total-amount {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ios-cell-qty {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+  }
 </style>

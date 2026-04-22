@@ -1,21 +1,69 @@
 <script>
   import { onMount } from 'svelte';
+  import { onNavigate } from '$app/navigation';
   import { dataService } from '$lib/dataService.svelte.js';
   import '../app.css';
   import Sidebar from '$lib/components/Sidebar.svelte';
+  import MobileTabBar from '$lib/components/MobileTabBar.svelte';
 
   let { children } = $props();
 
+  // ── Global 3s data poll ─────────────────────────────────────────────────────
   onMount(() => {
-    // Poll the backend every 3000ms (3 seconds) globally to ensure fast updates.
     const interval = setInterval(() => {
-      // force=true to bypass regular 2-minute cache rule in dataService
-      // silent=true to prevent UI loading indicators/animations
       dataService.load(true, true);
     }, 3000);
+    return () => clearInterval(interval);
+  });
 
+  // ── iOS View Transitions (push slide) ──────────────────────────────────────
+  onNavigate((navigation) => {
+    // Only animate on mobile via View Transitions API
+    if (!document.startViewTransition) return;
+    if (window.innerWidth > 768) return;
+    return new Promise((resolve) => {
+      document.startViewTransition(async () => {
+        resolve();
+        await navigation.complete;
+      });
+    });
+  });
+
+  // ── Pull-to-Refresh ─────────────────────────────────────────────────────────
+  let ptrActive = $state(false);
+  let ptrTouchStartY = 0;
+  const PTR_THRESHOLD = 64;
+
+  onMount(() => {
+    const main = document.querySelector('.main-content');
+    if (!main) return;
+
+    function onTouchStart(/** @type {TouchEvent} */ e) {
+      if (window.innerWidth > 768) return;
+      ptrTouchStartY = e.touches[0].clientY;
+    }
+
+    async function onTouchEnd(/** @type {TouchEvent} */ e) {
+      if (window.innerWidth > 768 || ptrActive) return;
+      const delta = e.changedTouches[0].clientY - ptrTouchStartY;
+      // Only fire if pulled down AND scroll is at top
+      const scrollTop = main.scrollTop ?? window.scrollY;
+      if (delta > PTR_THRESHOLD && scrollTop <= 0) {
+        if ('vibrate' in navigator) navigator.vibrate([8, 40, 8]);
+        ptrActive = true;
+        try {
+          await dataService.load(true);
+        } finally {
+          setTimeout(() => { ptrActive = false; }, 600);
+        }
+      }
+    }
+
+    main.addEventListener('touchstart', onTouchStart, { passive: true });
+    main.addEventListener('touchend', onTouchEnd, { passive: true });
     return () => {
-      clearInterval(interval);
+      main.removeEventListener('touchstart', onTouchStart);
+      main.removeEventListener('touchend', onTouchEnd);
     };
   });
 </script>
@@ -25,9 +73,20 @@
   <meta name="description" content="Finance management system for Westwood Robotics" />
 </svelte:head>
 
+<!-- Pull-to-Refresh Indicator -->
+{#if ptrActive}
+  <div class="ptr-indicator">
+    <div class="ptr-spinner"></div>
+    Refreshing…
+  </div>
+{/if}
+
 <div class="app-shell">
   <Sidebar />
   <main class="main-content">
     {@render children()}
   </main>
 </div>
+
+<!-- iOS Tab Bar (renders itself only on mobile) -->
+<MobileTabBar />

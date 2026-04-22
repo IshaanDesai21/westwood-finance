@@ -121,23 +121,7 @@
   </div>
 </aside>
 
-<!-- Mobile FAB Toggle Button -->
-{#if isMobile}
-  <button 
-    class="mobile-fab" 
-    class:is-open={isMobileOpen}
-    onclick={toggleMobileNav}
-    aria-label={isMobileOpen ? "Close navigation" : "Open navigation"}
-  >
-    {#if isMobileOpen}
-      <!-- X icon -->
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-    {:else}
-      <!-- Hamburger icon -->
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
-    {/if}
-  </button>
-{/if}
+<!-- Mobile FAB removed — MobileTabBar handles navigation on mobile -->
 
 <style>
   /* ── Desktop Sidebar (unchanged) ─────────────────────────────── */

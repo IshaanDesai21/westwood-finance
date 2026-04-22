@@ -55,7 +55,6 @@
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
   let isMobile = $state(false);
-  let showTabMenu = $state(false);
 
   onMount(() => {
     dataService.load(); // Uses cache for instant load
@@ -664,20 +663,8 @@
   </div>
 {/if}
 
-<!-- ── Mobile Tab FAB (bottom right) ──────────────────────────────────── -->
-{#if isMobile}
-  {#if showTabMenu}
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-    <div class="tab-fab-backdrop" onclick={() => showTabMenu = false} role="button" tabindex="-1"></div>
-    <div class="tab-fab-menu">
-      <button class="tab-fab-option" class:active={activeTab === 'budget'} onclick={() => { activeTab = 'budget'; showTabMenu = false; }}>Team Dashboard</button>
-      <button class="tab-fab-option" class:active={activeTab === 'history'} onclick={() => { activeTab = 'history'; showTabMenu = false; }}>{selectedBudgetTeam} Funding</button>
-    </div>
-  {/if}
-  <button class="page-fab" onclick={() => showTabMenu = !showTabMenu} aria-label="Switch tab">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-  </button>
-{/if}
+<!-- Mobile tab FAB removed — tabs-container is now shown on mobile -->
+
 
 <style>
   .tabs-container {
@@ -949,69 +936,17 @@
     .breakdown-card {
       height: 200px !important;
     }
-    /* Hide the segmented control on mobile (FAB handles navigation) */
+    /* Show tabs on mobile — make them scrollable and compact */
     .tabs-container {
-      display: none;
+      margin-bottom: 20px;
     }
-    /* Tab FAB styles */
-    .tab-fab-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 299;
-    }
-    .tab-fab-menu {
-      position: fixed;
-      bottom: 88px;
-      right: 20px;
-      z-index: 300;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      overflow: hidden;
-      min-width: 180px;
-      animation: fadeInUp 0.2s cubic-bezier(0.4,0,0.2,1);
-    }
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .tab-fab-option {
-      display: block;
+    .segmented-control {
       width: 100%;
-      padding: 14px 20px;
-      background: none;
-      border: none;
-      border-bottom: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 0.875rem;
-      font-weight: 600;
-      text-align: left;
-      cursor: pointer;
-      transition: all 0.15s;
     }
-    .tab-fab-option:last-child { border-bottom: none; }
-    .tab-fab-option:hover { background: var(--surface-2); color: var(--text); }
-    .tab-fab-option.active { color: var(--primary); background: var(--primary-glow); }
-    .page-fab {
-      position: fixed;
-      bottom: 24px;
-      right: 20px;
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: var(--surface-3);
-      color: var(--text);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      z-index: 300;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      transition: all 0.2s;
+    .segment {
+      font-size: 0.8rem;
+      padding: 7px 14px;
     }
-    .page-fab:hover { background: var(--surface-3); transform: scale(1.06); }
   }
 
   .breakdown-card {
