@@ -24,7 +24,7 @@
     "Ordered",
     "Received",
     "Denied",
-    "Cancelled",
+    "Void",
   ];
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@
     ordered: 2,
     received: 3,
     denied: 4,
-    cancelled: 5,
+    void: 5,
   };
 
   let sortedAdminOrders = $derived.by(() => {
@@ -54,7 +54,7 @@
   let newTabOrders = $derived.by(() => {
     return dataService.orders.filter((/** @type {Order} */ o) => {
       const s = (o.status || "").toLowerCase().trim();
-      return !["received", "cancelled", "denied", "ordered"].includes(s);
+      return !["received", "void", "denied", "ordered"].includes(s);
     });
   });
 
@@ -671,6 +671,45 @@
       syncing = false;
     }
   }
+
+  let editingGroupOrders = $state(null);
+  let groupStatus = $state("Ordered");
+
+  function openGroupStatusModal(orders) {
+    editingGroupOrders = orders;
+    groupStatus = "Ordered";
+  }
+
+  async function saveGroupStatus() {
+    if (!editingGroupOrders) return;
+    syncing = true;
+    actionMsg = `Updating status for ${editingGroupOrders.length} orders...`;
+    
+    try {
+      const promises = editingGroupOrders.map((o) => {
+        const params = new URLSearchParams({
+          action: "updateOrderStatus",
+          key: SECRET_KEY,
+          id: o.id,
+          rowIndex: String(o.rowIndex),
+          status: groupStatus,
+        });
+        return fetch(`${BASE_URL}?${params.toString()}`).then((r) => r.json());
+      });
+
+      const results = await Promise.all(promises);
+      if (results.some((r) => r.error)) throw new Error("Batch status update failed");
+
+      actionMsg = `✓ Status updated to ${groupStatus}`;
+      editingGroupOrders.forEach((o) => dataService.updateOrderOptimistic(o.id, { status: groupStatus }));
+      dataService.load(true, true);
+    } catch (e) {
+      actionErr = e instanceof Error ? e.message : "Error updating group status";
+    } finally {
+      syncing = false;
+      editingGroupOrders = null;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -984,6 +1023,16 @@
                   disabled={syncing}
                 >
                   Merge Group
+                </button>
+              {/if}
+              {#if compOrders.length > 0}
+                <button
+                  class="btn btn-ghost btn-sm"
+                  style="margin-left: 12px; font-size: 0.7rem; padding: 4px 10px; border-color: var(--border-bright); font-weight: 400; border-radius: 4px; line-height: 1; vertical-align: middle;"
+                  onclick={() => openGroupStatusModal(compOrders)}
+                  disabled={syncing}
+                >
+                  Change All Status
                 </button>
               {/if}
             </h3>
@@ -1497,6 +1546,83 @@
   <button class="page-fab" onclick={() => showTabMenu = !showTabMenu} aria-label="Switch admin view">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
   </button>
+{/if}
+
+<!-- ── Group Status Edit Modal ──────────────────────────────────────────────────────── -->
+{#if editingGroupOrders}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+  <div
+    class="modal-backdrop"
+    onclick={() => (editingGroupOrders = null)}
+    onkeydown={(e) => e.key === "Escape" && (editingGroupOrders = null)}
+    role="button"
+    tabindex="0"
+  >
+    <div
+      class="modal-card card"
+      onclick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
+      <div class="modal-header">
+        <div>
+          <h2 style="margin:0">Change Group Status</h2>
+          <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">
+            Update {editingGroupOrders.length} orders
+          </p>
+        </div>
+        <button
+          class="modal-close"
+          onclick={() => (editingGroupOrders = null)}
+          aria-label="Close"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+          >
+        </button>
+      </div>
+
+      {#if actionErr}<div class="error-bar">{actionErr}</div>{/if}
+
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          saveGroupStatus();
+        }}
+      >
+        <div class="modal-fields">
+          <div class="form-group">
+            <label for="group-status">New Status</label>
+            <CustomDropdown
+              options={ORDER_STATUSES.map((s) => ({ label: s, value: s }))}
+              bind:value={groupStatus}
+            />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary" disabled={syncing}>
+            {syncing ? "Saving…" : "Save Status"}
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost"
+            onclick={() => (editingGroupOrders = null)}>Cancel</button
+          >
+        </div>
+      </form>
+    </div>
+  </div>
 {/if}
 
 <!-- ── Funding Edit Modal ──────────────────────────────────────────────────────── -->

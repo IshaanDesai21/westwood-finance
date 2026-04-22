@@ -11,7 +11,7 @@
 
   const teamOptions = [
     { label: 'All Teams', value: '' },
-    ...TEAMS.map(team => ({ label: team, value: team }))
+    ...TEAMS.filter(t => t !== 'Westwood Overall').map(team => ({ label: team, value: team }))
   ];
 
   const statusOptions = [
@@ -21,7 +21,7 @@
     { label: 'Received', value: 'Received' },
     { label: 'Approved', value: 'Approved' },
     { label: 'Denied', value: 'Denied' },
-    { label: 'Cancelled', value: 'Cancelled' }
+    { label: 'Void', value: 'Void' }
   ];
 
   /** @type {{ onchange?: (f: any) => void, filters: any }} */

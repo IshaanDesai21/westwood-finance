@@ -24,7 +24,7 @@
     "ordered": 2,
     "received": 3,
     "denied": 4,
-    "cancelled": 5,
+    "void": 5,
   };
 
   let sortedOrders = $derived(

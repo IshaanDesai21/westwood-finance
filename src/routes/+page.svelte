@@ -68,7 +68,7 @@
   let expenses = $derived(
     teamOrders.filter((/** @type {Order} */ o) => {
       const s = (o.status || "").toLowerCase().trim();
-      return s === "received" || s === "ordered" || s === "approved";
+      return s === "received" || s === "ordered";
     }),
   );
 
@@ -384,6 +384,11 @@
   .error-text { color: var(--status-rejected); font-size: 0.8rem; font-weight: 600; }
 
   @media (max-width: 650px) {
-    .header-right .deploy-info { display: none; }
+    .header-right .deploy-info { 
+      display: flex; 
+      opacity: 0.7; 
+      transform: scale(0.9); 
+      transform-origin: right center; 
+    }
   }
 </style>

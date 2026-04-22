@@ -12,6 +12,17 @@
     value: team,
   }));
 
+  let vendorSelect = $state("");
+  const presetVendors = [
+    { label: "Select Vendor...", value: "" },
+    { label: "GoBilda", value: "GoBilda" },
+    { label: "REV", value: "REV" },
+    { label: "Andymark", value: "Andymark" },
+    { label: "Axon", value: "Axon" },
+    { label: "Polymaker", value: "Polymaker" },
+    { label: "Other", value: "Other" }
+  ];
+
 
   let form = $state({
     destination: "sheets",
@@ -59,6 +70,7 @@
     form.notes = "Website Test";
     form.link = "https://example.com/item-" + Math.floor(Math.random() * 1000);
     form.orderedBy = "Test Bot";
+    vendorSelect = "Other";
   }
 
   async function submit() {
@@ -165,6 +177,7 @@
         orderedBy: form.orderedBy, // Preserve name for convenience
         isExpense: false,
       };
+      vendorSelect = "";
 
       setTimeout(() => goto("/orders"), 2500);
     } catch (e) {
@@ -274,13 +287,29 @@
 
           <div class="form-group">
             <label for="ae-company">Vendor / Supplier *</label>
-            <input
-              id="ae-company"
-              type="text"
-              bind:value={form.company}
-              placeholder="GoBilda, REV, etc."
-              required
-            />
+            {#if vendorSelect !== 'Other'}
+              <CustomDropdown
+                options={presetVendors}
+                bind:value={vendorSelect}
+                onchange={() => {
+                  if (vendorSelect !== 'Other') form.company = vendorSelect;
+                  else form.company = "";
+                }}
+              />
+            {:else}
+              <div style="display: flex; gap: 8px;">
+                <input
+                  id="ae-company"
+                  type="text"
+                  bind:value={form.company}
+                  placeholder="Enter custom vendor"
+                  required
+                />
+                <button type="button" class="btn btn-ghost btn-sm" onclick={() => { vendorSelect = ""; form.company = ""; }} style="padding: 0 12px;">
+                  ✕
+                </button>
+              </div>
+            {/if}
           </div>
 
           <div class="form-group">

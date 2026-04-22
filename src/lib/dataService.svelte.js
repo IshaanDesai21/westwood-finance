@@ -129,7 +129,7 @@ class DataStore {
         if (low === "received") return "Received";
         if (low === "approved") return "Approved";
         if (low === "denied") return "Denied";
-        if (low === "cancelled") return "Cancelled";
+        if (low === "void" || low === "cancelled") return "Void";
         return s; // Fallback
       })(),
       tracking: o.Tracking ?? o.tracking ?? "",

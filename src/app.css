@@ -464,6 +464,16 @@ tbody td {
     padding-top: calc(var(--safe-top) + 16px);
   }
 
+  /* ── Apple App Aesthetic Overrides ── */
+  :root {
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-lg: 20px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  }
+
   /* ── iOS Large Title Header ── */
   .page-header {
     flex-direction: row;

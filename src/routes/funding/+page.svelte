@@ -99,8 +99,27 @@
           })
       : [],
   );
-  let budgetTotal = $derived(
-    /** @type {any} */ (dataService.budget)?.Total ?? null,
+
+  let currentBudgetObj = $derived(
+    /** @type {any} */ (dataService.budget)?.[selectedBudgetTeam === 'Westwood Overall' ? 'Total' : selectedBudgetTeam] || {}
+  );
+
+  let realExpenses = $derived(
+    teamSpecificBudgetOrders
+      .filter((o) => {
+        const s = (o.status || "").toLowerCase().trim();
+        return s === "received" || s === "ordered";
+      })
+      .reduce((sum, o) => sum + (o.total || 0), 0)
+  );
+
+  let pendingExpenses = $derived(
+    teamSpecificBudgetOrders
+      .filter((o) => {
+        const s = (o.status || "").toLowerCase().trim();
+        return s === "pending review" || s === "approved";
+      })
+      .reduce((sum, o) => sum + (o.total || 0), 0)
   );
   let teamSpecificFunds = $derived(
     dataService.funds.filter((/** @type {any} */ f) => {
@@ -258,34 +277,40 @@
       <div class="stat-sub">{dataService.funds.length} entries</div>
     </div>
 
-    {#if budgetTotal}
+    {#if currentBudgetObj}
+      {@const clubFunds = currentBudgetObj["Club Funds"] || 0}
+      {@const personalFunds = currentBudgetObj["Personal Funds"] || 0}
+      {@const netBalance = clubFunds + personalFunds - realExpenses}
       <div class="card">
-        <div class="card-title">Total Club Funds</div>
+        <div class="card-title">Total Raised</div>
         <div class="stat-value" style="color:var(--primary)">
-          {formatCurrency(budgetTotal["Club Funds"] || 0)}
+          {formatCurrency(clubFunds)}
         </div>
       </div>
       <div class="card">
         <div class="card-title">Personal Funds</div>
         <div class="stat-value" style="color:#4e9af1">
-          {formatCurrency(budgetTotal["Personal Funds"] || 0)}
+          {formatCurrency(personalFunds)}
         </div>
       </div>
       <div class="card">
         <div class="card-title">Total Expenses</div>
         <div class="stat-value" style="color:#f16a4e">
-          {formatCurrency(Math.abs(budgetTotal["Expenses"] || 0))}
+          {formatCurrency(Math.abs(realExpenses))}
         </div>
+        {#if pendingExpenses > 0}
+          <div class="stat-sub" style="margin-top: 4px; color: var(--text-muted); font-size: 0.75rem;">
+            + {formatCurrency(pendingExpenses)} pending
+          </div>
+        {/if}
       </div>
       <div class="card" style="border-color:var(--primary)">
         <div class="card-title">Net Balance</div>
         <div
           class="stat-value"
-          style="color:{(budgetTotal['Final'] || 0) >= 0
-            ? '#6bcb77'
-            : '#f16a4e'}"
+          style="color:{netBalance >= 0 ? '#6bcb77' : '#f16a4e'}"
         >
-          {formatCurrency(budgetTotal["Final"] || 0)}
+          {formatCurrency(netBalance)}
         </div>
       </div>
     {/if}

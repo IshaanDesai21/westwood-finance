@@ -158,7 +158,7 @@
           Ordered: 2,
           Received: 3,
           Denied: 4,
-          Cancelled: 5,
+          Void: 5,
         };
 
         const priorityA = STATUS_PRIORITY[a.status] ?? 99;
