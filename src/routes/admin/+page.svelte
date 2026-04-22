@@ -441,6 +441,7 @@
       "Type",
       "Source/Item",
       "Category",
+      "Team",
       "Status",
       "Amount",
     ];
@@ -451,6 +452,7 @@
         row.type,
         row.source,
         row.category,
+        row.team,
         row.status,
         row.amount,
       ].map((val) => `"${String(val || "").replace(/"/g, '""')}"`);

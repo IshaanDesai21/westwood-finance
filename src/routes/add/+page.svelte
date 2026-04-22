@@ -7,7 +7,7 @@
   import { BASE_URL, SECRET_KEY } from "$lib/config.js";
   import { fade, scale } from "svelte/transition";
 
-  const teamOptions = TEAMS.map((/** @type {string} */ team) => ({
+  const teamOptions = TEAMS.filter(t => t !== "Westwood Overall").map((/** @type {string} */ team) => ({
     label: team,
     value: team,
   }));
@@ -512,11 +512,18 @@
   .category-pills {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
     margin-top: 8px;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .category-pills::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome, Safari and Opera */
   }
   
   .cat-pill {
+    flex: 0 0 auto;
     padding: 8px 16px;
     font-size: 0.725rem;
     font-weight: 700;

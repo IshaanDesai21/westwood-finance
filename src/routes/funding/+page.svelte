@@ -584,6 +584,7 @@
                 <th>Source / Item</th>
                 <th>Type</th>
                 <th>Category</th>
+                <th>Team</th>
                 <th>Status</th>
                 <th class="text-right">Amount</th>
               </tr>
@@ -608,6 +609,7 @@
                     </span>
                   </td>
                   <td>{tx.category || "—"}</td>
+                  <td>{tx.team || "—"}</td>
                   <td><span class="badge badge-{(tx.status||'').toLowerCase().replace(' ','-')}">{tx.status}</span></td>
                   <td
                     class="text-right monospace"

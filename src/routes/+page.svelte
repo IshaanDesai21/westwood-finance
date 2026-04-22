@@ -241,6 +241,13 @@
   </div>
 {/if}
 
+<!-- Mobile Version Info Footer -->
+<div class="mobile-version-footer">
+  <span class="v-tag">v{appInfo.version}</span>
+  <span class="v-sep">·</span>
+  <span class="v-time">Last Deployed {appInfo.deployedAt}</span>
+</div>
+
 <style>
   .header-left h1 { margin-bottom: 2px; }
   .header-right { display: flex; gap: 12px; align-items: center; }
@@ -385,10 +392,25 @@
 
   @media (max-width: 650px) {
     .header-right .deploy-info { 
-      display: flex; 
-      opacity: 0.7; 
-      transform: scale(0.9); 
-      transform-origin: right center; 
+      display: none; 
+    }
+  }
+
+  .mobile-version-footer {
+    display: none;
+    text-align: center;
+    padding: 32px 0 20px;
+    opacity: 0.4;
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+  .v-sep { margin: 0 4px; }
+
+  @media (max-width: 768px) {
+    .mobile-version-footer {
+      display: block;
     }
   }
 </style>
