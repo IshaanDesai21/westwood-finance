@@ -2,7 +2,7 @@ name: Deploy Frontend to GitHub Pages
 
 on:
   push:
-    branches: ["ios-look"]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
