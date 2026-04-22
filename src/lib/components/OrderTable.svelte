@@ -146,11 +146,8 @@
             {/if}
             {#if order.tracking}
               <div class="tracking-info">
-                {#if String(order.tracking).startsWith('http')}
-                  <a href={order.tracking} target="_blank" rel="noopener" class="tracking-link">Track Package</a>
-                {:else}
-                  <span class="tracking-text">Tracking: {order.tracking}</span>
-                {/if}
+                {@const href = String(order.tracking).startsWith('http') ? order.tracking : `https://www.google.com/search?q=${order.tracking}`}
+                <a {href} target="_blank" rel="noopener" class="tracking-link">Tracking</a>
               </div>
             {/if}
           </td>
