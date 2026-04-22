@@ -30,9 +30,12 @@
   let selectedTeam = $state("FRC");
 
   async function sync() {
-    syncing = true;
-    await dataService.load(true);
-    syncing = false;
+    dataService.isManualRefreshing = true;
+    try {
+      await dataService.load(true);
+    } finally {
+      setTimeout(() => { dataService.isManualRefreshing = false; }, 800);
+    }
   }
 
   onMount(() => {
@@ -75,7 +78,7 @@
       const s = String(o.status || "")
         .toLowerCase()
         .trim();
-      return s === "received" || s === "ordered" || s === "approved";
+      return s === "received" || s === "ordered";
     }),
   );
 
@@ -199,9 +202,9 @@
     {/if}
 
     <div style="display: flex; align-items: center; gap: 12px;">
-      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-        <span class:spinning={syncing}>↻</span>
-        {syncing ? "Syncing..." : "Refresh"}
+      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+        <span class:spinning={dataService.isManualRefreshing}>↻</span>
+        <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
       </button>
 
       <div class="team-selector" style="width: 180px;">

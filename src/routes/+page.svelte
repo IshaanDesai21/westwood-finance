@@ -45,9 +45,12 @@
   );
 
   async function sync() {
-    syncing = true;
-    await dataService.load(true); // force refresh
-    syncing = false;
+    dataService.isManualRefreshing = true;
+    try {
+      await dataService.load(true);
+    } finally {
+      setTimeout(() => { dataService.isManualRefreshing = false; }, 800);
+    }
   }
 
   onMount(() => {
@@ -91,7 +94,15 @@
   let recentExpenses = $derived(expenses.slice(-5).reverse());
   let recentOrders = $derived(teamOrders.slice(-5).reverse());
 
-  let budgetTotalValue = $derived(dataService.budget?.Total?.["Final"] || 0);
+  let budgetTotalValue = $derived.by(() => {
+    const totalClub = dataService.budget?.Total?.["Club Funds"] || 0;
+    const totalPersonal = dataService.budget?.Total?.["Personal Funds"] || 0;
+    const totalRealExpenses = dataService.orders.filter(o => {
+      const st = (o.status || "").toLowerCase().trim();
+      return st === "received" || st === "ordered";
+    }).reduce((sum, o) => sum + (o.total || 0), 0);
+    return totalClub + totalPersonal + totalRaised - totalRealExpenses;
+  });
 
 
   // Generate a stable hue from an order UUID
@@ -128,9 +139,9 @@
       <span class="deploy-time">{appInfo.deployedAt}</span>
     </div>
     
-    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-      <span class:spinning={syncing}>↻</span>
-      {syncing ? "Syncing..." : "Refresh"}
+    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+      <span class:spinning={dataService.isManualRefreshing}>↻</span>
+      <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
     </button>
 
     <div class="team-selector" style="width: 180px;">

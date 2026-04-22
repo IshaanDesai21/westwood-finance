@@ -46,7 +46,7 @@
       if (selectedBudgetTeam === "Westwood Overall") return true;
       const t = (o.team || "").toLowerCase().trim();
       const s = selectedBudgetTeam.toLowerCase().trim();
-      return t === s || t.includes(s);
+      return t === s || t.includes(s) || (s === 'frc' && (t.includes('frc') || /^\d+$/.test(t)));
     }),
   );
 
@@ -64,9 +64,12 @@
   });
 
   async function sync() {
-    syncing = true;
-    await dataService.load(true);
-    syncing = false;
+    dataService.isManualRefreshing = true;
+    try {
+      await dataService.load(true);
+    } finally {
+      setTimeout(() => { dataService.isManualRefreshing = false; }, 800);
+    }
   }
 
   // ── Derived totals ──────────────────────────────────────────────────────────
@@ -196,7 +199,7 @@
     // Filter team specific orders by status for "Spent" calculation
     const expenses = teamSpecificBudgetOrders.filter((o) => {
       const s = (o.status || "").toLowerCase().trim();
-      return s === "received" || s === "ordered" || s === "approved";
+      return s === "received" || s === "ordered";
     });
 
     for (const e of expenses) {
@@ -216,7 +219,7 @@
 
     const expenses = teamSpecificBudgetOrders.filter((/** @type {any} */ o) => {
       const s = (o.status || "").toLowerCase().trim();
-      return s === "received" || s === "ordered" || s === "approved";
+      return s === "received" || s === "ordered";
     });
     for (let e of expenses) {
       arr.push({
@@ -255,6 +258,22 @@
     });
     return arr;
   });
+
+  let masterIncome = $derived(
+    teamMasterTransactions
+      .filter(tx => tx.type === 'Income')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+  );
+  let masterExpenses = $derived(
+    teamMasterTransactions
+      .filter(tx => tx.type === 'Expense')
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0)
+  );
+  let masterNetBalance = $derived(
+    (currentBudgetObj["Club Funds"] || 0) + 
+    (currentBudgetObj["Personal Funds"] || 0) + 
+    masterIncome - masterExpenses
+  );
 </script>
 
 <svelte:head>
@@ -266,19 +285,12 @@
     <h1>Team <span>Dashboard</span></h1>
   </div>
 
-  <div
-    class="header-right"
-    style="display: flex; align-items: center; gap: 12px;"
-  >
-    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-      <span class:spinning={syncing}>↻</span>
-      {syncing ? "Syncing..." : "Refresh"}
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.loading}>
+      <span class:spinning={dataService.loading}>↻</span>
+      <span class="hide-mobile">{dataService.loading ? "Syncing..." : "Refresh"}</span>
     </button>
-
-    <div
-      class="budget-team-selector {!dataService.hasLoadedOnce ? 'fade-in' : ''}"
-      style="width: 180px;"
-    >
+    <div class="team-selector" style="min-width: 140px;">
       <CustomDropdown
         options={[
           "FRC",
@@ -366,11 +378,21 @@
                   const s = team.toLowerCase().trim();
                   return (r === s || r === "all") ? sum + (Number(f.Amount) || 0) : sum;
                 }, 0)}
-                {@const final = (data["Final"] ?? 0) + teamFundsRaised}
                 {@const clubFunds = data["Club Funds"] ?? 0}
-                {@const expenses = data["Expenses"] ?? 0}
-                {@const pct = budgetTotal && budgetTotal["Final"] > 0
-                  ? Math.min(100, (Math.max(0, final) / budgetTotal["Final"]) * 100)
+                {@const personalFunds = data["Personal Funds"] ?? 0}
+                {@const teamRealExpenses = dataService.orders.filter(o => {
+                  const t = (o.team || "").toLowerCase().trim();
+                  const s = team.toLowerCase().trim();
+                  // Match exact team, or robust FRC match
+                  const teamMatches = t === s || t.includes(s) || (s === 'frc' && (t.includes('frc') || /^\d+$/.test(t)));
+                  if (!teamMatches) return false;
+                  
+                  const st = (o.status || "").toLowerCase().trim();
+                  return st === "received" || st === "ordered";
+                }).reduce((sum, o) => sum + (o.total || 0), 0)}
+                {@const final = clubFunds + personalFunds + teamFundsRaised - teamRealExpenses}
+                {@const pct = budgetTotal && (budgetTotal["Club Funds"] + totalRaised) > 0
+                  ? Math.min(100, (Math.max(0, final) / (budgetTotal["Club Funds"] + totalRaised)) * 100)
                   : 0}
                 <tr class="overall-row">
                   <td>
@@ -378,7 +400,7 @@
                   </td>
                   <td class="text-right monospace">{formatCurrency(clubFunds)}</td>
                   <td class="text-right monospace" style="color:#6bcb77">+{formatCurrency(teamFundsRaised)}</td>
-                  <td class="text-right monospace" style="color:#f16a4e">{formatCurrency(Math.abs(expenses))}</td>
+                  <td class="text-right monospace" style="color:#f16a4e">{formatCurrency(Math.abs(teamRealExpenses))}</td>
                   <td class="text-right monospace overall-balance" style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}">{formatCurrency(final)}</td>
                   <td style="padding-left: 8px; padding-right: 20px;">
                     <div class="overall-bar-track">
@@ -389,13 +411,20 @@
               {/each}
             </tbody>
             {#if budgetTotal}
+              {@const totalClub = budgetTotal["Club Funds"] || 0}
+              {@const totalPersonal = budgetTotal["Personal Funds"] || 0}
+              {@const totalRealExpenses = dataService.orders.filter(o => {
+                const st = (o.status || "").toLowerCase().trim();
+                return st === "received" || st === "ordered";
+              }).reduce((sum, o) => sum + (o.total || 0), 0)}
+              {@const totalFinal = totalClub + totalPersonal + totalRaised - totalRealExpenses}
               <tfoot>
                 <tr class="total-row">
                   <td class="total-label" style="text-align:left; padding-left:20px;">Westwood Total</td>
-                  <td class="text-right monospace total-amount" style="font-size:0.9rem">{formatCurrency(budgetTotal["Club Funds"] || 0)}</td>
+                  <td class="text-right monospace total-amount" style="font-size:0.9rem">{formatCurrency(totalClub)}</td>
                   <td class="text-right monospace total-amount" style="font-size:0.9rem; color:#6bcb77">+{formatCurrency(totalRaised)}</td>
-                  <td class="text-right monospace total-amount" style="font-size:0.9rem; color:#f16a4e">{formatCurrency(Math.abs(budgetTotal["Expenses"] || 0))}</td>
-                  <td class="text-right monospace total-amount" style="color:{( budgetTotal['Final'] || 0) >= 0 ? '#6bcb77' : '#f16a4e'}">{formatCurrency(budgetTotal["Final"] || 0)}</td>
+                  <td class="text-right monospace total-amount" style="font-size:0.9rem; color:#f16a4e">{formatCurrency(Math.abs(totalRealExpenses))}</td>
+                  <td class="text-right monospace total-amount" style="color:{totalFinal >= 0 ? '#6bcb77' : '#f16a4e'}">{formatCurrency(totalFinal)}</td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -412,17 +441,13 @@
               {@const teamFundsRaised = dataService.funds.reduce((sum, f) => {
                 const r = String(f.Recipient || "").toLowerCase().trim();
                 const s = team.toLowerCase().trim();
-                return (r === s || r === "all") ? sum + (Number(f.Amount) || 0) : sum;
+                // Match exact team, "all" (split across teams), or "westwood overall"
+                const matches = r === s || r.includes(s) || r === "all" || r === "westwood overall";
+                return matches ? sum + (Number(f.Amount) || 0) : sum;
               }, 0)}
-              {@const baseFinal = data["Final"] ?? 0}
-              {@const final = baseFinal + teamFundsRaised}
               {@const clubFunds = data["Club Funds"] ?? 0}
-              {@const expenses = data["Expenses"] ?? 0}
               {@const personal = data["Personal Funds"] ?? 0}
-              {@const pendingExpenses = teamSpecificBudgetOrders.reduce((sum, o) => {
-                const s = (o.status || "").toLowerCase().trim();
-                return (s === "pending review" || s === "approved") ? sum + (o.total || 0) : sum;
-              }, 0)}
+              {@const final = clubFunds + personal + teamFundsRaised - realExpenses}
               <div class="budget-card card selected">
                 <div class="budget-team-name" style="font-size: 1.4rem; color: var(--primary);">{team}</div>
                 <div class="budget-final" style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}; font-size: 2.2rem;">
@@ -439,7 +464,7 @@
                   </div>
                   <div class="budget-detail-row" style="font-size: 0.95rem;">
                     <span class="text-muted">Expenses</span>
-                    <span class="monospace" style="color:#f16a4e">{formatCurrency(Math.abs(expenses))}</span>
+                    <span class="monospace" style="color:#f16a4e">{formatCurrency(Math.abs(realExpenses))}</span>
                   </div>
                   <div class="budget-detail-row" style="font-size: 0.95rem;">
                     <span class="text-muted">Pending Expenses</span>
@@ -622,6 +647,15 @@
                 </tr>
               {/each}
             </tbody>
+            <tfoot class="total-row">
+              <tr>
+                <td colspan="4" class="total-label" style="text-align: left; padding-left: 20px;">Net Balance</td>
+                <td colspan="2"></td>
+                <td class="text-right monospace total-amount" style="color: {masterNetBalance >= 0 ? '#6bcb77' : '#f16a4e'}">
+                  {formatCurrency(masterNetBalance)}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       {/if}

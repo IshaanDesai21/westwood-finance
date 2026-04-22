@@ -42,6 +42,8 @@ class DataStore {
   /** @type {boolean} */
   isSilentLoading = $state(false);
   /** @type {boolean} */
+  isManualRefreshing = $state(false);
+  /** @type {boolean} */
   hasLoadedOnce = $state(false);
 
   constructor() {

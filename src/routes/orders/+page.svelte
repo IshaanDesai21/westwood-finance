@@ -21,9 +21,12 @@
   });
 
   async function sync() {
-    syncing = true;
-    await dataService.load(true);
-    syncing = false;
+    dataService.isManualRefreshing = true;
+    try {
+      await dataService.load(true);
+    } finally {
+      setTimeout(() => { dataService.isManualRefreshing = false; }, 800);
+    }
   }
 
   onMount(() => {
@@ -207,9 +210,9 @@
     {/if}
 
     <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
-        <span class:spinning={syncing}>↻</span>
-        {syncing ? "Syncing..." : "Refresh"}
+      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+        <span class:spinning={dataService.isManualRefreshing}>↻</span>
+        <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
       </button>
 
       <button
@@ -231,7 +234,7 @@
             points="7 10 12 15 17 10"
           /><line x1="12" y1="15" x2="12" y2="3" /></svg
         >
-        Export
+        <span class="hide-mobile">Export</span>
       </button>
 
       <a href="/add" class="btn btn-primary btn-sm">
@@ -247,7 +250,7 @@
           stroke-linejoin="round"
           ><path d="M5 12h14" /><path d="M12 5v14" /></svg
         >
-        New Request
+        <span class="hide-mobile">New Request</span>
       </a>
     </div>
   </div>

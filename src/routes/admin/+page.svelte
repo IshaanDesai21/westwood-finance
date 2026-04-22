@@ -216,7 +216,7 @@
     // Expenses (Ordered, Received, Approved)
     const expenses = dataService.orders.filter((/** @type {Order} */ o) => {
       const s = o.status?.toLowerCase().trim();
-      return s === "received" || s === "ordered" || s === "approved";
+      return s === "received" || s === "ordered";
     });
     for (let e of expenses) {
       arr.push({

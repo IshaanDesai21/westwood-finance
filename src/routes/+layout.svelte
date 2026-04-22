@@ -38,32 +38,35 @@
     const main = document.querySelector('.main-content');
     if (!main) return;
 
-    function onTouchStart(/** @type {TouchEvent} */ e) {
+    function onTouchStart(/** @type {any} */ e) {
       if (window.innerWidth > 768) return;
       ptrTouchStartY = e.touches[0].clientY;
     }
-
-    async function onTouchEnd(/** @type {TouchEvent} */ e) {
-      if (window.innerWidth > 768 || ptrActive) return;
+ 
+    async function onTouchEnd(/** @type {any} */ e) {
+      if (window.innerWidth > 768 || dataService.isManualRefreshing) return;
       const delta = e.changedTouches[0].clientY - ptrTouchStartY;
       // Only fire if pulled down AND scroll is at top
+      if (!main) return;
       const scrollTop = main.scrollTop ?? window.scrollY;
       if (delta > PTR_THRESHOLD && scrollTop <= 0) {
         if ('vibrate' in navigator) navigator.vibrate([8, 40, 8]);
-        ptrActive = true;
+        dataService.isManualRefreshing = true;
         try {
           await dataService.load(true);
         } finally {
-          setTimeout(() => { ptrActive = false; }, 600);
+          setTimeout(() => { dataService.isManualRefreshing = false; }, 600);
         }
       }
     }
-
+ 
     main.addEventListener('touchstart', onTouchStart, { passive: true });
     main.addEventListener('touchend', onTouchEnd, { passive: true });
     return () => {
-      main.removeEventListener('touchstart', onTouchStart);
-      main.removeEventListener('touchend', onTouchEnd);
+      if (main) {
+        main.removeEventListener('touchstart', onTouchStart);
+        main.removeEventListener('touchend', onTouchEnd);
+      }
     };
   });
 </script>
@@ -74,7 +77,7 @@
 </svelte:head>
 
 <!-- Pull-to-Refresh Indicator -->
-{#if ptrActive}
+{#if dataService.isManualRefreshing}
   <div class="ptr-indicator">
     <div class="ptr-spinner"></div>
     Refreshing…
