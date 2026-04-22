@@ -100,6 +100,10 @@
       : [],
   );
 
+  let budgetTotal = $derived(
+    /** @type {any} */ (dataService.budget)?.["Total"] || null
+  );
+
   let currentBudgetObj = $derived(
     /** @type {any} */ (dataService.budget)?.[selectedBudgetTeam === 'Westwood Overall' ? 'Total' : selectedBudgetTeam] || {}
   );
@@ -311,206 +315,9 @@
   </div>
 </div>
 
-<!-- ══ OVERVIEW ══════════════════════════════════════════════════════════════ -->
-{#if activeTab === "overview"}
-  <!-- Summary strip -->
-  <div class="stat-grid" class:fade-in={!dataService.hasLoadedOnce}>
-    <div class="card">
-      <div class="card-title">Total Raised</div>
-      <div class="stat-value" style="color:#6bcb77">
-        {formatCurrency(totalRaised)}
-      </div>
-      <div class="stat-sub">{dataService.funds.length} entries</div>
-    </div>
+<!-- ══ TEAM BUDGETS ══════════════════════════════════════════════════════════ -->
+{#if activeTab === "budget"}
 
-    {#if currentBudgetObj}
-      {@const clubFunds = currentBudgetObj["Club Funds"] || 0}
-      {@const personalFunds = currentBudgetObj["Personal Funds"] || 0}
-      {@const netBalance = clubFunds + personalFunds - realExpenses}
-      <div class="card">
-        <div class="card-title">Total Raised</div>
-        <div class="stat-value" style="color:var(--primary)">
-          {formatCurrency(clubFunds)}
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Personal Funds</div>
-        <div class="stat-value" style="color:#4e9af1">
-          {formatCurrency(personalFunds)}
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Total Expenses</div>
-        <div class="stat-value" style="color:#f16a4e">
-          {formatCurrency(Math.abs(realExpenses))}
-        </div>
-        {#if pendingExpenses > 0}
-          <div class="stat-sub" style="margin-top: 4px; color: var(--text-muted); font-size: 0.75rem;">
-            + {formatCurrency(pendingExpenses)} pending
-          </div>
-        {/if}
-      </div>
-      <div class="card" style="border-color:var(--primary)">
-        <div class="card-title">Net Balance</div>
-        <div
-          class="stat-value"
-          style="color:{netBalance >= 0 ? '#6bcb77' : '#f16a4e'}"
-        >
-          {formatCurrency(netBalance)}
-        </div>
-      </div>
-    {/if}
-  </div>
-
-  <!-- Type breakdown -->
-  <div class="section-title" style="margin-top:28px">Funding by Type</div>
-  {#if dataService.loading && !dataService.funds.length}
-    <LoadingIndicator text="Fetching data..." />
-  {:else}
-    <div class="type-breakdown card">
-      {#each typeOptions as type}
-        {@const amount = byType()[type.value] || 0}
-        {@const pct = totalRaised > 0 ? (amount / totalRaised) * 100 : 0}
-        {@const color = TYPE_COLORS[type.value] || "#8a8a8a"}
-        <div class="breakdown-row">
-          <div class="breakdown-meta">
-            <span class="breakdown-label" style="color:{color}">{type.label}</span>
-            <span class="breakdown-pct text-muted" style="font-size: 0.8rem;">{pct.toFixed(0)}%</span>
-          </div>
-          <div class="breakdown-amount" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">{formatCurrency(amount)}</div>
-          <div class="breakdown-bar-track">
-            <div
-              class="breakdown-bar-fill"
-              style="width:{pct}%;background:{color}"
-            ></div>
-          </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
-
-  <!-- ══ HISTORY ══════════════════════════════════════════════════════════════ -->
-{:else if activeTab === "history"}
-  {#if dataService.loading && !dataService.funds.length}
-    <LoadingIndicator text="Loading history..." />
-  {:else if dataService.funds.length === 0}
-    <div class="empty-state card">
-      <div class="icon">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="48"
-          height="48"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          ><circle cx="12" cy="12" r="10" /><path
-            d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"
-          /><path d="M12 18V6" /></svg
-        >
-      </div>
-      No funding entries yet.
-    </div>
-  {:else}
-    <div
-      class="card history-card"
-      class:fade-in={!dataService.hasLoadedOnce}
-      style="padding:0; overflow:hidden; width:100%"
-    >
-      <table>
-        <thead>
-          <tr>
-            <th class="sortable" onclick={() => toggleSort("Type")}
-              >Type {sortCol === "Type"
-                ? sortDir === "asc"
-                  ? "↑"
-                  : "↓"
-                : ""}</th
-            >
-            <th class="sortable" onclick={() => toggleSort("Source")}
-              >Source {sortCol === "Source"
-                ? sortDir === "asc"
-                  ? "↑"
-                  : "↓"
-                : ""}</th
-            >
-            <th class="sortable" onclick={() => toggleSort("Recipient")}
-              >Team {sortCol === "Recipient"
-                ? sortDir === "asc"
-                  ? "↑"
-                  : "↓"
-                : ""}</th
-            >
-            <th class="sortable" onclick={() => toggleSort("Date")}
-              >Date {sortCol === "Date"
-                ? sortDir === "asc"
-                  ? "↑"
-                  : "↓"
-                : ""}</th
-            >
-            <th class="sortable" onclick={() => toggleSort("Notes")}
-              >Notes {sortCol === "Notes"
-                ? sortDir === "asc"
-                  ? "↑"
-                  : "↓"
-                : ""}</th
-            >
-            <th class="sortable text-right" onclick={() => toggleSort("Amount")}
-              >Amount {sortCol === "Amount"
-                ? sortDir === "asc"
-                  ? "↑"
-                  : "↓"
-                : ""}</th
-            >
-          </tr>
-        </thead>
-        <tbody>
-          {#each sortedFunds as entry}
-            <tr class="fade-in">
-              <td>
-                <span
-                  style="font-size: 1.05rem; font-weight: 500; color:{TYPE_COLORS[
-                    entry.Type
-                  ] || 'var(--text-muted)'}"
-                >
-                  {entry.Type || "—"}
-                </span>
-              </td>
-              <td style="font-weight:500">{entry.Source || "—"}</td>
-              <td>
-                {entry.Recipient || "—"}
-              </td>
-              <td class="text-dim">
-                {formatFullDate(entry.Date)}
-              </td>
-              <td class="text-muted" style="font-size:0.82rem"
-                >{entry.Notes || "—"}</td
-              >
-              <td
-                class="text-right monospace"
-                style="font-weight:600;color:#6bcb77"
-              >
-                {formatCurrency(Number(entry.Amount) || 0)}
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-        <tfoot class="total-row">
-          <tr>
-            <td colspan="5" class="total-label">Total Raised</td>
-            <td class="text-right monospace total-amount">
-              {formatCurrency(totalRaised)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  {/if}
-
-  <!-- ══ TEAM BUDGETS ═════════════════════════════════════════════════════════ -->
-{:else if activeTab === "budget"}
   {#if dataService.loading && !dataService.budget}
     <LoadingIndicator text="Loading budgets..." />
   {:else if !dataService.budget}
@@ -833,7 +640,7 @@
   /* ── Tabs ──────────────────────────────────────────────────────────────────── */
   .segmented-control {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     background: var(--surface-2);
     padding: 4px;
     border-radius: 99px;
@@ -846,7 +653,7 @@
     top: 4px;
     bottom: 4px;
     left: 4px;
-    width: calc((100% - 8px) / 2);
+    width: calc((100% - 8px) / 3);
     background: var(--surface);
     border-radius: 99px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);

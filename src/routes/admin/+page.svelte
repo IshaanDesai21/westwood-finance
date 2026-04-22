@@ -24,6 +24,7 @@
     "Ordered",
     "Received",
     "Denied",
+    "Cancelled",
     "Void",
   ];
 
@@ -108,12 +109,11 @@
   let groupingOptions = $derived.by(() => {
     if (!currentEditingOrder) return [];
 
-    // 1. Get all other pending orders from same company
+    // 1. Get all other orders from same company (any status)
     const otherPending = dataService.orders.filter(
       (o) =>
         o.company === currentEditingOrder.company &&
-        o.id !== editingOrderId &&
-        (o.status || "").toLowerCase().trim() === "pending review",
+        o.id !== editingOrderId,
     );
 
     if (otherPending.length === 0) return [];
@@ -142,7 +142,7 @@
             (isMatch ? "Keep grouped with: " : "Group with: ") +
             truncate(t.item, 40) +
             " (" +
-            t.orderUUID +
+            (t.team || "Unknown Team") +
             ")",
           value: String(t.orderUUID),
         };
