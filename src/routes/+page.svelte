@@ -254,6 +254,16 @@
     margin-bottom: 40px;
   }
 
+  .total-raised-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .total-raised-card > :global(*) {
+    flex: 1;
+    width: 100%;
+  }
+
   /* Hide Total Raised when it would cause an awkward 3+1 layout */
   @media (min-width: 1100px) and (max-width: 1380px) {
     .total-raised-card {
