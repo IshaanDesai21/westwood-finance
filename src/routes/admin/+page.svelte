@@ -672,9 +672,11 @@
     }
   }
 
+  /** @type {any[] | null} */
   let editingGroupOrders = $state(null);
   let groupStatus = $state("Ordered");
 
+  /** @param {any[]} orders */
   function openGroupStatusModal(orders) {
     editingGroupOrders = orders;
     groupStatus = "Ordered";
@@ -686,7 +688,7 @@
     actionMsg = `Updating status for ${editingGroupOrders.length} orders...`;
     
     try {
-      const promises = editingGroupOrders.map((o) => {
+      const promises = editingGroupOrders.map((/** @type {any} */ o) => {
         const params = new URLSearchParams({
           action: "updateOrderStatus",
           key: SECRET_KEY,
@@ -698,10 +700,10 @@
       });
 
       const results = await Promise.all(promises);
-      if (results.some((r) => r.error)) throw new Error("Batch status update failed");
+      if (results.some((/** @type {any} */ r) => r.error)) throw new Error("Batch status update failed");
 
       actionMsg = `✓ Status updated to ${groupStatus}`;
-      editingGroupOrders.forEach((o) => dataService.updateOrderOptimistic(o.id, { status: groupStatus }));
+      editingGroupOrders.forEach((/** @type {any} */ o) => dataService.updateOrderOptimistic(o.id, { status: groupStatus }));
       dataService.load(true, true);
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Error updating group status";
@@ -1569,7 +1571,7 @@
         <div>
           <h2 style="margin:0">Change Group Status</h2>
           <p class="text-muted" style="margin:4px 0 0;font-size:0.85rem">
-            Update {editingGroupOrders.length} orders
+            Update {editingGroupOrders ? editingGroupOrders.length : 0} orders
           </p>
         </div>
         <button

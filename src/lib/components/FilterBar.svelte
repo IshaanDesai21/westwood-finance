@@ -220,7 +220,7 @@
   .ios-filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
   .ios-search-wrap { flex: 1; position: relative; display: flex; align-items: center; background: rgba(118, 118, 128, 0.18); border-radius: 10px; overflow: hidden; }
   .ios-search-icon { position: absolute; left: 10px; color: var(--text-dim); pointer-events: none; flex-shrink: 0; }
-  .ios-search-input { flex: 1; background: transparent; border: none; outline: none; padding: 10px 36px 10px 34px; font-size: 16px; color: #fff; font-family: -apple-system, 'SF Pro Text', sans-serif; min-height: 38px; -webkit-appearance: none; }
+  .ios-search-input { flex: 1; background: transparent; border: none; outline: none; padding: 10px 36px 10px 34px; font-size: 16px; color: #fff; font-family: -apple-system, 'SF Pro Text', sans-serif; min-height: 38px; -webkit-appearance: none; appearance: none; }
   .ios-search-input::placeholder { color: var(--text-dim); }
   .ios-search-clear { position: absolute; right: 8px; background: var(--surface-3); border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); -webkit-tap-highlight-color: transparent; padding: 0; }
   .ios-filter-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(118, 118, 128, 0.18); border: none; border-radius: 10px; color: var(--text-muted); font-size: 14px; font-weight: 600; font-family: -apple-system, 'SF Pro Text', sans-serif; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; transition: background 0.15s; min-height: 38px; }
@@ -232,7 +232,7 @@
   .ios-sheet-filters { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
   .ios-sheet-filter-group { display: flex; flex-direction: column; gap: 6px; }
   .ios-sheet-filter-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; font-family: -apple-system, 'SF Pro Text', sans-serif; }
-  .ios-native-select, .ios-native-input { width: 100%; background: rgba(118, 118, 128, 0.18); border: none; border-radius: 10px; color: #fff; font-size: 16px; font-family: -apple-system, 'SF Pro Text', sans-serif; padding: 12px 14px; -webkit-appearance: none; outline: none; min-height: 44px; }
+  .ios-native-select, .ios-native-input { width: 100%; background: rgba(118, 118, 128, 0.18); border: none; border-radius: 10px; color: #fff; font-size: 16px; font-family: -apple-system, 'SF Pro Text', sans-serif; padding: 12px 14px; -webkit-appearance: none; appearance: none; outline: none; min-height: 44px; }
   .ios-native-select option { background: var(--surface-2); }
   .ios-sheet-filter-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
   .ios-apply-btn { background: var(--primary); color: #fff; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; padding: 14px; cursor: pointer; font-family: -apple-system, 'SF Pro Text', sans-serif; -webkit-tap-highlight-color: transparent; transition: opacity 0.15s; }
