@@ -98,7 +98,7 @@
 
   // Drag-to-dismiss
   let dragStartY = 0;
-  let sheetEl = /** @type {HTMLElement|null} */ (null);
+  let sheetEl = /** @type {HTMLElement|null} */ ($state(null));
 
   /** @param {TouchEvent} e */
   function onSheetTouchStart(e) {
@@ -257,13 +257,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.5);
     transition: transform 0.15s, box-shadow 0.15s;
   }
 
   .ios-tab-center:active .ios-tab-center-pill {
     transform: scale(0.94);
-    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
   }
 
   /* ── More Sheet ────────────────────────────────────────────────── */

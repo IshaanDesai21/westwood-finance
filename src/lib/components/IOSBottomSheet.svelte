@@ -5,7 +5,7 @@
   /** @type {{ open: boolean, onclose: () => void, title?: string, children: import('svelte').Snippet }} */
   let { open = false, onclose, title = '', children } = $props();
 
-  let sheetEl = /** @type {HTMLElement|null} */ (null);
+  let sheetEl = /** @type {HTMLElement|null} */ ($state(null));
   let dragStartY = 0;
   let currentY = $state(0);
   let isDragging = $state(false);
