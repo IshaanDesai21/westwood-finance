@@ -649,9 +649,8 @@
             </tbody>
             <tfoot class="total-row">
               <tr>
-                <td colspan="4" class="total-label" style="text-align: left; padding-left: 20px;">Net Balance</td>
-                <td colspan="2"></td>
-                <td class="text-right monospace total-amount" style="color: {masterNetBalance >= 0 ? '#6bcb77' : '#f16a4e'}">
+                <td colspan="6" class="total-label">Net Balance</td>
+                <td class="text-right monospace total-amount">
                   {formatCurrency(masterNetBalance)}
                 </td>
               </tr>
