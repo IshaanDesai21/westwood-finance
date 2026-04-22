@@ -205,6 +205,52 @@
   let totalSpentForBreakdown = $derived(
     Object.values(spentByCategory).reduce((sum, val) => sum + val, 0),
   );
+
+  let teamMasterTransactions = $derived.by(() => {
+    /** @type {any[]} */
+    const arr = [];
+
+    const expenses = teamSpecificBudgetOrders.filter((/** @type {any} */ o) => {
+      const s = (o.status || "").toLowerCase().trim();
+      return s === "received" || s === "ordered" || s === "approved";
+    });
+    for (let e of expenses) {
+      arr.push({
+        id: e.id,
+        type: "Expense",
+        source: e.company || e.item,
+        category: e.category,
+        date: e.timestamp?.slice(0, 10) || "—",
+        amount: -(e.total || 0),
+        status: e.status,
+      });
+    }
+
+    const income = dataService.funds.filter((/** @type {any} */ f) => {
+      if (selectedBudgetTeam === "Westwood Overall") return true;
+      const t = (f.Recipient || "").toLowerCase().trim();
+      const s = selectedBudgetTeam.toLowerCase().trim();
+      return t === s || t.includes(s) || t === "all" || t === "westwood overall";
+    });
+    for (let f of income) {
+      arr.push({
+        id: f.id,
+        type: "Income",
+        source: f.Source,
+        category: f.Type,
+        date: f.Date || "—",
+        amount: Number(f.Amount) || 0,
+        status: "Received",
+      });
+    }
+
+    arr.sort((a, b) => {
+      const dateA = new Date(a.date).getTime() || 0;
+      const dateB = new Date(b.date).getTime() || 0;
+      return dateB - dateA;
+    });
+    return arr;
+  });
 </script>
 
 <svelte:head>
@@ -250,11 +296,11 @@
   <div class="segmented-control">
     <div
       class="segment-highlight"
-      style="transform: translateX(calc({['budget', 'history'].indexOf(
+      style="transform: translateX(calc({['budget', 'history', 'master'].indexOf(
         activeTab,
-      )} * 100%));"
+      )} * 100%)); width: calc((100% - 10px) / 3);"
     ></div>
-    {#each [["budget", "Team Dashboard"], ["history", `${selectedBudgetTeam} Funding`]] as [key, label]}
+    {#each [["budget", "Team Dashboard"], ["history", `${selectedBudgetTeam} Funding`], ["master", "Finance History"]] as [key, label]}
       <button
         class="segment"
         class:active={activeTab === key}
@@ -328,18 +374,16 @@
         {@const color = TYPE_COLORS[type.value] || "#8a8a8a"}
         <div class="breakdown-row">
           <div class="breakdown-meta">
-            <span class="breakdown-label" style="color:{color}"
-              >{type.label}</span
-            >
-            <span class="breakdown-amount">{formatCurrency(amount)}</span>
+            <span class="breakdown-label" style="color:{color}">{type.label}</span>
+            <span class="breakdown-pct text-muted" style="font-size: 0.8rem;">{pct.toFixed(0)}%</span>
           </div>
+          <div class="breakdown-amount" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">{formatCurrency(amount)}</div>
           <div class="breakdown-bar-track">
             <div
               class="breakdown-bar-fill"
               style="width:{pct}%;background:{color}"
             ></div>
           </div>
-          <span class="breakdown-pct text-muted">{pct.toFixed(0)}%</span>
         </div>
       {/each}
     </div>
@@ -439,9 +483,7 @@
                 {entry.Recipient || "—"}
               </td>
               <td class="text-dim">
-                <span class="date-chip" style="color: var(--text-dim);">
-                  {formatFullDate(entry.Date)}
-                </span>
+                {formatFullDate(entry.Date)}
               </td>
               <td class="text-muted" style="font-size:0.82rem"
                 >{entry.Notes || "—"}</td
@@ -570,17 +612,19 @@
               {@const clubFunds = data["Club Funds"] ?? 0}
               {@const expenses = data["Expenses"] ?? 0}
               {@const personal = data["Personal Funds"] ?? 0}
+              {@const pendingExpenses = teamSpecificBudgetOrders.reduce((sum, o) => {
+                const s = (o.status || "").toLowerCase().trim();
+                return (s === "pending review" || s === "approved") ? sum + (o.total || 0) : sum;
+              }, 0)}
               <div class="budget-card card selected">
                 <div class="budget-team-name" style="font-size: 1.4rem; color: var(--primary);">{team}</div>
-                <div class="budget-final" style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}; font-size: 2.2rem;">{formatCurrency(final)}</div>
+                <div class="budget-final" style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}; font-size: 2.2rem;">
+                  {formatCurrency(final)} <span style="font-size: 1.2rem; color: var(--text-muted); font-weight: 500;">/ {formatCurrency(teamFundsRaised + personal)}</span>
+                </div>
                 <div class="budget-details" style="gap: 12px; margin-top: 20px;">
                   <div class="budget-detail-row" style="font-size: 0.95rem;">
                     <span class="text-muted">Raised</span>
                     <span class="monospace" style="color:#6bcb77">+{formatCurrency(teamFundsRaised)}</span>
-                  </div>
-                  <div class="budget-detail-row" style="font-size: 0.95rem;">
-                    <span class="text-muted">Team Budget</span>
-                    <span class="monospace">{formatCurrency(clubFunds)}</span>
                   </div>
                   <div class="budget-detail-row" style="font-size: 0.95rem;">
                     <span class="text-muted">Personal</span>
@@ -589,6 +633,10 @@
                   <div class="budget-detail-row" style="font-size: 0.95rem;">
                     <span class="text-muted">Expenses</span>
                     <span class="monospace" style="color:#f16a4e">{formatCurrency(Math.abs(expenses))}</span>
+                  </div>
+                  <div class="budget-detail-row" style="font-size: 0.95rem;">
+                    <span class="text-muted">Pending Expenses</span>
+                    <span class="monospace" style="color:var(--text-muted)">{formatCurrency(pendingExpenses)}</span>
                   </div>
                 </div>
                 <div class="budget-bar-track" style="margin-top:24px; height: 8px;">
@@ -686,6 +734,90 @@
       </div>
     </div>
   </div>
+{:else if activeTab === "master"}
+  <section class="fade-in">
+    <div
+      class="section-title"
+      style="margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;"
+    >
+      <span>Finance History ({teamMasterTransactions.length})</span>
+    </div>
+
+    <div class="card orders-card" style="padding:0;overflow:hidden; width:100%">
+      {#if dataService.loading && !teamMasterTransactions.length}
+        <LoadingIndicator text="Loading ledger..." />
+      {:else if teamMasterTransactions.length === 0}
+        <div class="empty-state">
+          <div class="icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><path
+                d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"
+              /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path
+                d="M12 17.5v-11"
+              /></svg
+            >
+          </div>
+          No transactions found.
+        </div>
+      {:else}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Source / Item</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each teamMasterTransactions as tx (tx.id + tx.type)}
+                <tr class="fade-in">
+                  <td
+                    class="text-dim monospace"
+                    style="color: var(--text-dim);">{tx.date}</td
+                  >
+                  <td style="font-weight:600; color: #fff;"
+                    >{tx.source || "—"}</td
+                  >
+                  <td>
+                    <span
+                      class="badge {tx.type === 'Income'
+                        ? 'badge-awarded'
+                        : 'badge-rejected'}"
+                    >
+                      {tx.type}
+                    </span>
+                  </td>
+                  <td>{tx.category || "—"}</td>
+                  <td><span class="badge badge-{(tx.status||'').toLowerCase().replace(' ','-')}">{tx.status}</span></td>
+                  <td
+                    class="text-right monospace"
+                    style="font-weight:700; color: {tx.amount > 0
+                      ? 'var(--status-awarded)'
+                      : 'var(--status-rejected)'}"
+                  >
+                    {tx.amount > 0 ? "+" : ""}{formatCurrency(tx.amount)}
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </div>
+  </section>
 {/if}
 
 <!-- Mobile tab FAB removed — tabs-container is now shown on mobile -->
@@ -754,16 +886,17 @@
 
   .type-breakdown {
     display: flex;
-    flex-direction: column;
-    gap: 14px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
     padding: 20px;
   }
   .breakdown-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 4px 12px;
-    align-items: center;
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .breakdown-meta {
     display: flex;

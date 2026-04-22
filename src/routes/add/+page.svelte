@@ -302,7 +302,7 @@
                   id="ae-company"
                   type="text"
                   bind:value={form.company}
-                  placeholder="Enter custom vendor"
+                  placeholder="Enter vendor name"
                   required
                 />
                 <button type="button" class="btn btn-ghost btn-sm" onclick={() => { vendorSelect = ""; form.company = ""; }} style="padding: 0 12px;">

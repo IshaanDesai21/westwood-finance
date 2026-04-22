@@ -78,6 +78,9 @@
 
   let unlocked = $state(false);
 
+  /** @type {(() => void) | null} */
+  let undoFn = $state(null);
+
   async function sync() {
     syncing = true;
     await dataService.load(true);
@@ -221,6 +224,7 @@
         type: "Expense",
         source: e.company || e.item,
         category: e.category,
+        team: e.team,
         date: e.timestamp?.slice(0, 10) || "—",
         amount: -e.total,
         status: e.status,
@@ -234,6 +238,7 @@
         type: "Income",
         source: f.Source,
         category: f.Type,
+        team: f.Recipient,
         date: f.Date || "—",
         amount: Number(f.Amount) || 0,
         status: "Received",
@@ -287,9 +292,18 @@
 
   async function saveEdit() {
     if (!currentEditingOrder) return;
+    
+    // Store previous state for undo
+    const prevStatus = currentEditingOrder.status;
+    const prevTracking = currentEditingOrder.tracking;
+    const prevUUID = currentEditingOrder.orderUUID;
+    const editId = currentEditingOrder.id;
+    const editRowIndex = currentEditingOrder.rowIndex;
+    
     editSaving = true;
     actionErr = "";
     actionMsg = "";
+    undoFn = null;
     try {
       const params = new URLSearchParams({
         action: "updateOrderStatus",
@@ -314,6 +328,24 @@
         orderUUID: editUUID,
       });
 
+      undoFn = () => {
+        dataService.updateOrderOptimistic(editId, {
+          status: prevStatus,
+          tracking: prevTracking,
+          orderUUID: prevUUID,
+        });
+        const revertParams = new URLSearchParams({
+          action: "updateOrderStatus",
+          key: SECRET_KEY,
+          id: editId,
+          rowIndex: String(editRowIndex),
+          status: prevStatus || "",
+          tracking: prevTracking || "",
+          orderUUID: prevUUID || "",
+        });
+        fetch(`${BASE_URL}?${revertParams.toString()}`).then(() => dataService.load(true, true));
+      };
+
       closeEdit();
       // Silent background sync for authoritative data
       dataService.load(true, true);
@@ -334,13 +366,21 @@
 
   async function deleteOrder() {
     if (!currentEditingOrder) return;
+    
+    const prevStatus = currentEditingOrder.status;
+    const editId = currentEditingOrder.id;
+    const editRowIndex = currentEditingOrder.rowIndex;
+    
     deleteSaving = true;
     actionErr = "";
+    undoFn = null;
     try {
       const params = new URLSearchParams({
-        action: "deleteOrder",
+        action: "updateOrderStatus",
         key: SECRET_KEY,
-        uuid: currentEditingOrder.orderUUID,
+        id: currentEditingOrder.id,
+        rowIndex: String(currentEditingOrder.rowIndex),
+        status: "Void",
       });
       const res = await fetch(`${BASE_URL}?${params.toString()}`);
 
@@ -356,32 +396,38 @@
       }
 
       if (!res.ok || result?.error) {
-        let msg = result?.error || "Delete failed";
-        if (msg.toLowerCase().includes("invalid action")) {
-          msg =
-            "Backend Error: 'deleteOrder' action not found. Please ensure the GAS script has been updated and redeployed with the delete handler.";
-        }
-        throw new Error(msg);
+        throw new Error(result?.error || "Void failed");
       }
 
-      actionMsg = "Order completely removed from Spreadsheet!";
+      actionMsg = "Order voided successfully!";
 
-      // 🔥 Optimistic UI Update: Remove from local state immediately
-      const idToDelete = currentEditingOrder?.orderUUID;
-      if (idToDelete) {
-        dataService.orders = dataService.orders.filter(
-          (o) => o.orderUUID !== idToDelete,
-        );
-        dataService.persist(); // Sync to local storage immediately
-      }
+      // 🔥 Optimistic UI Update: Update local state immediately
+      dataService.updateOrderOptimistic(currentEditingOrder.id, {
+        status: "Void",
+      });
 
-      editingOrderId = "";
+      undoFn = () => {
+        dataService.updateOrderOptimistic(editId, {
+          status: prevStatus,
+        });
+        const revertParams = new URLSearchParams({
+          action: "updateOrderStatus",
+          key: SECRET_KEY,
+          id: editId,
+          rowIndex: String(editRowIndex),
+          status: prevStatus || "",
+        });
+        fetch(`${BASE_URL}?${revertParams.toString()}`).then(() => dataService.load(true, true));
+      };
 
+      closeEdit();
+      showDeleteConfirm = false;
+      
       // Perform background re-sync to be 100% sure everything matches (silent)
       dataService.load(true, true);
     } catch (e) {
-      actionErr = e instanceof Error ? e.message : "Delete failed";
-      console.error("Delete Order Error:", e);
+      actionErr = e instanceof Error ? e.message : "Void failed";
+      console.error("Void Order Error:", e);
     } finally {
       deleteSaving = false;
       showDeleteConfirm = false;
@@ -684,7 +730,12 @@
 
   async function saveGroupStatus() {
     if (!editingGroupOrders) return;
+    
+    const prevStates = editingGroupOrders.map((/** @type {any} */ o) => ({ id: o.id, rowIndex: o.rowIndex, status: o.status }));
+    
     syncing = true;
+    actionErr = "";
+    undoFn = null;
     actionMsg = `Updating status for ${editingGroupOrders.length} orders...`;
     
     try {
@@ -704,6 +755,22 @@
 
       actionMsg = `✓ Status updated to ${groupStatus}`;
       editingGroupOrders.forEach((/** @type {any} */ o) => dataService.updateOrderOptimistic(o.id, { status: groupStatus }));
+      
+      undoFn = () => {
+        prevStates.forEach((prev) => {
+          dataService.updateOrderOptimistic(prev.id, { status: prev.status });
+          const revertParams = new URLSearchParams({
+            action: "updateOrderStatus",
+            key: SECRET_KEY,
+            id: prev.id,
+            rowIndex: String(prev.rowIndex),
+            status: prev.status || "",
+          });
+          fetch(`${BASE_URL}?${revertParams.toString()}`);
+        });
+        setTimeout(() => dataService.load(true, true), 1000);
+      };
+      
       dataService.load(true, true);
     } catch (e) {
       actionErr = e instanceof Error ? e.message : "Error updating group status";
@@ -830,19 +897,26 @@
   </div>
 
   {#if actionMsg}
-    <div class="success-bar message-bar">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-      >
-      {actionMsg}
+    <div class="success-bar message-bar" style="justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
+        >
+        {actionMsg}
+      </div>
+      {#if undoFn}
+        <button class="btn btn-ghost btn-sm" onclick={() => { if(undoFn) undoFn(); undoFn = null; actionMsg = "Action undone."; }} style="padding: 4px 12px; margin-left: auto;">
+          Undo
+        </button>
+      {/if}
     </div>
   {/if}
   {#if actionErr}
@@ -1202,6 +1276,7 @@
                   <th>Source / Item</th>
                   <th>Type</th>
                   <th>Category</th>
+                  <th>Team</th>
                   <th>Status</th>
                   <th class="text-right">Amount</th>
                 </tr>
@@ -1226,6 +1301,7 @@
                       </span>
                     </td>
                     <td>{capitalize(tx.category) || "—"}</td>
+                    <td>{tx.team || "—"}</td>
                     <td><OrderStatusBadge status={tx.status} /></td>
                     <td
                       class="text-right monospace"
@@ -1868,7 +1944,7 @@
             onclick={requestDelete}
             disabled={editSaving}
           >
-            Delete Order
+            Void Order
           </button>
           <div style="display: flex; gap: 8px;">
             <button
@@ -1913,7 +1989,7 @@
           /><path d="M12 9v4" /><path d="M12 17h.01" /></svg
         >
       </div>
-      <h3 style="margin-bottom: 12px; color: var(--text);">Delete Order?</h3>
+      <h3 style="margin-bottom: 12px; color: var(--text);">Void Order?</h3>
       <p
         class="text-muted"
         style="font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5;"
@@ -2081,6 +2157,7 @@
     box-shadow: var(--shadow-2xl);
     border: 1px solid var(--border);
     animation: modal-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: visible !important;
   }
 
   .modal-header {
