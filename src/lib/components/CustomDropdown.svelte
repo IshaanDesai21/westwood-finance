@@ -12,7 +12,12 @@
   let dropdownRef = $state();
 
   function toggle() {
-    isOpen = !isOpen;
+    const nextOpen = !isOpen;
+    if (nextOpen) {
+      // Broadcast to close all other dropdowns
+      window.dispatchEvent(new CustomEvent('close-dropdowns', { detail: { caller: dropdownRef } }));
+    }
+    isOpen = nextOpen;
   }
 
   function select(/** @type {string} */ optValue) {
@@ -28,8 +33,19 @@
   }
 
   onMount(() => {
+    const handleCloseOthers = (/** @type {CustomEvent} */ e) => {
+      if (e.detail.caller !== dropdownRef) {
+        isOpen = false;
+      }
+    };
+
     window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
+    window.addEventListener('close-dropdowns', handleCloseOthers);
+    
+    return () => {
+      window.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('close-dropdowns', handleCloseOthers);
+    };
   });
 
   let selectedLabel = $derived(() => {

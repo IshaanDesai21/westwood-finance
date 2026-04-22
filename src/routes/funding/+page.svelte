@@ -285,12 +285,12 @@
     <h1>Team <span>Dashboard</span></h1>
   </div>
 
-  <div class="header-actions">
-    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.loading}>
-      <span class:spinning={dataService.loading}>↻</span>
-      <span class="hide-mobile">{dataService.loading ? "Syncing..." : "Refresh"}</span>
+  <div class="header-right">
+    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+      <span class:spinning={dataService.isManualRefreshing}>↻</span>
+      <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
     </button>
-    <div class="team-selector" style="min-width: 140px;">
+    <div class="team-selector">
       <CustomDropdown
         options={[
           "FRC",
@@ -447,12 +447,24 @@
               }, 0)}
               {@const clubFunds = data["Club Funds"] ?? 0}
               {@const personal = data["Personal Funds"] ?? 0}
-              {@const final = clubFunds + personal + teamFundsRaised - realExpenses}
+              {@const teamBudgetOnly = teamFundsRaised + personal}
+              {@const budgetTotalVal = clubFunds + personal + teamFundsRaised}
+              {@const final = budgetTotalVal - realExpenses}
+              {@const usagePct = teamBudgetOnly > 0 ? (realExpenses / teamBudgetOnly) * 100 : 0}
+              {@const pctColor = usagePct > 90 ? '#f16a4e' : (usagePct > 60 ? '#f97316' : '#6bcb77')}
+              {@const pctBg = usagePct > 90 ? 'rgba(241, 106, 78, 0.1)' : (usagePct > 60 ? 'rgba(249, 115, 22, 0.1)' : 'rgba(107, 203, 119, 0.1)')}
               <div class="budget-card card selected">
                 <div class="budget-team-name" style="font-size: 1.4rem; color: var(--primary);">{team}</div>
                 <div class="budget-final" style="color:{final >= 0 ? '#6bcb77' : '#f16a4e'}; font-size: 2.2rem;">
                   {formatCurrency(final)} <span style="font-size: 1.2rem; color: var(--text-muted); font-weight: 500;">/ {formatCurrency(teamFundsRaised + personal)}</span>
                 </div>
+                {#if usagePct > 0}
+                  <div style="position: absolute; top: 24px; right: 24px;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: {pctColor}; background: {pctBg}; padding: 4px 10px; border-radius: 6px;">
+                      {usagePct.toFixed(1)}% Used
+                    </div>
+                  </div>
+                {/if}
                 <div class="budget-details" style="gap: 12px; margin-top: 20px;">
                   <div class="budget-detail-row" style="font-size: 0.95rem;">
                     <span class="text-muted">Raised</span>
@@ -666,6 +678,23 @@
 
 
 <style>
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .team-selector {
+    width: 180px;
+  }
+  @media (max-width: 768px) {
+    .header-right { gap: 12px; }
+    .team-selector { width: 175px; }
+    .btn { height: 42px; line-height: 1; display: inline-flex; align-items: center; }
+  }
+  @media (max-width: 400px) {
+    .team-selector { width: 165px; }
+  }
+  
   .tabs-container {
     display: flex;
     justify-content: center;

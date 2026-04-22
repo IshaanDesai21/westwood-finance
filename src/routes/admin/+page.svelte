@@ -809,7 +809,7 @@
     >
       <button class="btn btn-ghost btn-sm" onclick={sync} disabled={syncing}>
         <span class:spinning={syncing}>↻</span>
-        {syncing ? "Syncing..." : "Refresh"}
+        <span class="hide-mobile">{syncing ? "Syncing..." : "Refresh"}</span>
       </button>
 
       <button

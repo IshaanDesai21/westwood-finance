@@ -11,6 +11,8 @@
     /** Progress bar value 0–100. If undefined, no bar is shown. */
     progress = undefined,
     progressLabel = '',
+    /** Optional percentage to show in top-right (e.g. "45%") */
+    percentage = undefined,
   } = $props();
 </script>
 
@@ -22,6 +24,11 @@
       {/if}
       <span class="stat-label">{label}</span>
     </div>
+    {#if percentage !== undefined}
+      <div class="stat-percentage" style="color: {accentColor}">
+        {percentage}%
+      </div>
+    {/if}
   </div>
 
   <div class="stat-main">
@@ -137,6 +144,15 @@
     font-size: 0.8rem; 
     font-weight: 500;
     color: var(--text-muted); 
+  }
+  
+  .stat-percentage {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    padding: 2px 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
   }
 
   /* ── Progress Section ────────────────────────────────────────────────── */

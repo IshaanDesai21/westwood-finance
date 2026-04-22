@@ -58,6 +58,9 @@
   function getCatIcon(/** @type {string|undefined} */ cat) {
     return CAT_ICONS[(cat || 'miscellaneous').toLowerCase()] || CAT_ICONS.miscellaneous;
   }
+
+  /** @type {any} */
+  let selectedExpense = $state(null);
 </script>
 
 <!-- ── Desktop Table ─────────────────────────────────────────────────────── -->
@@ -183,7 +186,13 @@
       {#each display as expense (expense.id)}
         {@const catColor = getCatColor(expense.category)}
         {@const catIcon = getCatIcon(expense.category)}
-        <div class="ios-cell" role="button" tabindex="0">
+        <div 
+          class="ios-cell" 
+          role="button" 
+          tabindex="0"
+          onclick={() => selectedExpense = expense}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (selectedExpense = expense)}
+        >
           <div class="ios-cell-icon" style="background: {catColor}22; color: {catColor}; font-size: 18px;">
             {@html catIcon}
           </div>
@@ -209,6 +218,86 @@
     {/if}
   {/if}
 </div>
+
+{#if selectedExpense}
+  <div 
+    class="ios-popup-overlay" 
+    onclick={() => selectedExpense = null}
+    onkeydown={(e) => e.key === 'Escape' && (selectedExpense = null)}
+    role="button"
+    tabindex="-1"
+    aria-label="Close details"
+  >
+    <div class="ios-popup-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+      <div class="ios-popup-header">
+        <div class="ios-popup-title">Expense Details</div>
+        <button class="ios-popup-close" onclick={() => selectedExpense = null} aria-label="Close details">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Status</span>
+          <span class="badge badge-awarded">Received</span>
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Date</span>
+          <span class="ios-detail-value">{formatDate(selectedExpense.timestamp)}</span>
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Team</span>
+          <span class="ios-detail-value">{selectedExpense.team || selectedExpense.user || '—'}</span>
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Category</span>
+          <span class="ios-detail-value">{capitalize(selectedExpense.category)}</span>
+        </div>
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Item</span>
+          <span class="ios-detail-value" style="max-width: 70%; white-space: normal; text-align: right;">{selectedExpense.item}</span>
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Vendor</span>
+          <span class="ios-detail-value">{selectedExpense.company || '—'}</span>
+        </div>
+        {#if selectedExpense.link}
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Link</span>
+            <a href={selectedExpense.link} target="_blank" rel="noopener" class="ios-detail-value" style="color: var(--primary)">Open Link ↗</a>
+          </div>
+        {/if}
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Unit Price</span>
+          <span class="ios-detail-value monospace">{formatCurrency(selectedExpense.price)}</span>
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Quantity</span>
+          <span class="ios-detail-value monospace">{selectedExpense.quantity}</span>
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Total Cost</span>
+          <span class="ios-detail-value monospace" style="color: var(--primary); font-size: 1.1rem;">{formatCurrency(selectedExpense.total)}</span>
+        </div>
+      </div>
+
+      {#if selectedExpense.notes}
+        <div class="ios-detail-grid" style="margin-bottom: 24px;">
+          <div class="ios-detail-block">
+            <div class="ios-detail-label">Notes</div>
+            <div class="ios-detail-value">{selectedExpense.notes}</div>
+          </div>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
 
 <style>
   .desktop-table { display: block; }

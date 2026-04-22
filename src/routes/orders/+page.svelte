@@ -210,13 +210,8 @@
     {/if}
 
     <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
-        <span class:spinning={dataService.isManualRefreshing}>↻</span>
-        <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
-      </button>
-
       <button
-        class="btn btn-ghost btn-sm"
+        class="btn btn-ghost btn-sm hide-mobile"
         onclick={exportCSV}
         disabled={!filtered || !filtered.length}
       >
@@ -237,7 +232,7 @@
         <span class="hide-mobile">Export</span>
       </button>
 
-      <a href="/add" class="btn btn-primary btn-sm">
+      <a href="/add" class="btn btn-primary btn-sm hide-mobile">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="14"
@@ -250,8 +245,13 @@
           stroke-linejoin="round"
           ><path d="M5 12h14" /><path d="M12 5v14" /></svg
         >
-        <span class="hide-mobile">New Request</span>
+        <span>New Request</span>
       </a>
+
+      <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+        <span class:spinning={dataService.isManualRefreshing}>↻</span>
+        <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
+      </button>
     </div>
   </div>
 </div>
@@ -299,8 +299,12 @@
 
   .header-actions {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     align-items: center;
+  }
+
+  @media (max-width: 768px) {
+    .btn { height: 42px; display: inline-flex; align-items: center; }
   }
 
   .error-text {

@@ -204,7 +204,7 @@
 <div class="page-header">
   <div class="header-left">
     <h1>New <span>Order</span></h1>
-    <p class="text-muted">Fill out the form below to request a new purchase</p>
+    <p class="text-muted hide-mobile">Fill out the form below to request a new purchase</p>
   </div>
   
   <div class="header-right">
@@ -215,7 +215,7 @@
         title="Autofill for validation"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        Test Order
+        <span class="hide-mobile">Test Order</span>
       </button>
       
       <button 
@@ -223,10 +223,10 @@
         onclick={toggleExpenseMode}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        {form.isExpense ? "Expense Mode" : "Instant Expense"}
+        <span class="hide-mobile">{form.isExpense ? "Expense Mode" : "Instant Expense"}</span>
       </button>
       
-      <a href="/orders" class="btn btn-ghost btn-sm">
+      <a href="/orders" class="btn btn-ghost btn-sm hide-mobile">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         Back
       </a>

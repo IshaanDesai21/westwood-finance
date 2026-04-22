@@ -1,9 +1,22 @@
 <script>
-  import { formatCurrency, formatFullDate, truncate, capitalize, getTeamBadgeClass } from '../utils.js';
-  import OrderStatusBadge from './OrderStatusBadge.svelte';
+  import {
+    formatCurrency,
+    formatFullDate,
+    truncate,
+    capitalize,
+    getTeamBadgeClass,
+  } from "../utils.js";
+  import OrderStatusBadge from "./OrderStatusBadge.svelte";
 
   /** @type {{ orders: any[], limit?: number, hideTeamColumn?: boolean, hideCategoryColumn?: boolean, hideCompanyColumn?: boolean, onmanage?: (order: any) => void }} */
-  let { orders = [], limit = 0, hideTeamColumn = false, hideCategoryColumn = false, hideCompanyColumn = false, onmanage } = $props();
+  let {
+    orders = [],
+    limit = 0,
+    hideTeamColumn = false,
+    hideCategoryColumn = false,
+    hideCompanyColumn = false,
+    onmanage,
+  } = $props();
 
   let sortCol = $state("status");
   let sortDir = $state("asc");
@@ -13,23 +26,26 @@
       sortDir = sortDir === "asc" ? "desc" : "asc";
     } else {
       sortCol = col;
-      sortDir = (col === "timestamp" || col === "total" || col === "price") ? "desc" : "asc";
+      sortDir =
+        col === "timestamp" || col === "total" || col === "price"
+          ? "desc"
+          : "asc";
     }
   }
 
   /** @type {Record<string, number>} */
   const STATUS_PRIORITY = {
     "pending review": 0,
-    "approved": 1,
-    "ordered": 2,
-    "received": 3,
-    "denied": 4,
-    "void": 5,
+    approved: 1,
+    ordered: 2,
+    received: 3,
+    denied: 4,
+    void: 5,
   };
 
   let sortedOrders = $derived(
     orders.slice().sort((a, b) => {
-      if (sortCol === 'status') {
+      if (sortCol === "status") {
         let pA = STATUS_PRIORITY[(a.status || "").toLowerCase().trim()] ?? 99;
         let pB = STATUS_PRIORITY[(b.status || "").toLowerCase().trim()] ?? 99;
         const diff = sortDir === "asc" ? pA - pB : pB - pA;
@@ -41,8 +57,12 @@
 
       let valA = a[sortCol] || "";
       let valB = b[sortCol] || "";
-      
-      if (sortCol === 'total' || sortCol === 'price' || sortCol === 'quantity') {
+
+      if (
+        sortCol === "total" ||
+        sortCol === "price" ||
+        sortCol === "quantity"
+      ) {
         valA = Number(valA) || 0;
         valB = Number(valB) || 0;
       }
@@ -50,11 +70,13 @@
       if (valA < valB) return sortDir === "asc" ? -1 : 1;
       if (valA > valB) return sortDir === "asc" ? 1 : -1;
       return 0;
-    })
+    }),
   );
 
-  let display = $derived(limit > 0 ? sortedOrders.slice(0, limit) : sortedOrders);
-  
+  let display = $derived(
+    limit > 0 ? sortedOrders.slice(0, limit) : sortedOrders,
+  );
+
   /** @type {Record<string, string>} */
   const colorCache = {};
 
@@ -73,28 +95,38 @@
 
   /** @type {Record<string, string>} */
   const CAT_COLORS = {
-    hardware: '#f97316',
-    software: '#3b82f6',
-    outreach: '#10b981',
-    food: '#eab308',
-    miscellaneous: '#8b5cf6',
+    hardware: "#f97316",
+    software: "#3b82f6",
+    outreach: "#10b981",
+    food: "#eab308",
+    miscellaneous: "#8b5cf6",
   };
 
   /** @type {Record<string, string>} */
   const CAT_ICONS = {
-    hardware: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-    software: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-    outreach: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>',
+    hardware:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    software:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    outreach:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>',
     food: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>',
-    miscellaneous: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+    miscellaneous:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
   };
 
   function getCatColor(/** @type {string|undefined} */ cat) {
-    return CAT_COLORS[(cat || 'miscellaneous').toLowerCase()] || '#8b5cf6';
+    return CAT_COLORS[(cat || "miscellaneous").toLowerCase()] || "#8b5cf6";
   }
   function getCatIcon(/** @type {string|undefined} */ cat) {
-    return CAT_ICONS[(cat || 'miscellaneous').toLowerCase()] || CAT_ICONS.miscellaneous;
+    return (
+      CAT_ICONS[(cat || "miscellaneous").toLowerCase()] ||
+      CAT_ICONS.miscellaneous
+    );
   }
+
+  /** @type {any} */
+  let selectedOrder = $state(null);
 </script>
 
 <!-- ── Desktop Table ─────────────────────────────────────────────────────── -->
@@ -110,14 +142,22 @@
         {#if !hideCompanyColumn}
           <th class="sortable" onclick={() => toggleSort("company")}>
             <div class="th-content">
-              Vendor {sortCol === "company" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              Vendor {sortCol === "company"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}
             </div>
           </th>
         {/if}
         {#if !hideCategoryColumn}
           <th class="sortable" onclick={() => toggleSort("category")}>
             <div class="th-content">
-              Category {sortCol === "category" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              Category {sortCol === "category"
+                ? sortDir === "asc"
+                  ? "↑"
+                  : "↓"
+                : ""}
             </div>
           </th>
         {/if}
@@ -135,7 +175,11 @@
         </th>
         <th class="sortable" onclick={() => toggleSort("timestamp")}>
           <div class="th-content">
-            Date {sortCol === "timestamp" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+            Date {sortCol === "timestamp"
+              ? sortDir === "asc"
+                ? "↑"
+                : "↓"
+              : ""}
           </div>
         </th>
         <th class="text-right sortable" onclick={() => toggleSort("total")}>
@@ -155,7 +199,12 @@
           <td>
             <div class="item-name">
               {#if order.link}
-                <a href={order.link} target="_blank" rel="noopener" class="item-link">
+                <a
+                  href={order.link}
+                  target="_blank"
+                  rel="noopener"
+                  class="item-link"
+                >
                   {truncate(order.item, 40)}
                 </a>
               {:else}
@@ -166,14 +215,18 @@
               <div class="item-notes">{truncate(order.notes, 50)}</div>
             {/if}
             {#if order.tracking}
-              {@const href = String(order.tracking).startsWith('http') ? order.tracking : `https://www.google.com/search?q=${order.tracking}`}
+              {@const href = String(order.tracking).startsWith("http")
+                ? order.tracking
+                : `https://www.google.com/search?q=${order.tracking}`}
               <div class="tracking-info">
-                <a {href} target="_blank" rel="noopener" class="tracking-link">Tracking</a>
+                <a {href} target="_blank" rel="noopener" class="tracking-link"
+                  >Tracking</a
+                >
               </div>
             {/if}
           </td>
           {#if !hideCompanyColumn}
-            <td><span class="company-name">{order.company || '—'}</span></td>
+            <td><span class="company-name">{order.company || "—"}</span></td>
           {/if}
           {#if !hideCategoryColumn}
             <td>
@@ -184,19 +237,24 @@
           {/if}
           {#if !hideTeamColumn}
             <td class="text-muted font-medium">
-              {order.team || order.user || '—'}
+              {order.team || order.user || "—"}
             </td>
           {/if}
           <td>
             <OrderStatusBadge status={order.status} />
           </td>
-          <td class="text-dim monospace" style="color: var(--text-dim);">{formatFullDate(order.timestamp)}</td>
+          <td class="text-dim monospace" style="color: var(--text-dim);"
+            >{formatFullDate(order.timestamp)}</td
+          >
           <td class="text-right monospace amount">
             {formatCurrency(order.total)}
           </td>
           {#if onmanage}
             <td class="text-right" style="padding-right: 24px;">
-              <button class="btn btn-primary btn-sm" onclick={() => onmanage(order)}>
+              <button
+                class="btn btn-primary btn-sm"
+                onclick={() => onmanage(order)}
+              >
                 Manage
               </button>
             </td>
@@ -204,12 +262,30 @@
         </tr>
       {/each}
       {#if orders.length === 0}
-        {@const emptyCols = 7 - (hideTeamColumn ? 1 : 0) - (hideCategoryColumn ? 1 : 0) - (hideCompanyColumn ? 1 : 0) + (onmanage ? 1 : 0)}
+        {@const emptyCols =
+          7 -
+          (hideTeamColumn ? 1 : 0) -
+          (hideCategoryColumn ? 1 : 0) -
+          (hideCompanyColumn ? 1 : 0) +
+          (onmanage ? 1 : 0)}
         <tr>
           <td colspan={emptyCols}>
             <div class="empty-state">
               <div class="icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path
+                    d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                  /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg
+                >
               </div>
               No orders found
             </div>
@@ -218,12 +294,20 @@
       {/if}
     </tbody>
     {#if display.length > 0}
-      {@const footCols = 6 - (hideTeamColumn ? 1 : 0) - (hideCategoryColumn ? 1 : 0) - (hideCompanyColumn ? 1 : 0) + (onmanage ? 1 : 0) - (onmanage ? 1 : 0)}
+      {@const footCols =
+        6 -
+        (hideTeamColumn ? 1 : 0) -
+        (hideCategoryColumn ? 1 : 0) -
+        (hideCompanyColumn ? 1 : 0) +
+        (onmanage ? 1 : 0) -
+        (onmanage ? 1 : 0)}
       <tfoot>
         <tr class="total-row">
           <td colspan={footCols} class="total-label">Subtotal</td>
           <td class="text-right monospace total-amount">
-            {formatCurrency(display.reduce((sum, o) => sum + (o.total || 0), 0))}
+            {formatCurrency(
+              display.reduce((sum, o) => sum + (o.total || 0), 0),
+            )}
           </td>
           {#if onmanage}
             <td></td>
@@ -239,7 +323,20 @@
   {#if orders.length === 0}
     <div class="empty-state" style="padding: 40px 16px; border-radius: 14px;">
       <div class="icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><path
+            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+          /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg
+        >
       </div>
       No orders found
     </div>
@@ -248,14 +345,19 @@
       {#each display as order (order.id)}
         {@const catColor = getCatColor(order.category)}
         {@const catIcon = getCatIcon(order.category)}
-        <div
+        <div 
           class="ios-cell"
           role="button"
           tabindex="0"
-          onclick={() => onmanage && onmanage(order)}
+          aria-label="View order details for {order.item}"
+          onclick={() => selectedOrder = order}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (selectedOrder = order)}
         >
           <!-- Category icon -->
-          <div class="ios-cell-icon" style="background: {catColor}22; color: {catColor}; font-size: 18px;">
+          <div
+            class="ios-cell-icon"
+            style="background: {catColor}22; color: {catColor}; font-size: 18px;"
+          >
             {@html catIcon}
           </div>
 
@@ -265,7 +367,9 @@
               {truncate(order.item, 32)}
             </div>
             <div class="ios-cell-subtitle">
-              {order.company || '—'}{!hideTeamColumn && order.team ? ` · ${order.team}` : ''}
+              {order.company || "—"}{!hideTeamColumn && order.team
+                ? ` · ${order.team}`
+                : ""}
             </div>
           </div>
 
@@ -276,7 +380,18 @@
           </div>
 
           {#if onmanage}
-            <svg class="ios-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            <svg
+              class="ios-chevron"
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
+            >
           {/if}
         </div>
       {/each}
@@ -286,20 +401,183 @@
     {#if display.length > 0}
       <div class="ios-total-row">
         <span class="ios-total-label">Subtotal</span>
-        <span class="ios-total-amount">{formatCurrency(display.reduce((sum, o) => sum + (o.total || 0), 0))}</span>
+        <span class="ios-total-amount"
+          >{formatCurrency(
+            display.reduce((sum, o) => sum + (o.total || 0), 0),
+          )}</span
+        >
       </div>
     {/if}
   {/if}
 </div>
 
+{#if selectedOrder}
+  <div class="ios-popup-overlay" 
+    onclick={() => (selectedOrder = null)}
+    onkeydown={(e) => e.key === 'Escape' && (selectedOrder = null)}
+    role="button"
+    tabindex="-1"
+    aria-label="Close details"
+  >
+    <div class="ios-popup-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+      <div class="ios-popup-header">
+        <div class="ios-popup-title">Order Details</div>
+        <button class="ios-popup-close" onclick={() => (selectedOrder = null)} aria-label="Close details">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><line x1="18" y1="6" x2="6" y2="18" /><line
+              x1="6"
+              y1="6"
+              x2="18"
+              y2="18"
+            /></svg
+          >
+        </button>
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Status</span>
+          <OrderStatusBadge status={selectedOrder.status} />
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Date</span>
+          <span class="ios-detail-value"
+            >{formatFullDate(selectedOrder.timestamp)}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Team</span>
+          <span class="ios-detail-value"
+            >{selectedOrder.team || selectedOrder.user || "—"}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Category</span>
+          <span class="ios-detail-value"
+            >{capitalize(selectedOrder.category)}</span
+          >
+        </div>
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Item</span>
+          <span
+            class="ios-detail-value"
+            style="max-width: 70%; white-space: normal; text-align: right;"
+            >{selectedOrder.item}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Vendor</span>
+          <span class="ios-detail-value">{selectedOrder.company || "—"}</span>
+        </div>
+        {#if selectedOrder.link}
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Link</span>
+            <a
+              href={selectedOrder.link}
+              target="_blank"
+              rel="noopener"
+              class="ios-detail-value"
+              style="color: var(--primary)">Open Link ↗</a
+            >
+          </div>
+        {/if}
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Unit Price</span>
+          <span class="ios-detail-value monospace"
+            >{formatCurrency(selectedOrder.price)}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Quantity</span>
+          <span class="ios-detail-value monospace"
+            >{selectedOrder.quantity}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Total Cost</span>
+          <span
+            class="ios-detail-value monospace"
+            style="color: var(--primary); font-size: 1.1rem;"
+            >{formatCurrency(selectedOrder.total)}</span
+          >
+        </div>
+      </div>
+
+      {#if selectedOrder.notes}
+        <div class="ios-detail-grid" style="margin-bottom: 20px;">
+          <div class="ios-detail-block">
+            <div class="ios-detail-label">Notes</div>
+            <div class="ios-detail-value">{selectedOrder.notes}</div>
+          </div>
+        </div>
+      {/if}
+
+      {#if selectedOrder.tracking}
+        {@const href = String(selectedOrder.tracking).startsWith("http")
+          ? selectedOrder.tracking
+          : `https://www.google.com/search?q=${selectedOrder.tracking}`}
+        <div class="ios-detail-grid" style="margin-bottom: 24px;">
+          <div class="ios-detail-block">
+            <div class="ios-detail-label">Tracking Info</div>
+            <a
+              {href}
+              target="_blank"
+              rel="noopener"
+              class="ios-detail-value"
+              style="color: var(--primary); font-weight: 700;"
+              >{selectedOrder.tracking} ↗</a
+            >
+          </div>
+        </div>
+      {/if}
+
+      {#if onmanage}
+        <button
+          class="btn btn-primary btn-block"
+          style="height: 50px; font-size: 1rem; border-radius: 12px;"
+          onclick={() => {
+            onmanage(selectedOrder);
+            selectedOrder = null;
+          }}
+        >
+          Manage Order
+        </button>
+      {/if}
+    </div>
+  </div>
+{/if}
+
 <style>
   /* ── Desktop: show table, hide list ─────────────────────────── */
-  .desktop-table { display: block; }
-  .mobile-list   { display: none; }
+  .desktop-table {
+    display: block;
+  }
+  .mobile-list {
+    display: none;
+  }
 
   @media (max-width: 768px) {
-    .desktop-table { display: none; }
-    .mobile-list   { display: block; }
+    .desktop-table {
+      display: none;
+    }
+    .mobile-list {
+      display: block;
+    }
   }
 
   /* ── Desktop Table Styles ────────────────────────────────────── */
@@ -307,11 +585,11 @@
     box-shadow: var(--shadow-sm);
     margin-bottom: 2rem;
   }
-  
-  table { 
+
+  table {
     min-width: 900px;
   }
-  
+
   .th-content {
     display: flex;
     align-items: center;
@@ -319,16 +597,16 @@
     height: 100%;
   }
 
-  .item-name { 
-    font-weight: 600; 
+  .item-name {
+    font-weight: 600;
     color: var(--text);
   }
-  
+
   .item-link {
     color: var(--primary);
     transition: color 0.2s;
   }
-  
+
   @media (hover: hover) {
     .item-link:hover {
       color: var(--primary-dark);
@@ -336,26 +614,30 @@
     }
   }
 
-  .item-notes { 
-    font-size: 0.72rem; 
-    color: var(--text-muted); 
+  .item-notes {
+    font-size: 0.72rem;
+    color: var(--text-muted);
     margin-top: 1px;
     font-weight: 400;
   }
-  
+
   .company-name {
     font-size: 0.82rem;
     color: var(--text-muted);
   }
-  
+
   .amount {
     font-weight: 700;
     color: #fff;
     font-size: 0.95rem;
   }
-  
-  .text-dim { color: var(--text-dim); }
-  .font-medium { font-weight: 500; }
+
+  .text-dim {
+    color: var(--text-dim);
+  }
+  .font-medium {
+    font-weight: 500;
+  }
 
   .group-row td:first-child {
     position: relative;
@@ -363,7 +645,7 @@
   }
 
   .group-row td:first-child::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0;
     top: 0;
@@ -415,14 +697,14 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    font-family: -apple-system, 'SF Pro Text', sans-serif;
+    font-family: -apple-system, "SF Pro Text", sans-serif;
   }
 
   .ios-total-amount {
     font-size: 17px;
     font-weight: 700;
     color: #fff;
-    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-family: "SF Mono", "JetBrains Mono", monospace;
     font-variant-numeric: tabular-nums;
   }
 </style>

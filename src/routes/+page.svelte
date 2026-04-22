@@ -5,7 +5,12 @@
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import OrderStatusBadge from "$lib/components/OrderStatusBadge.svelte";
   import CustomDropdown from "$lib/components/CustomDropdown.svelte";
-  import { formatCurrency, formatDate, CATEGORIES } from "$lib/utils.js";
+  import {
+    formatCurrency,
+    formatDate,
+    CATEGORIES,
+    capitalize,
+  } from "$lib/utils.js";
   import { dataService } from "$lib/dataService.svelte.js";
   import appInfo from "$lib/app-info.json";
 
@@ -28,9 +33,15 @@
     selectedTeam === "Westwood Overall"
       ? dataService.orders
       : dataService.orders.filter((o) => {
-          const t = String(o.team || "").toLowerCase().trim();
+          const t = String(o.team || "")
+            .toLowerCase()
+            .trim();
           const s = selectedTeam.toLowerCase().trim();
-          return t === s || t.includes(s) || (s === "frc" && (t.includes("frc") || /^\d+$/.test(t)));
+          return (
+            t === s ||
+            t.includes(s) ||
+            (s === "frc" && (t.includes("frc") || /^\d+$/.test(t)))
+          );
         }),
   );
 
@@ -38,7 +49,9 @@
     selectedTeam === "Westwood Overall"
       ? dataService.funds
       : dataService.funds.filter((f) => {
-          const r = String(f.Recipient || "").toLowerCase().trim();
+          const r = String(f.Recipient || "")
+            .toLowerCase()
+            .trim();
           const s = selectedTeam.toLowerCase().trim();
           return r === s || r.includes(s) || r === "all";
         }),
@@ -49,7 +62,9 @@
     try {
       await dataService.load(true);
     } finally {
-      setTimeout(() => { dataService.isManualRefreshing = false; }, 800);
+      setTimeout(() => {
+        dataService.isManualRefreshing = false;
+      }, 800);
     }
   }
 
@@ -97,13 +112,14 @@
   let budgetTotalValue = $derived.by(() => {
     const totalClub = dataService.budget?.Total?.["Club Funds"] || 0;
     const totalPersonal = dataService.budget?.Total?.["Personal Funds"] || 0;
-    const totalRealExpenses = dataService.orders.filter(o => {
-      const st = (o.status || "").toLowerCase().trim();
-      return st === "received" || st === "ordered";
-    }).reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalRealExpenses = dataService.orders
+      .filter((o) => {
+        const st = (o.status || "").toLowerCase().trim();
+        return st === "received" || st === "ordered";
+      })
+      .reduce((sum, o) => sum + (o.total || 0), 0);
     return totalClub + totalPersonal + totalRaised - totalRealExpenses;
   });
-
 
   // Generate a stable hue from an order UUID
   function getOrderColor(/** @type {string|undefined} */ uuid) {
@@ -115,6 +131,8 @@
     const h = Math.abs(hash % 360);
     return `hsl(${h}, 65%, 45%)`;
   }
+  /** @type {any} */
+  let selectedOrder = $state(null);
 </script>
 
 <svelte:head>
@@ -125,26 +143,49 @@
   <div class="header-left">
     <h1>Dashboard</h1>
   </div>
-  
-  <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
+
+  <div
+    class="header-right"
+    style="display: flex; align-items: center; gap: 12px;"
+  >
     {#if dataService.error}
       <span class="error-text" style="display:inline-flex;align-items:center;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          style="margin-right:6px;"
+          ><path
+            d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+          /><path d="M12 9v4" /><path d="M12 17h.01" /></svg
+        >
         {dataService.error}
       </span>
     {/if}
-    
+
     <div class="deploy-info">
       <span class="version-tag">v{appInfo.version}</span>
       <span class="deploy-time">{appInfo.deployedAt}</span>
     </div>
-    
-    <button class="btn btn-ghost btn-sm" onclick={sync} disabled={dataService.isManualRefreshing}>
+
+    <button
+      class="btn btn-ghost btn-sm"
+      onclick={sync}
+      disabled={dataService.isManualRefreshing}
+    >
       <span class:spinning={dataService.isManualRefreshing}>↻</span>
-      <span class="hide-mobile">{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span>
+      <span class="hide-mobile"
+        >{dataService.isManualRefreshing ? "Syncing..." : "Refresh"}</span
+      >
     </button>
 
-    <div class="team-selector" style="width: 180px;">
+    <div class="team-selector">
       <CustomDropdown options={TEAM_OPTIONS} bind:value={selectedTeam} />
     </div>
   </div>
@@ -159,7 +200,9 @@
       value={netBalance.toString()}
       isCurrency={true}
       sub="Total Raised - Total Spent"
-      accentColor={netBalance >= 0 ? "var(--status-awarded)" : "var(--status-rejected)"}
+      accentColor={netBalance >= 0
+        ? "var(--status-awarded)"
+        : "var(--status-rejected)"}
       icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 2v20m-5-17h10a4 4 0 1 1 0 8H7a4 4 0 1 0 0 8h10"/></svg>'
     />
     <div class="total-raised-card">
@@ -182,8 +225,12 @@
     />
     <StatCard
       label="Budget Progress"
-      value={budgetTotalValue > 0 ? ((totalSpent / budgetTotalValue) * 100).toFixed(2) + "%" : "0%"}
-      progress={budgetTotalValue > 0 ? (totalSpent / budgetTotalValue) * 100 : 0}
+      value={budgetTotalValue > 0
+        ? ((totalSpent / budgetTotalValue) * 100).toFixed(2) + "%"
+        : "0%"}
+      progress={budgetTotalValue > 0
+        ? (totalSpent / budgetTotalValue) * 100
+        : 0}
       sub={budgetTotalValue > 0
         ? `${formatCurrency(totalSpent)} of ${formatCurrency(budgetTotalValue)}`
         : "No active budget"}
@@ -224,10 +271,17 @@
             {@const orderColor = getOrderColor(order.orderUUID)}
             <div
               class="recent-item group-row"
-              style="--group-color: {orderColor}"
+              style="--group-color: {orderColor}; cursor: pointer;"
+              role="button"
+              tabindex="0"
+              onclick={() => (selectedOrder = order)}
+              onkeydown={(e) =>
+                (e.key === "Enter" || e.key === " ") && (selectedOrder = order)}
             >
               <div class="item-info">
-                <div class="item-name" style="font-size: 0.85rem;">{order.item}</div>
+                <div class="item-name" style="font-size: 0.85rem;">
+                  {order.item}
+                </div>
                 <div class="item-meta">
                   <span class="company">{order.company}</span>
                   <span class="dot"></span>
@@ -237,7 +291,10 @@
               <div class="item-status">
                 <OrderStatusBadge status={order.status} />
               </div>
-              <div class="item-amount monospace amount" style="font-size: 0.85rem;">
+              <div
+                class="item-amount monospace amount"
+                style="font-size: 0.85rem;"
+              >
                 {formatCurrency(order.total)}
               </div>
             </div>
@@ -246,9 +303,131 @@
           {/each}
         </div>
       </section>
-
-
     </aside>
+  </div>
+{/if}
+
+{#if selectedOrder}
+  <div 
+    class="ios-popup-overlay" 
+    onclick={() => (selectedOrder = null)}
+    onkeydown={(e) => e.key === 'Escape' && (selectedOrder = null)}
+    role="button"
+    tabindex="-1"
+    aria-label="Close details"
+  >
+    <div class="ios-popup-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+      <div class="ios-popup-header">
+        <div class="ios-popup-title">Order Details</div>
+        <button
+          class="ios-popup-close"
+          onclick={() => (selectedOrder = null)}
+          aria-label="Close details"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><line x1="18" y1="6" x2="6" y2="18" /><line
+              x1="6"
+              y1="6"
+              x2="18"
+              y2="18"
+            /></svg
+          >
+        </button>
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Status</span>
+          <OrderStatusBadge status={selectedOrder.status} />
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Date</span>
+          <span class="ios-detail-value"
+            >{formatDate(selectedOrder.timestamp)}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Team</span>
+          <span class="ios-detail-value"
+            >{selectedOrder.team || selectedOrder.user || "—"}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Category</span>
+          <span class="ios-detail-value"
+            >{capitalize(selectedOrder.category)}</span
+          >
+        </div>
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Item</span>
+          <span
+            class="ios-detail-value"
+            style="max-width: 70%; white-space: normal; text-align: right;"
+            >{selectedOrder.item}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Vendor</span>
+          <span class="ios-detail-value">{selectedOrder.company || "—"}</span>
+        </div>
+        {#if selectedOrder.link}
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Link</span>
+            <a
+              href={selectedOrder.link}
+              target="_blank"
+              rel="noopener"
+              class="ios-detail-value"
+              style="color: var(--primary)">Open Link ↗</a
+            >
+          </div>
+        {/if}
+      </div>
+
+      <div class="ios-detail-grid" style="margin-bottom: 20px;">
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Unit Price</span>
+          <span class="ios-detail-value monospace"
+            >{formatCurrency(selectedOrder.price)}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Quantity</span>
+          <span class="ios-detail-value monospace"
+            >{selectedOrder.quantity}</span
+          >
+        </div>
+        <div class="ios-detail-item">
+          <span class="ios-detail-label">Total Cost</span>
+          <span
+            class="ios-detail-value monospace"
+            style="color: var(--primary); font-size: 1.1rem;"
+            >{formatCurrency(selectedOrder.total)}</span
+          >
+        </div>
+      </div>
+
+      {#if selectedOrder.notes}
+        <div class="ios-detail-grid" style="margin-bottom: 24px;">
+          <div class="ios-detail-block">
+            <div class="ios-detail-label">Notes</div>
+            <div class="ios-detail-value">{selectedOrder.notes}</div>
+          </div>
+        </div>
+      {/if}
+    </div>
   </div>
 {/if}
 
@@ -260,11 +439,29 @@
 </div>
 
 <style>
-  .header-left h1 { margin-bottom: 2px; }
-  .header-right { display: flex; gap: 12px; align-items: center; }
-  
-  .team-selector { width: 170px; }
-  
+  .header-left h1 {
+    margin-bottom: 2px;
+  }
+  .header-right {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .team-selector {
+    width: 180px;
+  }
+  @media (max-width: 768px) {
+    .team-selector {
+      width: 175px;
+    }
+  }
+  @media (max-width: 400px) {
+    .team-selector {
+      width: 165px;
+    }
+  }
+
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -298,9 +495,11 @@
   }
 
   @media (max-width: 1100px) {
-    .dashboard-content { grid-template-columns: 1fr; }
+    .dashboard-content {
+      grid-template-columns: 1fr;
+    }
   }
-  
+
   .main-column {
     display: flex;
     flex-direction: column;
@@ -323,8 +522,13 @@
     align-items: flex-start;
     margin-bottom: 24px;
   }
-  
-  .section-title-group h2 { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+
+  .section-title-group h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+  }
 
   /* Recent Orders List */
   .recent-list {
@@ -370,20 +574,60 @@
     overflow: hidden;
   }
 
-  .item-name { font-weight: 600; font-size: 0.95rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .item-meta { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-dim); font-weight: 500; overflow: hidden; }
-  .item-meta .company, .item-meta .date { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .item-meta .dot { width: 3px; height: 3px; background: var(--text-dim); border-radius: 50%; flex-shrink: 0; }
+  .item-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    overflow: hidden;
+  }
+  .item-meta .company,
+  .item-meta .date {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item-meta .dot {
+    width: 3px;
+    height: 3px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
 
-  .item-status { flex-shrink: 0; }
-  .item-amount { flex-shrink: 0; white-space: nowrap; }
+  .item-status {
+    flex-shrink: 0;
+  }
+  .item-amount {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 
-  .amount { text-align: right; font-weight: 700; color: #fff; font-size: 0.95rem; }
+  .amount {
+    text-align: right;
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.95rem;
+  }
 
-
-
-  .btn-xs { font-size: 0.7rem; padding: 4px 10px; }
-  .btn-xs { font-size: 0.7rem; padding: 4px 10px; }
+  .btn-xs {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+  }
+  .btn-xs {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+  }
 
   .deploy-info {
     display: flex;
@@ -396,14 +640,28 @@
     line-height: 1;
   }
 
-  .version-tag { font-size: 0.75rem; font-weight: 700; color: #fff; }
-  .deploy-time { font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .version-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .deploy-time {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
 
-  .error-text { color: var(--status-rejected); font-size: 0.8rem; font-weight: 600; }
+  .error-text {
+    color: var(--status-rejected);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
 
   @media (max-width: 650px) {
-    .header-right .deploy-info { 
-      display: none; 
+    .header-right .deploy-info {
+      display: none;
     }
   }
 
@@ -417,7 +675,9 @@
     color: var(--text-dim);
     letter-spacing: 0.02em;
   }
-  .v-sep { margin: 0 4px; }
+  .v-sep {
+    margin: 0 4px;
+  }
 
   @media (max-width: 768px) {
     .mobile-version-footer {
