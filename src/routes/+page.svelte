@@ -151,14 +151,16 @@
       accentColor={netBalance >= 0 ? "var(--status-awarded)" : "var(--status-rejected)"}
       icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 2v20m-5-17h10a4 4 0 1 1 0 8H7a4 4 0 1 0 0 8h10"/></svg>'
     />
-    <StatCard
-      label="Total Raised"
-      value={totalRaised.toString()}
-      isCurrency={true}
-      sub={`${dataService.funds.length} contributions`}
-      accentColor="var(--status-awarded)"
-      icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 20 20"/><path d="m8 8 4 4"/></svg>'
-    />
+    <div class="total-raised-card">
+      <StatCard
+        label="Total Raised"
+        value={totalRaised.toString()}
+        isCurrency={true}
+        sub={`${dataService.funds.length} contributions`}
+        accentColor="var(--status-awarded)"
+        icon='<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 20 20"/><path d="m8 8 4 4"/></svg>'
+      />
+    </div>
     <StatCard
       label="Total Spent"
       value={totalSpent.toString()}
@@ -252,6 +254,13 @@
     margin-bottom: 40px;
   }
 
+  /* Hide Total Raised when it would cause an awkward 3+1 layout */
+  @media (min-width: 1100px) and (max-width: 1380px) {
+    .total-raised-card {
+      display: none;
+    }
+  }
+
   .dashboard-content {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -288,7 +297,6 @@
   }
   
   .section-title-group h2 { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
-  .section-subtitle { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
 
   /* Recent Orders List */
   .recent-list {
