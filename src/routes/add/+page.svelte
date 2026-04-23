@@ -201,42 +201,25 @@
   <title>Add Order | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header">
+<!-- Simplified header for mobile, full header for desktop -->
+<div class="page-header hide-mobile">
   <div class="header-left">
     <h1>New <span>Order</span></h1>
-    <p class="text-muted hide-mobile">Fill out the form below to request a new purchase</p>
-  </div>
-  
-  <div class="header-right">
-    <div class="header-actions">
-      <button 
-        class="btn btn-ghost btn-sm" 
-        onclick={() => showTestLock = true}
-        title="Autofill for validation"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        <span class="hide-mobile">Test Order</span>
-      </button>
-      
-      <button 
-        class="btn btn-sm {form.isExpense ? 'btn-primary' : 'btn-ghost'}" 
-        onclick={toggleExpenseMode}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        <span class="hide-mobile">{form.isExpense ? "Expense Mode" : "Instant Expense"}</span>
-      </button>
-      
-      <a href="/orders" class="btn btn-ghost btn-sm hide-mobile">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        Back
-      </a>
-    </div>
+    <p class="text-muted">Fill out the form below to request a new purchase</p>
   </div>
 </div>
 
 <div class="add-layout fade-in">
-  {#if true}
-    <div class="card add-card">
+  <div class="card add-card">
+    <div class="card-header-mobile show-mobile">
+      <h3 style="color: var(--primary); margin-bottom: 4px;">New Order Request</h3>
+      <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 20px;">Fill out the details below</p>
+    </div>
+    
+    <!-- Desktop Header inside card for consistency -->
+    <h3 class="hide-mobile" style="margin-bottom:24px; color: var(--primary);">
+      {form.isExpense ? "Record Immediate Expense" : "New Order Request"}
+    </h3>
       {#if submitError}
         <div class="error-bar message-bar">
            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -258,58 +241,39 @@
         id="add-expense-form"
       >
         <div class="form-grid">
-          <div class="form-group span-2">
+          <div class="form-group" style="grid-column: 1 / -1">
             <label for="ae-item">Item Name *</label>
             <input
               id="ae-item"
               type="text"
               bind:value={form.item}
-              placeholder="ex. Gobilda 312 RPM Motor"
+              placeholder="ex. Pit Banner"
               required
             />
           </div>
 
-          <div class="form-group span-2">
-            <div id="category-label" class="form-label" style="margin-bottom: 8px;">Category *</div>
-            <div class="category-pills" role="group" aria-labelledby="category-label">
-              {#each CATEGORIES as cat}
-                <button
-                  type="button"
-                  class="cat-pill cat-{cat}"
-                  class:active={form.category === cat}
-                  onclick={() => (form.category = cat)}
-                >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </button>
-              {/each}
-            </div>
+          <div class="form-group">
+            <label for="ae-company">Vendor / Supplier *</label>
+            <input
+              id="ae-company"
+              type="text"
+              bind:value={form.company}
+              placeholder="ex. REV Robotics"
+              required
+            />
           </div>
 
           <div class="form-group">
-            <label for="ae-company">Vendor / Supplier *</label>
-            {#if vendorSelect !== 'Other'}
-              <CustomDropdown
-                options={presetVendors}
-                bind:value={vendorSelect}
-                onchange={() => {
-                  if (vendorSelect !== 'Other') form.company = vendorSelect;
-                  else form.company = "";
-                }}
-              />
-            {:else}
-              <div style="display: flex; gap: 8px;">
-                <input
-                  id="ae-company"
-                  type="text"
-                  bind:value={form.company}
-                  placeholder="Enter vendor name"
-                  required
-                />
-                <button type="button" class="btn btn-ghost btn-sm" onclick={() => { vendorSelect = ""; form.company = ""; }} style="padding: 0 12px;">
-                  ✕
-                </button>
-              </div>
-            {/if}
+            <label for="ae-category">Category *</label>
+            <CustomDropdown
+              options={[
+                { label: "Hardware", value: "hardware" },
+                { label: "Software", value: "software" },
+                { label: "Outreach", value: "outreach" },
+                { label: "Miscellaneous", value: "miscellaneous" },
+              ]}
+              bind:value={form.category}
+            />
           </div>
 
           <div class="form-group">
@@ -318,31 +282,6 @@
               options={teamOptions}
               bind:value={form.team}
             />
-          </div>
-
-          <div class="form-group">
-            <label for="ae-orderedby">Ordered By *</label>
-            <input
-              id="ae-orderedby"
-              type="text"
-              bind:value={form.orderedBy}
-              placeholder="Your name"
-              required
-            />
-          </div>
-
-          <div class="form-group span-2">
-            <label for="ae-link">Reference Link</label>
-            <div class="input-with-icon">
-               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; color: var(--text-dim)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-               <input
-                 id="ae-link"
-                 type="text"
-                 bind:value={form.link}
-                 placeholder="https://..."
-                 style="padding-left: 38px;"
-               />
-            </div>
           </div>
 
           <div class="form-group">
@@ -371,12 +310,33 @@
             />
           </div>
 
-          <div class="form-group span-2">
+          <div class="form-group">
+            <label for="ae-orderedby">Ordered By *</label>
+            <input
+              id="ae-orderedby"
+              type="text"
+              bind:value={form.orderedBy}
+              placeholder="Your name"
+              required
+            />
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1">
+            <label for="ae-link">Reference Link</label>
+            <input
+              id="ae-link"
+              type="text"
+              bind:value={form.link}
+              placeholder="https://..."
+            />
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1">
             <label for="ae-notes">Team Notes *</label>
             <textarea
               id="ae-notes"
               bind:value={form.notes}
-              placeholder="Please give a breif description on the reason for ordering this item. Promo codes and/or additional information if applicable as well."
+              placeholder="Reason for ordering this item..."
               rows="3"
               required
             ></textarea>
@@ -408,7 +368,6 @@
         </div>
       </form>
     </div>
-  {/if}
 
   {#if showTestLock}
     <div class="lock-screen-wrapper fade-in" style="position: fixed; inset: 0; z-index: 1000; background: var(--bg); display: flex; align-items: center; justify-content: center;">
@@ -425,43 +384,6 @@
 </div>
 
 <style>
-  /* Modal Styles */
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(10, 11, 14, 0.8);
-    backdrop-filter: blur(8px);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-
-  .modal-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
-  }
-
-  .modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .test-error { color: #ef4444; font-size: 0.75rem; font-weight: 600; margin-top: 8px; display: block; }
-
-  .header-actions { display: flex; gap: 8px; align-items: center; }
   
   .add-layout {
     max-width: 720px;
@@ -481,9 +403,6 @@
     margin-bottom: 32px;
   }
 
-  .span-2 { grid-column: span 2; }
-
-  .input-with-icon { position: relative; display: flex; align-items: center; }
 
   .message-bar {
     display: flex;
@@ -509,46 +428,6 @@
     color: var(--status-rejected);
   }
 
-  .category-pills {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    margin-top: 8px;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-  }
-  .category-pills::-webkit-scrollbar {
-    display: none; /* Hide scrollbar for Chrome, Safari and Opera */
-  }
-  
-  .cat-pill {
-    flex: 0 0 auto;
-    padding: 8px 16px;
-    font-size: 0.725rem;
-    font-weight: 700;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--surface-2);
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  
-  .cat-pill:hover { background: var(--surface-3); color: #fff; }
-  .cat-pill.active {
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 0 12px rgba(0,0,0,0.2);
-  }
-  
-  .cat-pill.active.cat-hardware { background: var(--cat-hardware); }
-  .cat-pill.active.cat-software { background: var(--cat-software); }
-  .cat-pill.active.cat-outreach { background: var(--cat-outreach); }
-  .cat-pill.active.cat-food { background: #f97316; }
-  .cat-pill.active.cat-miscellaneous { background: var(--cat-miscellaneous); }
 
   .summary-section {
     padding: 24px;
@@ -565,7 +444,7 @@
   }
 
   .total-title { font-size: 1.1rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
-  .total-val { font-size: 1.75rem; color: var(--primary); font-weight: 800; }
+  .total-val { font-size: 1.5rem; color: var(--primary); font-weight: 800; }
 
   .form-footer {
     display: flex;
@@ -577,15 +456,25 @@
 
   @media (max-width: 768px) {
     .form-grid { grid-template-columns: 1fr; gap: 16px; }
-    .span-2 { grid-column: 1; }
-    .add-card { padding: 20px 16px; border-radius: 0; width: 100%; border-left: none; border-right: none; box-sizing: border-box; margin: 0; }
-    .add-layout { padding: 0; width: 100%; overflow-x: hidden; margin: 0; }
+    .add-card { 
+      padding: 16px; 
+      border-radius: 0; 
+      width: 100%; 
+      border-left: none; 
+      border-right: none; 
+      box-sizing: border-box; 
+      margin: 0; 
+    }
+    .add-layout { 
+      padding: 0; 
+      width: 100%; 
+      margin: 0; 
+    }
+    .summary-section { padding: 16px; margin-bottom: 24px; }
+    .show-mobile { display: block; }
+    .hide-mobile { display: none; }
   }
 
-  /* Handled by global styles but adding specifics for test modal */
-  .test-modal {
-    max-width: 400px;
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  }
+  .show-mobile { display: none; }
+
 </style>
