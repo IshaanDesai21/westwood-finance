@@ -1,5 +1,6 @@
 <script>
   import { formatCurrency, formatDate, truncate, capitalize, getTeamBadgeClass } from '../utils.js';
+  import IOSBottomSheet from './IOSBottomSheet.svelte';
 
   /** @type {{ expenses?: any[], limit?: number, hideTeam?: boolean }} */
   let { expenses = [], limit = 0, hideTeam = false } = $props();
@@ -61,34 +62,6 @@
 
   /** @type {any} */
   let selectedExpense = $state(null);
-
-  // Swipe gesture variables
-  let touchStartY = 0;
-  let touchCurrentY = 0;
-  let isSwiping = $state(false);
-  let swipeTranslateY = $state(0);
-
-  function handleTouchStart(/** @type {TouchEvent} */ e) {
-    touchStartY = e.touches[0].clientY;
-    isSwiping = true;
-  }
-
-  function handleTouchMove(/** @type {TouchEvent} */ e) {
-    if (!isSwiping) return;
-    touchCurrentY = e.touches[0].clientY;
-    const delta = touchCurrentY - touchStartY;
-    if (delta > 0) {
-      swipeTranslateY = delta;
-    }
-  }
-
-  function handleTouchEnd() {
-    if (swipeTranslateY > 100) {
-      selectedExpense = null;
-    }
-    isSwiping = false;
-    swipeTranslateY = 0;
-  }
 </script>
 
 <!-- ── Desktop Table ─────────────────────────────────────────────────────── -->
@@ -238,6 +211,64 @@
       {/each}
     </div>
 
+    <IOSBottomSheet open={!!selectedExpense} onclose={() => selectedExpense = null} title="Expense Details">
+      {#snippet children()}
+        {#if selectedExpense}
+          <div class="ios-sheet-content-inner">
+            <div class="ios-detail-grid" style="margin-bottom: 20px;">
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Date</span>
+                <span class="ios-detail-value">{formatDate(selectedExpense.timestamp)}</span>
+              </div>
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Team</span>
+                <span class="ios-detail-value">{selectedExpense.team || "—"}</span>
+              </div>
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Category</span>
+                <span class="ios-detail-value">{capitalize(selectedExpense.category)}</span>
+              </div>
+            </div>
+
+            <div class="ios-detail-grid" style="margin-bottom: 20px;">
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Item</span>
+                <span class="ios-detail-value" style="max-width: 70%; white-space: normal; text-align: right;">{selectedExpense.item}</span>
+              </div>
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Vendor</span>
+                <span class="ios-detail-value">{selectedExpense.company || "—"}</span>
+              </div>
+            </div>
+
+            <div class="ios-detail-grid" style="margin-bottom: 20px;">
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Unit Price</span>
+                <span class="ios-detail-value monospace">{formatCurrency(selectedExpense.price)}</span>
+              </div>
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Quantity</span>
+                <span class="ios-detail-value monospace">{selectedExpense.quantity}</span>
+              </div>
+              <div class="ios-detail-item">
+                <span class="ios-detail-label">Total Cost</span>
+                <span class="ios-detail-value monospace" style="color: var(--primary); font-size: 1.1rem;">{formatCurrency(selectedExpense.total)}</span>
+              </div>
+            </div>
+
+            {#if selectedExpense.notes}
+              <div class="ios-detail-grid">
+                <div class="ios-detail-block">
+                  <div class="ios-detail-label">Notes</div>
+                  <div class="ios-detail-value">{selectedExpense.notes}</div>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
+      {/snippet}
+    </IOSBottomSheet>
+
     {#if display.length > 0}
       <div class="ios-total-row">
         <span class="ios-total-label">Subtotal</span>
@@ -246,97 +277,6 @@
     {/if}
   {/if}
 </div>
-
-{#if selectedExpense}
-  <div 
-    class="ios-popup-overlay" 
-    onclick={() => selectedExpense = null}
-    onkeydown={(e) => e.key === 'Escape' && (selectedExpense = null)}
-    role="button"
-    tabindex="-1"
-    aria-label="Close details"
-  >
-    <div 
-      class="ios-popup-content" 
-      onclick={(e) => e.stopPropagation()} 
-      onkeydown={(e) => e.stopPropagation()} 
-      role="dialog" 
-      aria-modal="true" 
-      tabindex="-1"
-      style="transform: translateY({swipeTranslateY}px); transition: {isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'}"
-      ontouchstart={handleTouchStart}
-      ontouchmove={handleTouchMove}
-      ontouchend={handleTouchEnd}
-    >
-      <div class="ios-popup-header">
-        <div class="ios-popup-title">Expense Details</div>
-        <button class="ios-popup-close" onclick={() => selectedExpense = null} aria-label="Close details">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-
-      <div class="ios-detail-grid" style="margin-bottom: 20px;">
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Status</span>
-          <span class="badge badge-awarded">Received</span>
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Date</span>
-          <span class="ios-detail-value">{formatDate(selectedExpense.timestamp)}</span>
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Team</span>
-          <span class="ios-detail-value">{selectedExpense.team || selectedExpense.user || '—'}</span>
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Category</span>
-          <span class="ios-detail-value">{capitalize(selectedExpense.category)}</span>
-        </div>
-      </div>
-
-      <div class="ios-detail-grid" style="margin-bottom: 20px;">
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Item</span>
-          <span class="ios-detail-value" style="max-width: 70%; white-space: normal; text-align: right;">{selectedExpense.item}</span>
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Vendor</span>
-          <span class="ios-detail-value">{selectedExpense.company || '—'}</span>
-        </div>
-        {#if selectedExpense.link}
-          <div class="ios-detail-item">
-            <span class="ios-detail-label">Link</span>
-            <a href={selectedExpense.link} target="_blank" rel="noopener" class="ios-detail-value" style="color: var(--primary)">Open Link ↗</a>
-          </div>
-        {/if}
-      </div>
-
-      <div class="ios-detail-grid" style="margin-bottom: 20px;">
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Unit Price</span>
-          <span class="ios-detail-value monospace">{formatCurrency(selectedExpense.price)}</span>
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Quantity</span>
-          <span class="ios-detail-value monospace">{selectedExpense.quantity}</span>
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Total Cost</span>
-          <span class="ios-detail-value monospace" style="color: var(--primary); font-size: 1.1rem;">{formatCurrency(selectedExpense.total)}</span>
-        </div>
-      </div>
-
-      {#if selectedExpense.notes}
-        <div class="ios-detail-grid" style="margin-bottom: 24px;">
-          <div class="ios-detail-block">
-            <div class="ios-detail-label">Notes</div>
-            <div class="ios-detail-value">{selectedExpense.notes}</div>
-          </div>
-        </div>
-      {/if}
-    </div>
-  </div>
-{/if}
 
 <style>
   .desktop-table { display: block; }
@@ -401,5 +341,57 @@
     font-size: 12px;
     color: var(--text-muted);
     font-family: -apple-system, 'SF Pro Text', sans-serif;
+  }
+
+  .ios-sheet-content-inner {
+    padding: 16px 20px 24px;
+  }
+
+  .ios-detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .ios-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .ios-detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .ios-detail-value {
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+  }
+
+  .ios-detail-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ios-detail-block .ios-detail-value {
+    text-align: left;
+    line-height: 1.5;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .stat-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
   }
 </style>

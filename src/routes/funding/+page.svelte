@@ -280,7 +280,7 @@
   <title>Team Dashboard | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header" style="padding-top: env(safe-area-inset-top);">
+<div class="page-header">
   <div class="header-left">
     <h1>Team <span>Dashboard</span></h1>
   </div>
@@ -312,17 +312,17 @@
   <div class="segmented-control">
     <div
       class="segment-highlight"
-      style="transform: translateX(calc({['budget', 'history', 'master'].indexOf(
-        activeTab,
-      )} * 100%)); width: calc((100% - 10px) / 3);"
+  style="transform: translateX(calc({(selectedBudgetTeam === 'Westwood Overall' ? 0 : ['budget', 'history', 'master'].indexOf(activeTab))} * 100%)); width: calc((100% - 10px) / {selectedBudgetTeam === 'Westwood Overall' ? 1 : 3});"
     ></div>
     {#each [["budget", "Team Dashboard"], ["history", `${selectedBudgetTeam} Funding`], ["master", "Finance History"]] as [key, label]}
-      <button
-        class="segment"
-        class:active={activeTab === key}
-        onclick={() => (activeTab = key)}
-        id="tab-{key}">{label}</button
-      >
+      {#if selectedBudgetTeam !== 'Westwood Overall' || key === 'budget'}
+        <button
+          class="segment"
+          class:active={activeTab === key}
+          onclick={() => (activeTab = key)}
+          id="tab-{key}">{label}</button
+        >
+      {/if}
     {/each}
   </div>
 </div>
@@ -751,10 +751,6 @@
     font-weight: 700;
     margin: 4px 0;
   }
-  .stat-sub {
-    font-size: 0.78rem;
-    color: var(--text-muted);
-  }
 
   .type-breakdown {
     display: flex;
@@ -988,5 +984,8 @@
     box-shadow: none;
     padding: 0;
     position: relative;
+  }
+  @media (max-width: 768px) {
+    .refresh-btn { aspect-ratio: 1/1; width: 42px; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center; flex: none !important; }
   }
 </style>

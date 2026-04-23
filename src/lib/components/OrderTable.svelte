@@ -7,6 +7,7 @@
     getTeamBadgeClass,
   } from "../utils.js";
   import OrderStatusBadge from "./OrderStatusBadge.svelte";
+  import IOSBottomSheet from "./IOSBottomSheet.svelte";
 
   /** @type {{ orders: any[], limit?: number, hideTeamColumn?: boolean, hideCategoryColumn?: boolean, hideCompanyColumn?: boolean, onmanage?: (order: any) => void }} */
   let {
@@ -126,7 +127,7 @@
   }
 
   /** @type {any} */
-  let selectedOrder = $state(null);
+  let selectedOrder = /** @type {any|null} */ ($state(null));
 
   // Swipe gesture variables
   let touchStartY = 0;
@@ -442,167 +443,129 @@
   {/if}
 </div>
 
-{#if selectedOrder}
-  <div class="ios-popup-overlay" 
-    onclick={() => (selectedOrder = null)}
-    onkeydown={(e) => e.key === 'Escape' && (selectedOrder = null)}
-    role="button"
-    tabindex="-1"
-    aria-label="Close details"
-  >
-    <div 
-      class="ios-popup-content" 
-      onclick={(e) => e.stopPropagation()} 
-      onkeydown={(e) => e.stopPropagation()} 
-      role="dialog" 
-      aria-modal="true" 
-      tabindex="-1"
-      style="transform: translateY({swipeTranslateY}px); transition: {isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'}"
-      ontouchstart={handleTouchStart}
-      ontouchmove={handleTouchMove}
-      ontouchend={handleTouchEnd}
-    >
-      <div class="ios-popup-header">
-        <div class="ios-popup-title">Order Details</div>
-        <button class="ios-popup-close" onclick={() => (selectedOrder = null)} aria-label="Close details">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><line x1="18" y1="6" x2="6" y2="18" /><line
-              x1="6"
-              y1="6"
-              x2="18"
-              y2="18"
-            /></svg
-          >
-        </button>
-      </div>
-
-      <div class="ios-detail-grid" style="margin-bottom: 20px;">
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Status</span>
-          <OrderStatusBadge status={selectedOrder.status} />
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Date</span>
-          <span class="ios-detail-value"
-            >{formatFullDate(selectedOrder.timestamp)}</span
-          >
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Team</span>
-          <span class="ios-detail-value"
-            >{selectedOrder.team || selectedOrder.user || "—"}</span
-          >
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Category</span>
-          <span class="ios-detail-value"
-            >{capitalize(selectedOrder.category)}</span
-          >
-        </div>
-      </div>
-
-      <div class="ios-detail-grid" style="margin-bottom: 20px;">
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Item</span>
-          <span
-            class="ios-detail-value"
-            style="max-width: 70%; white-space: normal; text-align: right;"
-            >{selectedOrder.item}</span
-          >
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Vendor</span>
-          <span class="ios-detail-value">{selectedOrder.company || "—"}</span>
-        </div>
-        {#if selectedOrder.link}
+<IOSBottomSheet open={!!selectedOrder} onclose={() => selectedOrder = null} title="Order Details">
+  {#snippet children()}
+    {#if selectedOrder}
+      <div class="ios-sheet-content-inner">
+        <div class="ios-detail-grid" style="margin-bottom: 20px;">
           <div class="ios-detail-item">
-            <span class="ios-detail-label">Link</span>
-            <a
-              href={selectedOrder.link}
-              target="_blank"
-              rel="noopener"
-              class="ios-detail-value"
-              style="color: var(--primary)">Open Link ↗</a
+            <span class="ios-detail-label">Status</span>
+            <OrderStatusBadge status={selectedOrder.status} />
+          </div>
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Date</span>
+            <span class="ios-detail-value"
+              >{formatFullDate(selectedOrder.timestamp)}</span
             >
+          </div>
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Team</span>
+            <span class="ios-detail-value"
+              >{selectedOrder.team || selectedOrder.user || "—"}</span
+            >
+          </div>
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Category</span>
+            <span class="ios-detail-value"
+              >{capitalize(selectedOrder.category)}</span
+            >
+          </div>
+        </div>
+
+        <div class="ios-detail-grid" style="margin-bottom: 20px;">
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Item</span>
+            <span
+              class="ios-detail-value"
+              style="max-width: 70%; white-space: normal; text-align: right;"
+              >{selectedOrder.item}</span
+            >
+          </div>
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Vendor</span>
+            <span class="ios-detail-value">{selectedOrder.company || "—"}</span>
+          </div>
+          {#if selectedOrder.link}
+            <div class="ios-detail-item">
+              <span class="ios-detail-label">Link</span>
+              <a
+                href={selectedOrder.link}
+                target="_blank"
+                rel="noopener"
+                class="ios-detail-value"
+                style="color: var(--primary)">Open Link ↗</a
+              >
+            </div>
+          {/if}
+        </div>
+
+        <div class="ios-detail-grid" style="margin-bottom: 20px;">
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Unit Price</span>
+            <span class="ios-detail-value monospace"
+              >{formatCurrency(selectedOrder.price)}</span
+            >
+          </div>
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Quantity</span>
+            <span class="ios-detail-value monospace"
+              >{selectedOrder.quantity}</span
+            >
+          </div>
+          <div class="ios-detail-item">
+            <span class="ios-detail-label">Total Cost</span>
+            <span
+              class="ios-detail-value monospace"
+              style="color: var(--primary); font-size: 1.1rem;"
+              >{formatCurrency(selectedOrder.total)}</span
+            >
+          </div>
+        </div>
+
+        {#if selectedOrder.notes}
+          <div class="ios-detail-grid" style="margin-bottom: 20px;">
+            <div class="ios-detail-block">
+              <div class="ios-detail-label">Notes</div>
+              <div class="ios-detail-value">{selectedOrder.notes}</div>
+            </div>
           </div>
         {/if}
-      </div>
 
-      <div class="ios-detail-grid" style="margin-bottom: 20px;">
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Unit Price</span>
-          <span class="ios-detail-value monospace"
-            >{formatCurrency(selectedOrder.price)}</span
-          >
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Quantity</span>
-          <span class="ios-detail-value monospace"
-            >{selectedOrder.quantity}</span
-          >
-        </div>
-        <div class="ios-detail-item">
-          <span class="ios-detail-label">Total Cost</span>
-          <span
-            class="ios-detail-value monospace"
-            style="color: var(--primary); font-size: 1.1rem;"
-            >{formatCurrency(selectedOrder.total)}</span
-          >
-        </div>
-      </div>
-
-      {#if selectedOrder.notes}
-        <div class="ios-detail-grid" style="margin-bottom: 20px;">
-          <div class="ios-detail-block">
-            <div class="ios-detail-label">Notes</div>
-            <div class="ios-detail-value">{selectedOrder.notes}</div>
+        {#if selectedOrder.tracking}
+          {@const href = String(selectedOrder.tracking).startsWith("http")
+            ? selectedOrder.tracking
+            : `https://www.google.com/search?q=${selectedOrder.tracking}`}
+          <div class="ios-detail-grid" style="margin-bottom: 24px;">
+            <div class="ios-detail-block">
+              <div class="ios-detail-label">Tracking Info</div>
+              <a
+                {href}
+                target="_blank"
+                rel="noopener"
+                class="ios-detail-value"
+                style="color: var(--primary); font-weight: 700;"
+                >{selectedOrder.tracking} ↗</a
+              >
+            </div>
           </div>
-        </div>
-      {/if}
+        {/if}
 
-      {#if selectedOrder.tracking}
-        {@const href = String(selectedOrder.tracking).startsWith("http")
-          ? selectedOrder.tracking
-          : `https://www.google.com/search?q=${selectedOrder.tracking}`}
-        <div class="ios-detail-grid" style="margin-bottom: 24px;">
-          <div class="ios-detail-block">
-            <div class="ios-detail-label">Tracking Info</div>
-            <a
-              {href}
-              target="_blank"
-              rel="noopener"
-              class="ios-detail-value"
-              style="color: var(--primary); font-weight: 700;"
-              >{selectedOrder.tracking} ↗</a
-            >
-          </div>
-        </div>
-      {/if}
-
-      {#if onmanage}
-        <button
-          class="btn btn-primary btn-block"
-          style="height: 50px; font-size: 1rem; border-radius: 12px;"
-          onclick={() => {
-            onmanage(selectedOrder);
-            selectedOrder = null;
-          }}
-        >
-          Manage Order
-        </button>
-      {/if}
-    </div>
-  </div>
-{/if}
+        {#if onmanage}
+          <button
+            class="btn btn-primary btn-block"
+            style="height: 50px; font-size: 1rem; border-radius: 12px;"
+            onclick={() => {
+              onmanage(selectedOrder);
+              selectedOrder = null;
+            }}
+          >
+            Manage Order
+          </button>
+        {/if}
+      </div>
+    {/if}
+  {/snippet}
+</IOSBottomSheet>
 
 <style>
   /* ── Desktop: show table, hide list ─────────────────────────── */

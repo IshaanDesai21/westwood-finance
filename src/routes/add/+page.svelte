@@ -201,7 +201,7 @@
   <title>Add Order | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header" style="padding-top: env(safe-area-inset-top);">
+<div class="page-header">
   <div class="header-left">
     <h1>New <span>Order</span></h1>
     <p class="text-muted hide-mobile">Fill out the form below to request a new purchase</p>
@@ -234,7 +234,7 @@
   </div>
 </div>
 
-<div class="add-layout-wide fade-in">
+<div class="add-layout fade-in">
   {#if true}
     <div class="card add-card">
       {#if submitError}
@@ -463,7 +463,7 @@
 
   .header-actions { display: flex; gap: 8px; align-items: center; }
   
-  .add-layout-wide {
+  .add-layout {
     max-width: 720px;
     margin: 0 auto 80px;
   }
@@ -575,11 +575,11 @@
 
   .btn-block { width: 100%; justify-content: center; height: 48px; font-size: 0.95rem; }
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     .form-grid { grid-template-columns: 1fr; gap: 16px; }
     .span-2 { grid-column: 1; }
-    .add-card { padding: 20px; border-radius: 0; width: 100vw; margin-left: calc(-1 * var(--page-padding, 20px)); border-left: none; border-right: none; box-sizing: border-box; }
-    .add-layout-wide { padding: 0; width: 100%; overflow-x: hidden; }
+    .add-card { padding: 20px 16px; border-radius: 0; width: 100%; border-left: none; border-right: none; box-sizing: border-box; margin: 0; }
+    .add-layout { padding: 0; width: 100%; overflow-x: hidden; margin: 0; }
   }
 
   /* Handled by global styles but adding specifics for test modal */

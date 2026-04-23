@@ -777,7 +777,7 @@
     />
   </div>
 {:else}
-  <div class="page-header" style="padding-top: env(safe-area-inset-top);">
+  <div class="page-header">
     <div class="header-left">
       <h1>Admin <span>Portal</span></h1>
     </div>
@@ -786,11 +786,6 @@
       class="header-right"
       style="display: flex; align-items: center; gap: 12px;"
     >
-      <button class="btn btn-ghost btn-sm refresh-btn" onclick={sync} disabled={syncing}>
-        <span class:spinning={syncing}>↻</span>
-        <span class="hide-mobile">{syncing ? "Syncing..." : "Refresh"}</span>
-      </button>
-
       <button
         class="btn btn-ghost btn-sm"
         style="color: var(--primary);"
@@ -811,6 +806,11 @@
           /></svg
         >
         Lock
+      </button>
+
+      <button class="btn btn-ghost btn-sm refresh-btn" onclick={sync} disabled={syncing}>
+        <span class:spinning={syncing}>↻</span>
+        <span class="hide-mobile">{syncing ? "Syncing..." : "Refresh"}</span>
       </button>
     </div>
   </div>
@@ -1302,9 +1302,8 @@
     <!-- ── Add Funds ────────────────────────────────────────────────────────── -->
     <div
       class="add-layout fade-in"
-      style="display: grid; grid-template-columns: 1fr 280px; gap: 32px; align-items: start;"
     >
-      <div class="card add-card" style="padding: 32px;">
+      <div class="card add-card">
         <h3 style="margin-bottom:20px; color: var(--primary);">
           Add Funding Entry
         </h3>
@@ -1318,7 +1317,6 @@
         >
           <div
             class="form-grid"
-            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;"
           >
             <div class="form-group">
               <label for="f-type">History Type *</label>
@@ -1387,7 +1385,7 @@
         </form>
       </div>
 
-      <aside class="tips-card card" style="padding: 24px;">
+      <aside class="tips-card card hide-mobile" style="padding: 24px;">
         <div
           class="card-title"
           style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;"
@@ -1438,9 +1436,8 @@
     <!-- ── Add Expense ──────────────────────────────────────────────────────── -->
     <div
       class="add-layout fade-in"
-      style="display: grid; grid-template-columns: 1fr 300px; gap: 32px; align-items: start;"
     >
-      <div class="card add-card" style="padding: 32px;">
+      <div class="card add-card">
         <h3 style="margin-bottom:20px; color: var(--primary);">
           Record Manual Expense
         </h3>
@@ -1453,7 +1450,6 @@
         >
           <div
             class="form-grid"
-            style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;"
           >
             <div class="form-group" style="grid-column: 1 / -1">
               <label for="ae-item">Item Name *</label>
@@ -2243,6 +2239,39 @@
     padding-top: env(safe-area-inset-top);
   }
 
+  .add-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 32px;
+    align-items: start;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .add-layout {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .form-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .add-card {
+      padding: 16px;
+      border-radius: 0;
+      width: 100%;
+      border-left: none;
+      border-right: none;
+      box-sizing: border-box;
+      margin: 0;
+    }
+  }
+
   /* ── Mobile Tab FAB ──────────────────────────────────────────── */
   @media (max-width: 768px) {
     .tabs-wrapper { display: none; }
@@ -2255,7 +2284,7 @@
     }
     .tab-fab-menu {
       position: fixed;
-      bottom: 144px;
+      bottom: calc(var(--ios-tab-height, 49px) + env(safe-area-inset-bottom, 0px) + 84px);
       right: 20px;
       z-index: 601;
       background: var(--surface);
@@ -2289,7 +2318,7 @@
     .tab-fab-option.active { color: var(--primary); background: var(--primary-glow); }
     .page-fab {
       position: fixed;
-      bottom: 80px;
+      bottom: calc(var(--ios-tab-height, 49px) + env(safe-area-inset-bottom, 0px) + 20px);
       right: 20px;
       width: 52px;
       height: 52px;
@@ -2307,7 +2336,7 @@
     }
     .page-fab:hover { transform: scale(1.06); }
 
-    .refresh-btn { width: 42px; padding: 0; justify-content: center; }
+    .refresh-btn { aspect-ratio: 1/1; width: 42px; padding: 0 !important; justify-content: center; flex: none !important; }
   }
 
   :global(.admin-action-tag) {

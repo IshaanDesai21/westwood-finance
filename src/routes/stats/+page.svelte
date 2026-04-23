@@ -171,7 +171,7 @@
   <title>Analytics | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header" style="padding-top: env(safe-area-inset-top);">
+<div class="page-header">
   <div class="header-left">
     <h1>Spending <span>Trends</span></h1>
   </div>
