@@ -201,25 +201,15 @@
   <title>Add Order | Westwood Finance</title>
 </svelte:head>
 
-<!-- Simplified header for mobile, full header for desktop -->
-<div class="page-header hide-mobile">
+<div class="page-header">
   <div class="header-left">
-    <h1>New <span>Order</span></h1>
+    <h1>Add <span>Order</span></h1>
     <p class="text-muted">Fill out the form below to request a new purchase</p>
   </div>
 </div>
 
 <div class="add-layout fade-in">
   <div class="card add-card">
-    <div class="card-header-mobile show-mobile">
-      <h3 style="color: var(--primary); margin-bottom: 4px;">New Order Request</h3>
-      <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 20px;">Fill out the details below</p>
-    </div>
-    
-    <!-- Desktop Header inside card for consistency -->
-    <h3 class="hide-mobile" style="margin-bottom:24px; color: var(--primary);">
-      {form.isExpense ? "Record Immediate Expense" : "New Order Request"}
-    </h3>
       {#if submitError}
         <div class="error-bar message-bar">
            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -471,10 +461,6 @@
       margin: 0; 
     }
     .summary-section { padding: 16px; margin-bottom: 24px; }
-    .show-mobile { display: block; }
-    .hide-mobile { display: none; }
   }
-
-  .show-mobile { display: none; }
 
 </style>

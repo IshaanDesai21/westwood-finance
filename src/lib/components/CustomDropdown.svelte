@@ -151,7 +151,7 @@
   }
 
   .label.placeholder {
-    color: var(--text-dim);
+    color: var(--text-muted);
     font-weight: 500;
   }
 
