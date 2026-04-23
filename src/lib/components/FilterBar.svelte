@@ -217,7 +217,7 @@
   .reset-button { width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); }
 
   /* ── iOS Mobile ─────────────────────────────────────────────────── */
-  .ios-filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+  .ios-filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; margin-top: 8px; }
   .ios-search-wrap { flex: 1; position: relative; display: flex; align-items: center; background: rgba(118, 118, 128, 0.18); border-radius: 10px; overflow: hidden; }
   .ios-search-icon { position: absolute; left: 10px; color: var(--text-dim); pointer-events: none; flex-shrink: 0; }
   .ios-search-input { flex: 1; background: transparent; border: none; outline: none; padding: 10px 36px 10px 34px; font-size: 16px; color: #fff; font-family: -apple-system, 'SF Pro Text', sans-serif; min-height: 38px; -webkit-appearance: none; appearance: none; }

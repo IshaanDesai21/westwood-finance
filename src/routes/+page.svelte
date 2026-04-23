@@ -167,7 +167,7 @@
   <title>Dashboard | Westwood Finance</title>
 </svelte:head>
 
-<div class="page-header" style="padding-top: env(safe-area-inset-top);">
+<div class="page-header">
   <div class="header-left">
     <h1>Dashboard</h1>
   </div>

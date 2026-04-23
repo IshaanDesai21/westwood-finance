@@ -700,6 +700,7 @@
     display: flex;
     justify-content: center;
     margin-bottom: 32px;
+    margin-top: 8px;
   }
 
   /* ── Tabs ──────────────────────────────────────────────────────────────────── */

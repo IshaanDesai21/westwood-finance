@@ -329,6 +329,9 @@
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 20px;
   }
+  @media (max-width: 768px) {
+    .stat-grid { margin-top: 12px; }
+  }
 
   .charts-grid {
     display: grid;

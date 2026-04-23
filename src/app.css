@@ -466,7 +466,7 @@ tbody td {
     padding: 16px 16px;
     max-width: 100vw;
     padding-bottom: calc(var(--ios-tab-height) + var(--safe-bottom) + 32px);
-    padding-top: calc(var(--safe-top) + 32px); /* Increased for notch comfort */
+    padding-top: calc(var(--safe-top) + 36px); /* Increased for notch comfort */
   }
 
   /* ── Apple App Aesthetic Overrides ── */
@@ -577,9 +577,12 @@ tbody td {
   .hide-mobile { display: none !important; }
 }
 
-  /* Very small phones (≤390px) */
   @media (max-width: 390px) {
-    .main-content { padding: 12px 12px; padding-bottom: calc(var(--ios-tab-height, 49px) + env(safe-area-inset-bottom, 0px) + 16px); }
+    .main-content { 
+      padding: 12px; 
+      padding-top: calc(var(--safe-top, 0px) + 28px);
+      padding-bottom: calc(var(--ios-tab-height, 49px) + env(safe-area-inset-bottom, 0px) + 20px); 
+    }
     .page-header h1 { font-size: 1.65rem; }
     .btn { font-size: 0.8rem; padding: 6px 10px; }
     .stat-grid { grid-template-columns: 1fr; }
