@@ -1,5 +1,6 @@
 import { BASE_URL } from "./config.js";
 import { api } from "./api.js";
+import { demoStore, DEMO_MEMBER } from "./demo.svelte.js";
 import type {
   AuthStatus,
   GoogleUser,
@@ -42,11 +43,38 @@ class AuthStore {
 
   constructor() {
     if (typeof window !== "undefined") {
+      // A demo session survives reloads via sessionStorage; re-enter it rather
+      // than restoring whatever real session is in localStorage.
+      if (demoStore.active) {
+        this.enterDemo();
+        return;
+      }
       this._restoreSession();
       if (this.hasValidSession && this.status === "approved") {
         this.fetchMembers();
       }
     }
+  }
+
+  // Install a synthetic admin identity backed by the in-memory demo fixtures.
+  // Nothing here is persisted to the real auth storage keys.
+  enterDemo(): void {
+    demoStore.enable();
+    this.googleUser = {
+      email: DEMO_MEMBER.email || "demo@westwoodrobots.org",
+      name: `${DEMO_MEMBER.firstName} ${DEMO_MEMBER.lastName}`,
+      picture: "",
+      sub: "demo",
+    };
+    this.member = { ...DEMO_MEMBER };
+    this.membersList = [{ ...DEMO_MEMBER }];
+    this.membersLoaded = true;
+    this.studentId = DEMO_MEMBER.studentId;
+    this.pendingTeam = DEMO_MEMBER.team;
+    this.status = "approved";
+    this.sessionToken = "demo-session";
+    this.sessionExp = Math.floor(Date.now() / 1000) + 86400;
+    this.initialized = true;
   }
 
   _restoreSession(): void {
@@ -122,7 +150,7 @@ class AuthStore {
   }
 
   _persist(): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || demoStore.active) return;
     try {
       localStorage.setItem(
         "westwood_auth",
@@ -138,7 +166,7 @@ class AuthStore {
   }
 
   _persistSession(): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || demoStore.active) return;
     try {
       localStorage.setItem(
         "westwood_session",
@@ -193,10 +221,12 @@ class AuthStore {
         );
         this.membersList = [...existing, data.member];
         this.membersLoaded = true;
-        localStorage.setItem(
-          "westwood_members",
-          JSON.stringify(this.membersList),
-        );
+        if (!demoStore.active) {
+          localStorage.setItem(
+            "westwood_members",
+            JSON.stringify(this.membersList),
+          );
+        }
         this._revalidate();
         console.debug(`Auth: self record loaded — ${data.member.role}`);
       } else {
@@ -260,7 +290,7 @@ class AuthStore {
     if (!Array.isArray(members)) return;
     this.membersList = members;
     this.membersLoaded = true;
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !demoStore.active) {
       localStorage.setItem("westwood_members", JSON.stringify(members));
     }
     this._revalidate();
@@ -371,6 +401,13 @@ class AuthStore {
   }
 
   signOut(): void {
+    // Leaving the demo must not touch a real signed-in session on this browser.
+    if (demoStore.active) {
+      demoStore.disable();
+      if (typeof window !== "undefined") window.location.href = "/";
+      return;
+    }
+
     this.googleUser = null;
     this.member = null;
     this.studentId = "";

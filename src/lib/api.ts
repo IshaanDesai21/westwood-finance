@@ -1,5 +1,6 @@
 import { BASE_URL } from "./config.js";
 import { authStore } from "./authStore.svelte.js";
+import { demoStore } from "./demo.svelte.js";
 
 const SESSION_ERRORS = new Set(["Unauthorized", "Session expired"]);
 const ACCESS_ERRORS = new Set(["Forbidden"]);
@@ -9,6 +10,10 @@ export const api = {
     payload: Record<string, unknown>,
     opts: { signal?: AbortSignal } = {},
   ): Promise<any> {
+    // Demo mode short-circuits before any auth or network work: the sandbox is
+    // served entirely from in-memory fixtures.
+    if (demoStore.active) return demoStore.handle(payload);
+
     if (!authStore.hasValidSession) {
       authStore.signOut();
       throw new Error("Session expired");

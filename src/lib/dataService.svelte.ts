@@ -1,6 +1,7 @@
 import { generateShortId } from "./utils.js";
 import { authStore } from "./authStore.svelte.js";
 import { api } from "./api.js";
+import { demoStore } from "./demo.svelte.js";
 import type {
   Order,
   Fund,
@@ -22,7 +23,9 @@ class DataStore {
   private _inFlight = false;
 
   constructor() {
-    if (typeof window !== "undefined") {
+    // In demo mode the fixtures are the source of truth — never seed from (or
+    // write to) the real cache.
+    if (typeof window !== "undefined" && !demoStore.active) {
       try {
         const cached = localStorage.getItem("westwood_finance_cache");
         if (cached) {
@@ -40,7 +43,7 @@ class DataStore {
   }
 
   persist(): void {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !demoStore.active) {
       try {
         localStorage.setItem(
           "westwood_finance_cache",
@@ -55,6 +58,18 @@ class DataStore {
         console.warn("DataStore Cache Save Failed:", e);
       }
     }
+  }
+
+  // Drop everything held in memory. Used when switching into demo mode, since
+  // the constructor may already have restored the real cache from localStorage
+  // before the demo flag was set.
+  reset(): void {
+    this.orders = [];
+    this.funds = [];
+    this.budget = null;
+    this.lastFetched = null;
+    this.hasLoadedOnce = false;
+    this.error = null;
   }
 
   normalizeOrders(data: unknown[]): Order[] {
